@@ -1,21 +1,21 @@
 /**
  * Manages season background music and horde alert sound.
- * Seasons: spring.wav, summer.wav, autumn.mp3, winter.mp3 — all loop until the season ends.
- * Also: horde.wav (loop), horde_attack.wav (on attack), wood.mp3, building.wav (loop until build done), dead.wav, hunt.wav, shelter.mp3 (to shelter), leave.mp3 (leave shelter).
+ * Seasons: spring.mp3, summer.mp3, autumn.mp3, winter.mp3 — all loop until the season ends.
+ * Also: horde.mp3 (loop), horde_attack.mp3 (on attack), wood.mp3, building.mp3 (loop until build done), dead.mp3, hunt.mp3, shelter.mp3 (to shelter), leave.mp3 (leave shelter).
  * Empty or missing files are ignored (decode error caught).
  */
 const SEASON_FILES: Record<string, string> = {
-  spring: './assets/sounds/spring.wav',
-  summer: './assets/sounds/summer.wav',
+  spring: './assets/sounds/spring.mp3',
+  summer: './assets/sounds/summer.mp3',
   autumn: './assets/sounds/autumn.mp3',
   winter: './assets/sounds/winter.mp3',
 };
-const HORDE_FILE = './assets/sounds/horde.wav';
-const HORDE_ATTACK_FILE = './assets/sounds/horde_attack.wav';
+const HORDE_FILE = './assets/sounds/horde.mp3';
+const HORDE_ATTACK_FILE = './assets/sounds/horde_attack.mp3';
 const WOOD_FILE = './assets/sounds/wood.mp3';
-const BUILDING_FILE = './assets/sounds/building.wav';
-const DEAD_FILE = './assets/sounds/dead.wav';
-const HUNT_FILE = './assets/sounds/hunt.wav';
+const BUILDING_FILE = './assets/sounds/building.mp3';
+const DEAD_FILE = './assets/sounds/dead.mp3';
+const HUNT_FILE = './assets/sounds/hunt.mp3';
 const SHELTER_FILE = './assets/sounds/shelter.mp3';
 const LEAVE_FILE = './assets/sounds/leave.mp3';
 
@@ -91,7 +91,7 @@ export class SoundManager {
     this.hordeAudio = audio;
   }
 
-  /** Start looping horde.wav when first enemies appear. Stops when stopHordeLoop() is called. */
+  /** Start looping horde.mp3 when first enemies appear. Stops when stopHordeLoop() is called. */
   startHordeLoop(): void {
     if (!this.soundEnabled) return;
     if (this.hordeAudio) return;
