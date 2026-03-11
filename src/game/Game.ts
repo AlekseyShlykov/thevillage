@@ -105,7 +105,7 @@ export class Game {
 
     this.setupSeasonCallbacks();
     this.initWorld();
-    this.soundManager.playSeason(this.seasonSystem.season);
+    // Season music is started in start() after user click (required for autoplay policy).
 
     this.renderer.resize();
     window.addEventListener('resize', () => this.renderer.resize());
@@ -119,6 +119,7 @@ export class Game {
   }
 
   start(): void {
+    this.soundManager.playSeason(this.seasonSystem.season);
     this.gameLoop.start();
   }
 

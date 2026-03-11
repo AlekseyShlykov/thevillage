@@ -3,22 +3,38 @@
  * Seasons: spring.mp3, summer.mp3, autumn.mp3, winter.mp3 — all loop until the season ends.
  * Also: horde.mp3 (loop), horde_attack.mp3 (on attack), wood.mp3, building.mp3 (loop until build done), dead.mp3, hunt.mp3, shelter.mp3 (to shelter), leave.mp3 (leave shelter).
  * Empty or missing files are ignored (decode error caught).
+ * Paths use import.meta.env.BASE_URL so they work on GitHub Pages (e.g. /CozyGame/).
+ * Volumes are read from game-balance.json (sounds section).
  */
-const SEASON_FILES: Record<string, string> = {
-  spring: './assets/sounds/spring.mp3',
-  summer: './assets/sounds/summer.mp3',
-  autumn: './assets/sounds/autumn.mp3',
-  winter: './assets/sounds/winter.mp3',
+import { getConfig } from '../data/ConfigLoader';
+
+const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || './';
+const path = (p: string) => (base.endsWith('/') ? base + p : base + p.replace(/^\\.?\\//, ''));
+
+const DEFAULT_VOL: Record<string, number> = {
+  season: 0.4, horde: 0.6, hordeAttack: 0.65, wood: 0.7, building: 0.6,
+  dead: 0.8, hunt: 0.7, shelter: 0.7, leave: 0.7, hungry: 0.7,
 };
-const HORDE_FILE = './assets/sounds/horde.mp3';
-const HORDE_ATTACK_FILE = './assets/sounds/horde_attack.mp3';
-const WOOD_FILE = './assets/sounds/wood.mp3';
-const BUILDING_FILE = './assets/sounds/building.mp3';
-const DEAD_FILE = './assets/sounds/dead.mp3';
-const HUNT_FILE = './assets/sounds/hunt.mp3';
-const SHELTER_FILE = './assets/sounds/shelter.mp3';
-const LEAVE_FILE = './assets/sounds/leave.mp3';
-const HUNGRY_FILE = './assets/sounds/hungry.mp3';
+function vol(key: string): number {
+  const v = getConfig().sounds?.[key as keyof NonNullable<ReturnType<typeof getConfig>['sounds']>];
+  return typeof v === 'number' && v >= 0 && v <= 1 ? v : (DEFAULT_VOL[key] ?? 0.7);
+}
+
+const SEASON_FILES: Record<string, string> = {
+  spring: path('assets/sounds/spring.mp3'),
+  summer: path('assets/sounds/summer.mp3'),
+  autumn: path('assets/sounds/autumn.mp3'),
+  winter: path('assets/sounds/winter.mp3'),
+};
+const HORDE_FILE = path('assets/sounds/horde.mp3');
+const HORDE_ATTACK_FILE = path('assets/sounds/horde_attack.mp3');
+const WOOD_FILE = path('assets/sounds/wood.mp3');
+const BUILDING_FILE = path('assets/sounds/building.mp3');
+const DEAD_FILE = path('assets/sounds/dead.mp3');
+const HUNT_FILE = path('assets/sounds/hunt.mp3');
+const SHELTER_FILE = path('assets/sounds/shelter.mp3');
+const LEAVE_FILE = path('assets/sounds/leave.mp3');
+const HUNGRY_FILE = path('assets/sounds/hungry.mp3');
 
 const WOOD_THROTTLE_MS = 450;
 const BUILDING_THROTTLE_MS = 500;
@@ -68,7 +84,7 @@ export class SoundManager {
 
     const audio = new Audio(src);
     audio.loop = true;
-    audio.volume = 0.4;
+    audio.volume = vol('season');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
     this.seasonAudio = audio;
@@ -83,7 +99,7 @@ export class SoundManager {
     }
 
     const audio = new Audio(HORDE_FILE);
-    audio.volume = 0.6;
+    audio.volume = vol('horde');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
     audio.addEventListener('ended', () => {
@@ -99,7 +115,7 @@ export class SoundManager {
 
     const audio = new Audio(HORDE_FILE);
     audio.loop = true;
-    audio.volume = 0.6;
+    audio.volume = vol('horde');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {
       this.hordeAudio = null;
@@ -121,7 +137,7 @@ export class SoundManager {
     if (now - this.lastHordeAttackTime < HORDE_ATTACK_THROTTLE_MS) return;
     this.lastHordeAttackTime = now;
     const audio = new Audio(HORDE_ATTACK_FILE);
-    audio.volume = 0.65;
+    audio.volume = vol('hordeAttack');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }
@@ -134,7 +150,7 @@ export class SoundManager {
     if (this.woodPlaying.length >= MAX_CONCURRENT_WOOD) return;
     this.lastWoodTime = now;
     const audio = new Audio(WOOD_FILE);
-    audio.volume = 0.7;
+    audio.volume = vol('wood');
     const remove = () => {
       this.woodPlaying = this.woodPlaying.filter(x => x !== audio);
     };
@@ -160,7 +176,7 @@ export class SoundManager {
     if (this.buildingAudio) return;
     const audio = new Audio(BUILDING_FILE);
     audio.loop = true;
-    audio.volume = 0.6;
+    audio.volume = vol('building');
     audio.addEventListener('error', () => {
       this.buildingAudio = null;
     });
@@ -182,7 +198,7 @@ export class SoundManager {
   playDead(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(DEAD_FILE);
-    audio.volume = 0.8;
+    audio.volume = vol('dead');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }
@@ -190,7 +206,7 @@ export class SoundManager {
   playHunt(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(HUNT_FILE);
-    audio.volume = 0.7;
+    audio.volume = vol('hunt');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }
@@ -198,7 +214,7 @@ export class SoundManager {
   playShelter(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(SHELTER_FILE);
-    audio.volume = 0.7;
+    audio.volume = vol('shelter');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }
@@ -206,7 +222,7 @@ export class SoundManager {
   playLeaveShelter(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(LEAVE_FILE);
-    audio.volume = 0.7;
+    audio.volume = vol('leave');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }
@@ -214,7 +230,7 @@ export class SoundManager {
   playHungry(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(HUNGRY_FILE);
-    audio.volume = 0.7;
+    audio.volume = vol('hungry');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
   }

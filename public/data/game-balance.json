@@ -403,6 +403,18 @@
     "fast": 2,
     "veryFast": 4
   },
+  "sounds": {
+    "season": 0.7,
+    "horde": 0.6,
+    "hordeAttack": 0.55,
+    "wood": 0.4,
+    "building": 0.6,
+    "dead": 0.8,
+    "hunt": 0.5,
+    "shelter": 0.6,
+    "leave": 0.4,
+    "hungry": 0.6
+  },
   "demoEnd": {
     "emailSubmitUrl": "https://script.google.com/macros/s/AKfycbwGh9FzAcQih9zf7_i_K-UudvreiCZF5AdHCfI71t-kCD8pDZ6NPWe__RcBFFJSxOF9eQ/exec"
   }

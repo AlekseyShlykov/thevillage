@@ -204,5 +204,17 @@ export interface GameBalanceConfig {
   levels: Record<string, { populationThreshold: number; availableTiers: number[] }>;
   repair: Record<string, number>;
   gameSpeed: Record<string, number>;
+  sounds?: {
+    season?: number;
+    horde?: number;
+    hordeAttack?: number;
+    wood?: number;
+    building?: number;
+    dead?: number;
+    hunt?: number;
+    shelter?: number;
+    leave?: number;
+    hungry?: number;
+  };
   demoEnd?: { emailSubmitUrl?: string };
 }
