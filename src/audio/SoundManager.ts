@@ -8,8 +8,8 @@
  */
 import { getConfig } from '../data/ConfigLoader';
 
-const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || './';
-const path = (p: string) => (base.endsWith('/') ? base + p : base + p.replace(/^\\.?\\//, ''));
+const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL) || './';
+const path = (p: string) => (base.endsWith('/') ? base + p : base + p.replace(/^\.?\//, ''));
 
 const DEFAULT_VOL: Record<string, number> = {
   season: 0.4, horde: 0.6, hordeAttack: 0.65, wood: 0.7, building: 0.6,
