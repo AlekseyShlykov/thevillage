@@ -23,6 +23,18 @@ async function main(): Promise<void> {
       loadingScreen.style.display = 'none';
     }
 
+    const introScreen = document.getElementById('intro-screen');
+    const startBtn = document.getElementById('intro-start-btn');
+    if (introScreen && startBtn) {
+      introScreen.style.display = 'flex';
+      await new Promise<void>((resolve) => {
+        startBtn.addEventListener('click', () => {
+          introScreen.style.display = 'none';
+          resolve();
+        });
+      });
+    }
+
     game.start();
   } catch (err) {
     console.error('Failed to start Winter Village:', err);

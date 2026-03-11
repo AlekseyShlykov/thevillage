@@ -53,9 +53,11 @@ export class Game {
   private palisadeStart: Position | null = null;
   private palisadePreview: Position[] = [];
   private uiUpdateCounter = 0;
+  private clearModeHintCount = 0;
   private gameOver = false;
   private stayInShelterMode = false;
   private demoMessageShown = false;
+  private foodLowSoundPlayed = false;
 
   constructor(canvas: HTMLCanvasElement, assets: AssetLoader) {
     this.camera = new Camera();
@@ -93,13 +95,12 @@ export class Game {
       onRepairAll: () => this.repairAll(),
       onRestart: () => this.restart(),
       onSoundToggle: () => this.soundManager.toggleSound(),
-      onOpenEmailForm: () => this.ui.showEmailForm(getConfig().demoEnd?.emailSubmitUrl, false),
     };
     this.ui = new UIManager(callbacks);
 
     this.resourceSystem.setOnCapacityReached((resource) => {
-      const names: Record<string, string> = { wood: 'дереву', food: 'еде', fur: 'меху', tools: 'инструментам' };
-      this.ui.notify(`Достигнут максимум по ${names[resource] ?? resource}. Постройте склад.`);
+      const names: Record<string, string> = { wood: 'wood', food: 'food', fur: 'fur', tools: 'tools' };
+      this.ui.notify(`Capacity reached for ${names[resource] ?? resource}. Build a storage.`);
     });
 
     this.setupSeasonCallbacks();
@@ -164,7 +165,7 @@ export class Game {
     if (this.villagerSystem.getAliveCount() === 0) {
       this.gameOver = true;
       this.gameLoop.gameSpeed = 0;
-      this.ui.showGameOver();
+      this.ui.showGameOver(getConfig().demoEnd?.emailSubmitUrl);
       return;
     }
 
@@ -217,7 +218,7 @@ export class Game {
     if (!this.demoMessageShown && alive >= 10) {
       this.demoMessageShown = true;
       this.ui.notify(
-        'Если игра понравилась — оставьте почту (кнопка ✉ вверху справа): когда выйдет полная версия, вы получите уведомление на email.',
+        "If you liked the game — leave your email on the game over or demo end screen; we'll notify you when the full version is out.",
         10000
       );
     }
@@ -1161,7 +1162,10 @@ export class Game {
   private toggleClearMode(): void {
     this.mode = this.mode === 'clear' ? 'normal' : 'clear';
     if (this.mode === 'clear') {
-      this.ui.notify('Click forest tiles to mark for clearing, then press "Send to chop"');
+      this.clearModeHintCount++;
+      if (this.clearModeHintCount === 1 || (this.clearModeHintCount - 1) % 5 === 0) {
+        this.ui.notify('Click forest tiles to mark for clearing, then press "Send to chop"');
+      }
     }
   }
 
@@ -1196,7 +1200,10 @@ export class Game {
     }
     const marked = this.tileMap.getMarkedClearingTiles();
     if (marked.length === 0) {
-      this.ui.notify('First mark forest tiles for clearing (🪓 Clear mode).');
+      this.clearModeHintCount++;
+      if (this.clearModeHintCount === 1 || (this.clearModeHintCount - 1) % 5 === 0) {
+        this.ui.notify('First mark forest tiles for clearing (🪓 Clear mode).');
+      }
       return;
     }
     let villagerId: string | null = this.selectedVillagerId;
@@ -1497,6 +1504,8 @@ export class Game {
     this.gameOver = false;
     this.stayInShelterMode = false;
     this.demoMessageShown = false;
+    this.foodLowSoundPlayed = false;
+    this.clearModeHintCount = 0;
 
     this.initWorld();
 
@@ -1546,6 +1555,24 @@ export class Game {
   }
 
   private updateUI(): void {
+    const alive = this.villagerSystem.getAliveCount();
+    const cfg = getConfig().villagers;
+    const winterMult = this.seasonSystem.isWinter() ? cfg.winterFoodConsumptionMultiplier : 1;
+    const smokehouseBonus = this.buildingSystem.getBuildingsOfType('smokehouse').length > 0
+      ? getConfig().resources.smokehouseFoodEfficiencyBonus : 1;
+    const foodConsumptionPerSecond = cfg.foodConsumptionPerSecond * alive * winterMult / smokehouseBonus;
+    const foodLow = foodConsumptionPerSecond > 0 &&
+      this.resourceSystem.resources.food < 40 * foodConsumptionPerSecond;
+
+    if (foodLow) {
+      if (!this.foodLowSoundPlayed) {
+        this.foodLowSoundPlayed = true;
+        this.soundManager.playHungry();
+      }
+    } else {
+      this.foodLowSoundPlayed = false;
+    }
+
     this.ui.updateTopBar({
       resources: this.resourceSystem.resources,
       season: this.seasonSystem.season,
@@ -1553,11 +1580,12 @@ export class Game {
       comfort: this.comfortSystem.comfort,
       year: this.seasonSystem.year,
       level: this.level,
-      population: this.villagerSystem.getAliveCount(),
+      population: alive,
       housing: this.buildingSystem.getHousingCapacity(),
       fps: this.gameLoop.getFPS(),
       soundOn: this.soundManager.isSoundEnabled(),
       gameSpeed: this.gameLoop.gameSpeed,
+      foodLow,
     });
 
     this.uiUpdateCounter++;
@@ -1594,6 +1622,8 @@ export class Game {
     if (data) {
       this.deserializeState(data);
       this.gameOver = false;
+      this.foodLowSoundPlayed = false;
+      this.clearModeHintCount = 0;
       this.gameLoop.gameSpeed = 1;
       this.ui.hideGameOver();
       this.ui.notify('Game loaded!');
@@ -1602,6 +1632,8 @@ export class Game {
       if (autoData) {
         this.deserializeState(autoData);
         this.gameOver = false;
+        this.foodLowSoundPlayed = false;
+        this.clearModeHintCount = 0;
         this.gameLoop.gameSpeed = 1;
         this.ui.hideGameOver();
         this.ui.notify('Loaded autosave!');

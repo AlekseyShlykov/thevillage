@@ -18,6 +18,7 @@ const DEAD_FILE = './assets/sounds/dead.mp3';
 const HUNT_FILE = './assets/sounds/hunt.mp3';
 const SHELTER_FILE = './assets/sounds/shelter.mp3';
 const LEAVE_FILE = './assets/sounds/leave.mp3';
+const HUNGRY_FILE = './assets/sounds/hungry.mp3';
 
 const WOOD_THROTTLE_MS = 450;
 const BUILDING_THROTTLE_MS = 500;
@@ -205,6 +206,14 @@ export class SoundManager {
   playLeaveShelter(): void {
     if (!this.soundEnabled) return;
     const audio = new Audio(LEAVE_FILE);
+    audio.volume = 0.7;
+    audio.play().catch(() => {});
+    audio.addEventListener('error', () => {});
+  }
+
+  playHungry(): void {
+    if (!this.soundEnabled) return;
+    const audio = new Audio(HUNGRY_FILE);
     audio.volume = 0.7;
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});

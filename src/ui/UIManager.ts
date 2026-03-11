@@ -17,7 +17,6 @@ export interface UICallbacks {
   onRepairAll: () => void;
   onRestart: () => void;
   onSoundToggle?: () => void;
-  onOpenEmailForm?: () => void;
 }
 
 export class UIManager {
@@ -77,7 +76,7 @@ export class UIManager {
     this.topBarRightDiv = this.el('div', { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' });
     this.soundBtn = document.createElement('button');
     this.soundBtn.setAttribute('data-sound-btn', 'true');
-    this.soundBtn.title = 'Звук';
+    this.soundBtn.title = 'Sound';
     Object.assign(this.soundBtn.style, {
       padding: '4px 8px', background: 'rgba(60,60,80,0.9)', border: '1px solid rgba(255,255,255,0.15)',
       borderRadius: '4px', color: '#e0d8c8', cursor: 'pointer', fontSize: '12px',
@@ -89,9 +88,6 @@ export class UIManager {
     this.topBarRightDiv.appendChild(saveBtn);
     const loadBtn = this.btn('📂 Load', () => this.callbacks.onLoad());
     this.topBarRightDiv.appendChild(loadBtn);
-    const emailBtn = this.btn('✉ Почта', () => this.callbacks.onOpenEmailForm?.());
-    emailBtn.title = 'Оставить почту — уведомление о полной версии';
-    this.topBarRightDiv.appendChild(emailBtn);
     this.topBarFpsSpan = this.el('span', { opacity: '0.5', fontSize: '11px' });
     this.topBarRightDiv.appendChild(this.topBarFpsSpan);
     this.topBar.appendChild(this.topBarRightDiv);
@@ -173,7 +169,7 @@ export class UIManager {
     this.overlay.appendChild(this.infoPanel);
 
     this.notificationEl = this.el('div', {
-      position: 'absolute', top: '56px', left: '50%', transform: 'translateX(-50%)',
+      position: 'absolute', bottom: '52px', left: '50%', transform: 'translateX(-50%)',
       background: 'rgba(40,40,60,0.95)', padding: '8px 20px', borderRadius: '6px',
       fontSize: '14px', display: 'none', zIndex: '20', textAlign: 'center',
       border: '1px solid rgba(255,200,100,0.3)', color: '#ffe0a0',
@@ -259,16 +255,18 @@ export class UIManager {
     fps: number;
     soundOn?: boolean;
     gameSpeed?: number;
+    foodLow?: boolean;
   }): void {
     const seasonColors: Record<string, string> = {
       spring: '#7ec87e', summer: '#d4c45a', autumn: '#c87a3e', winter: '#8ab4e8',
     };
     const sc = seasonColors[data.season] || '#aaa';
     const pct = Math.round(data.seasonProgress * 100);
+    const foodStyle = data.foodLow ? ' style="color:#e66;font-weight:bold"' : '';
 
     this.topBarStatsDiv.innerHTML = `
       <span>🪵 ${Math.floor(data.resources.wood)}</span>
-      <span>🍖 ${Math.floor(data.resources.food)}</span>
+      <span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>
       <span>🧥 ${Math.floor(data.resources.fur)}</span>
       <span>🔧 ${Math.floor(data.resources.tools)}</span>
       <span style="color:${sc}">
@@ -439,7 +437,7 @@ export class UIManager {
     return false;
   }
 
-  showGameOver(): void {
+  showGameOver(emailSubmitUrl?: string): void {
     this.hideGameOver();
     const overlay = this.el('div', {
       position: 'fixed', left: '0', top: '0', right: '0', bottom: '0',
@@ -453,45 +451,12 @@ export class UIManager {
     title.textContent = 'Game Over';
     overlay.appendChild(title);
 
-    const msg = this.el('div', { fontSize: '16px', marginBottom: '24px', opacity: '0.9' });
+    const msg = this.el('div', { fontSize: '16px', marginBottom: '16px', opacity: '0.9' });
     msg.textContent = 'All villagers have perished.';
     overlay.appendChild(msg);
 
-    this.appendGameOverButtons(overlay);
-    this.overlay.appendChild(overlay);
-    this.gameOverOverlay = overlay;
-  }
-
-  showDemoEnd(emailSubmitUrl?: string): void {
-    this.showEmailForm(emailSubmitUrl, true);
-  }
-
-  /**
-   * Shows modal to submit email for full version notification.
-   * @param isDemoEnd If true, title is "Конец демо" and shows "Начать заново". Otherwise shows "Закрыть" to return to game.
-   */
-  showEmailForm(emailSubmitUrl?: string, isDemoEnd = false): void {
-    this.hideGameOver();
-    const overlay = this.el('div', {
-      position: 'fixed', left: '0', top: '0', right: '0', bottom: '0',
-      background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', zIndex: '100',
-      color: '#e0d8c8', fontFamily: 'inherit',
-    });
-    overlay.setAttribute('data-ui', 'true');
-
-    const title = this.el('div', { fontSize: '28px', fontWeight: 'bold', marginBottom: '12px', color: '#ffe0a0' });
-    title.textContent = isDemoEnd ? 'Конец демо' : 'Оставить почту';
-    overlay.appendChild(title);
-
-    const msg = this.el('div', { fontSize: '16px', marginBottom: '8px', opacity: '0.9', textAlign: 'center', maxWidth: '400px' });
-    if (isDemoEnd) {
-      msg.textContent = 'Вы пережили 8 зим. Спасибо за игру!';
-      overlay.appendChild(msg);
-    }
-
-    const subMsg = this.el('div', { fontSize: '15px', marginBottom: '20px', opacity: '0.9', textAlign: 'center', maxWidth: '400px' });
-    subMsg.textContent = 'Если игра понравилась — оставьте почту: когда выйдет полная версия, вы получите уведомление на указанный email.';
+    const subMsg = this.el('div', { fontSize: '15px', marginBottom: '16px', opacity: '0.9', textAlign: 'center', maxWidth: '400px' });
+    subMsg.textContent = "If you liked the game — leave your email: when the full version is released, we'll notify you at that address.";
     overlay.appendChild(subMsg);
 
     const formWrap = this.el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px', gap: '8px' });
@@ -504,10 +469,10 @@ export class UIManager {
     const submitFeedback = this.el('div', { fontSize: '13px', minHeight: '20px', color: '#9e9' });
     formWrap.appendChild(submitFeedback);
 
-    const submitBtn = this.btn('Отправить', async () => {
+    const submitBtn = this.btn('Submit', async () => {
       const email = (emailInput as HTMLInputElement).value.trim();
       if (!email) {
-        submitFeedback.textContent = 'Введите email';
+        submitFeedback.textContent = 'Enter email';
         submitFeedback.style.color = '#c96';
         return;
       }
@@ -515,22 +480,104 @@ export class UIManager {
         try {
           const res = await fetch(emailSubmitUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ email }),
           });
           if (res.ok) {
-            submitFeedback.textContent = 'Спасибо! Мы сообщим о выходе полной версии.';
+            submitFeedback.textContent = "Thank you! We'll notify you when the full version is out.";
             submitFeedback.style.color = '#9e9';
           } else {
-            submitFeedback.textContent = 'Ошибка отправки. Попробуйте позже.';
+            submitFeedback.textContent = 'Send failed. Try again later.';
             submitFeedback.style.color = '#c96';
           }
         } catch {
-          submitFeedback.textContent = 'Ошибка сети. Попробуйте позже.';
+          submitFeedback.textContent = 'Network error. Try again later.';
           submitFeedback.style.color = '#c96';
         }
       } else {
-        submitFeedback.textContent = 'Спасибо!';
+        submitFeedback.textContent = 'Thank you!';
+        submitFeedback.style.color = '#9e9';
+      }
+    });
+    submitBtn.style.fontSize = '14px';
+    submitBtn.style.padding = '10px 20px';
+    formWrap.appendChild(submitBtn);
+    overlay.appendChild(formWrap);
+
+    this.appendGameOverButtons(overlay);
+    this.overlay.appendChild(overlay);
+    this.gameOverOverlay = overlay;
+  }
+
+  showDemoEnd(emailSubmitUrl?: string): void {
+    this.showEmailForm(emailSubmitUrl, true);
+  }
+
+  /**
+   * Shows modal to submit email for full version notification (demo end only).
+   * @param isDemoEnd If true, title is "Demo End" and shows "Start Over". Otherwise shows "Close".
+   */
+  showEmailForm(emailSubmitUrl?: string, isDemoEnd = false): void {
+    this.hideGameOver();
+    const overlay = this.el('div', {
+      position: 'fixed', left: '0', top: '0', right: '0', bottom: '0',
+      background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', zIndex: '100',
+      color: '#e0d8c8', fontFamily: 'inherit',
+    });
+    overlay.setAttribute('data-ui', 'true');
+
+    const title = this.el('div', { fontSize: '28px', fontWeight: 'bold', marginBottom: '12px', color: '#ffe0a0' });
+    title.textContent = isDemoEnd ? 'Demo End' : 'Leave your email';
+    overlay.appendChild(title);
+
+    const msg = this.el('div', { fontSize: '16px', marginBottom: '8px', opacity: '0.9', textAlign: 'center', maxWidth: '400px' });
+    if (isDemoEnd) {
+      msg.textContent = "You survived 8 winters. Thanks for playing!";
+      overlay.appendChild(msg);
+    }
+
+    const subMsg = this.el('div', { fontSize: '15px', marginBottom: '20px', opacity: '0.9', textAlign: 'center', maxWidth: '400px' });
+    subMsg.textContent = "If you liked the game — leave your email: when the full version is released, you'll get a notification at that address.";
+    overlay.appendChild(subMsg);
+
+    const formWrap = this.el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px', gap: '8px' });
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.placeholder = 'your@email.com';
+    emailInput.style.cssText = 'padding:10px 14px; font-size:14px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:rgba(40,40,50,0.9); color:#e0d8c8; min-width:220px;';
+    formWrap.appendChild(emailInput);
+
+    const submitFeedback = this.el('div', { fontSize: '13px', minHeight: '20px', color: '#9e9' });
+    formWrap.appendChild(submitFeedback);
+
+    const submitBtn = this.btn('Submit', async () => {
+      const email = (emailInput as HTMLInputElement).value.trim();
+      if (!email) {
+        submitFeedback.textContent = 'Enter email';
+        submitFeedback.style.color = '#c96';
+        return;
+      }
+      if (emailSubmitUrl) {
+        try {
+          const res = await fetch(emailSubmitUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ email }),
+          });
+          if (res.ok) {
+            submitFeedback.textContent = "Thank you! We'll notify you when the full version is out.";
+            submitFeedback.style.color = '#9e9';
+          } else {
+            submitFeedback.textContent = 'Send failed. Try again later.';
+            submitFeedback.style.color = '#c96';
+          }
+        } catch {
+          submitFeedback.textContent = 'Network error. Try again later.';
+          submitFeedback.style.color = '#c96';
+        }
+      } else {
+        submitFeedback.textContent = 'Thank you!';
         submitFeedback.style.color = '#9e9';
       }
     });
@@ -540,12 +587,12 @@ export class UIManager {
     overlay.appendChild(formWrap);
 
     if (isDemoEnd) {
-      const restartBtn = this.btn('🔄 Начать заново', () => this.callbacks.onRestart());
+      const restartBtn = this.btn('🔄 Start Over', () => this.callbacks.onRestart());
       restartBtn.style.fontSize = '14px';
       restartBtn.style.padding = '10px 20px';
       overlay.appendChild(restartBtn);
     } else {
-      const closeBtn = this.btn('Закрыть', () => this.hideGameOver());
+      const closeBtn = this.btn('Close', () => this.hideGameOver());
       closeBtn.style.fontSize = '14px';
       closeBtn.style.padding = '10px 20px';
       overlay.appendChild(closeBtn);
@@ -562,7 +609,7 @@ export class UIManager {
     loadBtn.style.marginBottom = '8px';
     overlay.appendChild(loadBtn);
 
-    const restartBtn = this.btn('🔄 Начать заново', () => this.callbacks.onRestart());
+    const restartBtn = this.btn('🔄 Start Over', () => this.callbacks.onRestart());
     restartBtn.style.fontSize = '14px';
     restartBtn.style.padding = '10px 20px';
     overlay.appendChild(restartBtn);
