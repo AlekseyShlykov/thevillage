@@ -100,6 +100,7 @@ export class UIManager {
       gap: '8px', borderTop: '1px solid rgba(255,255,255,0.1)',
       zIndex: '10',
     });
+    bottomBar.id = 'game-bottom-bar';
     this.overlay.appendChild(bottomBar);
 
     const speeds = [
@@ -166,6 +167,7 @@ export class UIManager {
       padding: '8px', display: 'none', zIndex: '10', fontSize: '12px',
       border: '1px solid rgba(255,255,255,0.1)',
     });
+    this.infoPanel.setAttribute('data-info-panel', 'true');
     this.overlay.appendChild(this.infoPanel);
 
     this.notificationEl = this.el('div', {
@@ -174,6 +176,7 @@ export class UIManager {
       fontSize: '14px', display: 'none', zIndex: '20', textAlign: 'center',
       border: '1px solid rgba(255,200,100,0.3)', color: '#ffe0a0',
     });
+    this.notificationEl.setAttribute('data-notification-el', 'true');
     this.overlay.appendChild(this.notificationEl);
   }
 
