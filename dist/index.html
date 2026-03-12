@@ -81,31 +81,63 @@
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
 
-    /* Mobile: top bar = row1 (resources, season, pop, level, stars), row2 (buttons); hide comfort & FPS */
+    /* Mobile: top bar = 2 rows (stats + buttons), all inside black bar; hide Save/Load */
     @media (max-width: 768px) {
       #game-top-bar {
         height: auto;
-        min-height: 48px;
+        min-height: 76px;
         flex-wrap: wrap;
-        align-items: flex-start;
-        padding: 6px 8px;
-        gap: 6px;
-        font-size: 12px;
+        align-content: flex-start;
+        align-items: center;
+        padding: 6px 8px 8px;
+        gap: 0;
+        font-size: 11px;
       }
       #game-top-bar [data-topbar-stats] {
-        flex: 1 0 100%;
+        flex: 0 0 100%;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        align-items: center;
+        gap: 6px 8px;
+        min-height: 28px;
       }
       #game-top-bar [data-topbar-stats] [data-topbar-row1] {
-        flex: 1 1 100%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 8px;
+        flex: 1 1 auto;
+        min-width: 0;
       }
-      #game-top-bar [data-topbar-extra] {
-        display: none !important;
+      #game-top-bar [data-topbar-stats] [data-topbar-row1] span {
+        flex: 0 0 auto;
+      }
+      #game-top-bar [data-topbar-stats] [data-season-bar] {
+        flex: 0 0 48px !important;
+        min-width: 48px;
+      }
+      #game-top-bar [data-topbar-stats] [data-topbar-extra] {
+        flex: 0 0 auto;
       }
       #game-top-bar [data-topbar-buttons] {
+        flex: 0 0 100%;
         margin-left: 0 !important;
+        margin-top: 4px;
+        gap: 6px;
+      }
+      #game-top-bar [data-save-btn],
+      #game-top-bar [data-load-btn] {
+        display: none !important;
+      }
+      #game-top-bar button {
+        min-height: 36px;
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+      /* Panels below taller top bar */
+      #ui-overlay [data-build-panel],
+      #ui-overlay [data-tech-panel] {
+        top: 84px !important;
       }
     }
 
@@ -130,7 +162,7 @@
       #ui-overlay [data-info-panel] { bottom: 92px !important; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-plUcNU3U.js"></script>
+  <script type="module" crossorigin src="./assets/index-D8epUwQc.js"></script>
 </head>
 <body>
   <div id="loading-screen">

@@ -87,8 +87,10 @@ export class UIManager {
     this.soundBtn.addEventListener('click', () => this.callbacks.onSoundToggle?.());
     this.topBarRightDiv.appendChild(this.soundBtn);
     const saveBtn = this.btn('💾 Save', () => this.callbacks.onSave());
+    saveBtn.setAttribute('data-save-btn', 'true');
     this.topBarRightDiv.appendChild(saveBtn);
     const loadBtn = this.btn('📂 Load', () => this.callbacks.onLoad());
+    loadBtn.setAttribute('data-load-btn', 'true');
     this.topBarRightDiv.appendChild(loadBtn);
     this.topBar.appendChild(this.topBarRightDiv);
     this.overlay.appendChild(this.topBar);
@@ -143,6 +145,7 @@ export class UIManager {
       border: '1px solid rgba(255,255,255,0.1)',
     });
     this.buildPanel.setAttribute('data-ui', 'true');
+    this.buildPanel.setAttribute('data-build-panel', 'true');
     this.buildPanel.addEventListener('click', (e) => {
       const item = (e.target as HTMLElement).closest('[data-building-id]');
       if (item) {
@@ -159,6 +162,7 @@ export class UIManager {
       padding: '8px', display: 'none', zIndex: '10',
       border: '1px solid rgba(255,255,255,0.1)',
     });
+    this.techPanel.setAttribute('data-tech-panel', 'true');
     this.overlay.appendChild(this.techPanel);
 
     this.infoPanel = this.el('div', {
@@ -273,7 +277,7 @@ export class UIManager {
         <span>🧥 ${Math.floor(data.resources.fur)}</span>
         <span>🔧 ${Math.floor(data.resources.tools)}</span>
         <span style="color:${sc}">${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}</span>
-        <span style="flex:0 0 80px;height:6px;background:#333;border-radius:3px;overflow:hidden">
+        <span style="flex:0 0 80px;height:6px;background:#333;border-radius:3px;overflow:hidden" data-season-bar>
           <span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>
         </span>
         <span>👥 ${data.population}/${data.housing}</span>
