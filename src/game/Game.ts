@@ -293,6 +293,15 @@ export class Game {
   }
 
   private handleInput(): void {
+    if (this.selectedVillagerId) {
+      const v = this.villagerSystem.getVillagerById(this.selectedVillagerId);
+      if (!v || v.health === HealthState.Dead) {
+        this.selectedVillagerId = null;
+        this.ui.hideInfo();
+        this.ui.hideActionMenu();
+      }
+    }
+
     if (this.input.consumeClick()) {
       const { tileX, tileY } = this.input.state;
 

@@ -33,7 +33,9 @@ export class InputManager {
   private cameraStartY = 0;
   private isPointerDown = false;
   private dragThreshold = 5;
+  private touchDragThreshold = 12;
   private hasDragged = false;
+  private isTouchActive = false;
 
   constructor(canvas: HTMLCanvasElement, camera: Camera) {
     this.canvas = canvas;
@@ -113,6 +115,7 @@ export class InputManager {
       'touchstart',
       (e) => {
         e.preventDefault();
+        this.isTouchActive = true;
         if (e.touches.length === 1) {
           const t = e.touches[0];
           const pos = this.getCanvasPos(t.clientX, t.clientY);
@@ -139,10 +142,20 @@ export class InputManager {
       'touchend',
       (e) => {
         e.preventDefault();
-        this.endDrag(this._state.mouseX, this._state.mouseY, true);
+        let x = this._state.mouseX;
+        let y = this._state.mouseY;
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          const pos = this.getCanvasPos(t.clientX, t.clientY);
+          x = pos.x;
+          y = pos.y;
+        }
+        this.endDrag(x, y, true);
+        this.isTouchActive = false;
       },
       { passive: false }
     );
+    this.canvas.addEventListener('touchcancel', () => { this.isTouchActive = false; }, { passive: true });
   }
 
   private startDrag(x: number, y: number): void {
@@ -160,7 +173,8 @@ export class InputManager {
     if (this.isPointerDown) {
       const dx = x - this.dragStartX;
       const dy = y - this.dragStartY;
-      if (Math.abs(dx) > this.dragThreshold || Math.abs(dy) > this.dragThreshold) {
+      const threshold = this.isTouchActive ? this.touchDragThreshold : this.dragThreshold;
+      if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
         this.hasDragged = true;
         this._state.isDragging = true;
       }

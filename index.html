@@ -17,6 +17,7 @@
       width: 100%;
       height: 100%;
       image-rendering: pixelated;
+      touch-action: none;
     }
     #ui-overlay {
       position: absolute;
@@ -85,21 +86,24 @@
     @media (max-width: 768px) {
       #game-top-bar {
         height: auto;
-        min-height: 76px;
+        min-height: 90px;
         flex-wrap: wrap;
         align-content: flex-start;
         align-items: center;
-        padding: 6px 8px 8px;
+        padding: 8px;
         gap: 0;
         font-size: 11px;
       }
+      /* Row 1: stats take full width and wrap inside this row */
       #game-top-bar [data-topbar-stats] {
         flex: 0 0 100%;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 6px 8px;
-        min-height: 28px;
+        min-height: 26px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
       }
       #game-top-bar [data-topbar-stats] [data-topbar-row1] {
         display: flex;
@@ -119,11 +123,16 @@
       #game-top-bar [data-topbar-stats] [data-topbar-extra] {
         flex: 0 0 auto;
       }
+      /* Row 2: Tech + Sound on same row (do NOT take 100% so they stay next to each other) */
+      #game-top-bar [data-tech-btn] {
+        margin-left: 0;
+        margin-top: 6px;
+      }
       #game-top-bar [data-topbar-buttons] {
-        flex: 0 0 100%;
         margin-left: 0 !important;
-        margin-top: 4px;
+        margin-top: 6px;
         gap: 6px;
+        flex: 0 0 auto;
       }
       #game-top-bar [data-save-btn],
       #game-top-bar [data-load-btn] {
@@ -137,7 +146,7 @@
       /* Panels below taller top bar */
       #ui-overlay [data-build-panel],
       #ui-overlay [data-tech-panel] {
-        top: 84px !important;
+        top: 98px !important;
       }
     }
 
