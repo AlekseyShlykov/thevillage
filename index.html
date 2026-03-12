@@ -82,35 +82,23 @@
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
 
-    /* Mobile: wrap when content doesn't fit; no fixed row count */
+    /* Mobile: natural wrap for both bars */
     @media (max-width: 768px) {
       #game-top-bar {
         height: auto !important;
-        min-height: 48px;
         flex-wrap: wrap;
-        align-content: flex-start;
-        align-items: center;
-        padding: 8px;
-        gap: 8px;
+        padding: 6px 8px;
+        gap: 6px 10px;
         font-size: 11px;
       }
       #game-top-bar [data-topbar-stats] {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 6px 8px;
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-      #game-top-bar [data-topbar-stats] [data-topbar-row1] {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px 8px;
+        gap: 4px 8px;
       }
       #game-top-bar [data-topbar-stats] [data-season-bar] {
-        flex: 0 0 48px !important;
-        min-width: 48px;
+        width: 48px !important;
       }
       #game-top-bar [data-topbar-buttons] {
         margin-left: 0 !important;
@@ -119,36 +107,19 @@
       #game-top-bar [data-load-btn] {
         display: none !important;
       }
-      #game-top-bar button {
-        min-height: 36px;
-        padding: 4px 10px;
-        font-size: 12px;
-      }
-      #ui-overlay [data-build-panel],
-      #ui-overlay [data-tech-panel] {
-        top: 100px !important;
-      }
-    }
 
-    /* Mobile: bottom bar — wrap when doesn't fit */
-    @media (max-width: 768px) {
       #game-bottom-bar {
         height: auto !important;
-        min-height: 44px;
         flex-wrap: wrap;
-        justify-content: center;
-        align-content: center;
-        padding: 8px;
-        gap: 8px;
+        padding: 6px 8px;
+        gap: 6px;
       }
       #game-bottom-bar button {
         min-height: 44px;
         min-width: 44px;
-        padding: 6px 10px;
       }
-      #ui-overlay [data-notification-el],
-      #ui-overlay [data-info-panel] {
-        bottom: 100px !important;
+      #game-bottom-bar [data-repair-btn] {
+        display: none !important;
       }
     }
   </style>

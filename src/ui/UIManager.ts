@@ -135,6 +135,7 @@ export class UIManager {
     bottomBar.appendChild(leaveShelterBtn);
 
     const repairBtn = this.btn('🔧 Repair all', () => this.callbacks.onRepairAll());
+    repairBtn.setAttribute('data-repair-btn', 'true');
     bottomBar.appendChild(repairBtn);
 
     this.buildPanel = this.el('div', {
@@ -270,24 +271,19 @@ export class UIManager {
     const pct = Math.round(data.seasonProgress * 100);
     const foodStyle = data.foodLow ? ' style="color:#e66;font-weight:bold"' : '';
 
-    this.topBarStatsDiv.innerHTML = `
-      <div data-topbar-row1 style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <span>🪵 ${Math.floor(data.resources.wood)}</span>
-        <span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>
-        <span>🧥 ${Math.floor(data.resources.fur)}</span>
-        <span>🔧 ${Math.floor(data.resources.tools)}</span>
-        <span style="color:${sc}">${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}</span>
-        <span style="flex:0 0 80px;height:6px;background:#333;border-radius:3px;overflow:hidden" data-season-bar>
-          <span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>
-        </span>
-        <span>👥 ${data.population}/${data.housing}</span>
-        <span>Lv${data.level}</span>
-        <span>⭐ ${Math.floor(data.resources.techPoints)}</span>
-      </div>
-      <div data-topbar-extra style="display:flex;align-items:center">
-        <span>😊 ${Math.round(data.comfort * 100)}%</span>
-      </div>
-    `;
+    this.topBarStatsDiv.innerHTML =
+      `<span>🪵 ${Math.floor(data.resources.wood)}</span>` +
+      `<span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>` +
+      `<span>🧥 ${Math.floor(data.resources.fur)}</span>` +
+      `<span>🔧 ${Math.floor(data.resources.tools)}</span>` +
+      `<span style="color:${sc}">${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}</span>` +
+      `<span style="display:inline-block;width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden;vertical-align:middle" data-season-bar>` +
+        `<span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>` +
+      `</span>` +
+      `<span>😊 ${Math.round(data.comfort * 100)}%</span>` +
+      `<span>👥 ${data.population}/${data.housing}</span>` +
+      `<span>Lv${data.level}</span>` +
+      `<span>⭐ ${Math.floor(data.resources.techPoints)}</span>`;
 
     this.soundBtn.textContent = data.soundOn !== false ? '🔊' : '🔇';
 
