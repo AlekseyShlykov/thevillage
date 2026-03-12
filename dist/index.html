@@ -88,20 +88,15 @@
         height: auto !important;
         flex-wrap: wrap;
         padding: 6px 8px;
-        gap: 6px 10px;
+        gap: 4px 8px;
         font-size: 11px;
       }
-      #game-top-bar [data-topbar-stats] {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 4px 8px;
-      }
-      #game-top-bar [data-topbar-stats] [data-season-bar] {
-        width: 48px !important;
-      }
+      #game-top-bar [data-topbar-stats],
       #game-top-bar [data-topbar-buttons] {
-        margin-left: 0 !important;
+        display: contents !important;
+      }
+      #game-top-bar [data-season-bar] {
+        width: 48px !important;
       }
       #game-top-bar [data-save-btn],
       #game-top-bar [data-load-btn] {
