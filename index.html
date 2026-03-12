@@ -82,30 +82,19 @@
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
 
-    /* Mobile: top bar = 2 rows (stats + buttons), all inside black bar; hide Save/Load */
+    /* Mobile: wrap when content doesn't fit; no fixed row count */
     @media (max-width: 768px) {
       #game-top-bar {
-        height: auto;
-        min-height: 90px;
+        height: auto !important;
+        min-height: 48px;
         flex-wrap: wrap;
         align-content: flex-start;
         align-items: center;
         padding: 8px;
-        gap: 0;
+        gap: 8px;
         font-size: 11px;
       }
-      /* Row 1: stats take full width and wrap inside this row */
       #game-top-bar [data-topbar-stats] {
-        flex: 0 0 100%;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px 8px;
-        min-height: 26px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-      }
-      #game-top-bar [data-topbar-stats] [data-topbar-row1] {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -113,26 +102,18 @@
         flex: 1 1 auto;
         min-width: 0;
       }
-      #game-top-bar [data-topbar-stats] [data-topbar-row1] span {
-        flex: 0 0 auto;
+      #game-top-bar [data-topbar-stats] [data-topbar-row1] {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 8px;
       }
       #game-top-bar [data-topbar-stats] [data-season-bar] {
         flex: 0 0 48px !important;
         min-width: 48px;
       }
-      #game-top-bar [data-topbar-stats] [data-topbar-extra] {
-        flex: 0 0 auto;
-      }
-      /* Row 2: Tech + Sound on same row (do NOT take 100% so they stay next to each other) */
-      #game-top-bar [data-tech-btn] {
-        margin-left: 0;
-        margin-top: 6px;
-      }
       #game-top-bar [data-topbar-buttons] {
         margin-left: 0 !important;
-        margin-top: 6px;
-        gap: 6px;
-        flex: 0 0 auto;
       }
       #game-top-bar [data-save-btn],
       #game-top-bar [data-load-btn] {
@@ -143,32 +124,32 @@
         padding: 4px 10px;
         font-size: 12px;
       }
-      /* Panels below taller top bar */
       #ui-overlay [data-build-panel],
       #ui-overlay [data-tech-panel] {
-        top: 98px !important;
+        top: 100px !important;
       }
     }
 
-    /* Mobile: bottom bar wraps into 2 rows so all buttons are visible */
+    /* Mobile: bottom bar — wrap when doesn't fit */
     @media (max-width: 768px) {
       #game-bottom-bar {
-        height: auto;
+        height: auto !important;
         min-height: 44px;
         flex-wrap: wrap;
         justify-content: center;
         align-content: center;
-        padding: 6px 8px;
-        gap: 6px;
+        padding: 8px;
+        gap: 8px;
       }
       #game-bottom-bar button {
         min-height: 44px;
         min-width: 44px;
         padding: 6px 10px;
       }
-      /* Move notification and info panel above the taller 2-row bar */
-      #ui-overlay [data-notification-el] { bottom: 92px !important; }
-      #ui-overlay [data-info-panel] { bottom: 92px !important; }
+      #ui-overlay [data-notification-el],
+      #ui-overlay [data-info-panel] {
+        bottom: 100px !important;
+      }
     }
   </style>
 </head>
