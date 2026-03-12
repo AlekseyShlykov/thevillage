@@ -80,8 +80,29 @@
       font-family: inherit;
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
+
+    /* Mobile: bottom bar wraps into 2 rows so all buttons are visible */
+    @media (max-width: 768px) {
+      #game-bottom-bar {
+        height: auto;
+        min-height: 44px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: center;
+        padding: 6px 8px;
+        gap: 6px;
+      }
+      #game-bottom-bar button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 6px 10px;
+      }
+      /* Move notification and info panel above the taller 2-row bar */
+      #ui-overlay [data-notification-el] { bottom: 92px !important; }
+      #ui-overlay [data-info-panel] { bottom: 92px !important; }
+    }
   </style>
-  <script type="module" crossorigin src="./assets/index-lOrjZl1v.js"></script>
+  <script type="module" crossorigin src="./assets/index-CU54_VMX.js"></script>
 </head>
 <body>
   <div id="loading-screen">
