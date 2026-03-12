@@ -1583,7 +1583,6 @@ export class Game {
       level: this.level,
       population: alive,
       housing: this.buildingSystem.getHousingCapacity(),
-      fps: this.gameLoop.getFPS(),
       soundOn: this.soundManager.isSoundEnabled(),
       gameSpeed: this.gameLoop.gameSpeed,
       foodLow,

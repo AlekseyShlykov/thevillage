@@ -81,6 +81,34 @@
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
 
+    /* Mobile: top bar = row1 (resources, season, pop, level, stars), row2 (buttons); hide comfort & FPS */
+    @media (max-width: 768px) {
+      #game-top-bar {
+        height: auto;
+        min-height: 48px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        padding: 6px 8px;
+        gap: 6px;
+        font-size: 12px;
+      }
+      #game-top-bar [data-topbar-stats] {
+        flex: 1 0 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      #game-top-bar [data-topbar-stats] [data-topbar-row1] {
+        flex: 1 1 100%;
+      }
+      #game-top-bar [data-topbar-extra] {
+        display: none !important;
+      }
+      #game-top-bar [data-topbar-buttons] {
+        margin-left: 0 !important;
+      }
+    }
+
     /* Mobile: bottom bar wraps into 2 rows so all buttons are visible */
     @media (max-width: 768px) {
       #game-bottom-bar {
@@ -102,7 +130,7 @@
       #ui-overlay [data-info-panel] { bottom: 92px !important; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-CU54_VMX.js"></script>
+  <script type="module" crossorigin src="./assets/index-plUcNU3U.js"></script>
 </head>
 <body>
   <div id="loading-screen">

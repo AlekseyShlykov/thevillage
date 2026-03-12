@@ -26,7 +26,6 @@ export class UIManager {
   private topBarTechBtn!: HTMLElement;
   private topBarRightDiv!: HTMLElement;
   private soundBtn!: HTMLButtonElement;
-  private topBarFpsSpan!: HTMLElement;
   private speedButtons: HTMLElement[] = [];
   private buildPanel!: HTMLElement;
   private techPanel!: HTMLElement;
@@ -55,6 +54,7 @@ export class UIManager {
       gap: '16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.1)',
       zIndex: '10', fontFamily: 'inherit', color: '#e0d8c8',
     });
+    this.topBar.id = 'game-top-bar';
     this.topBar.addEventListener('click', (e) => {
       const el = e.target instanceof HTMLElement ? e.target : (e.target as Node).parentElement;
       const target = el?.closest?.('[data-tech-btn],[data-save-btn],[data-load-btn]') as HTMLElement | null;
@@ -64,6 +64,7 @@ export class UIManager {
       else if (target.hasAttribute('data-load-btn')) this.callbacks.onLoad();
     });
     this.topBarStatsDiv = this.el('div', { display: 'flex', alignItems: 'center', gap: '16px' });
+    this.topBarStatsDiv.setAttribute('data-topbar-stats', 'true');
     this.topBar.appendChild(this.topBarStatsDiv);
     this.topBarTechBtn = this.el('button', {
       marginLeft: '4px', padding: '4px 10px', background: 'rgba(60,60,80,0.9)',
@@ -74,6 +75,7 @@ export class UIManager {
     this.topBarTechBtn.textContent = '📖 Tech';
     this.topBar.appendChild(this.topBarTechBtn);
     this.topBarRightDiv = this.el('div', { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' });
+    this.topBarRightDiv.setAttribute('data-topbar-buttons', 'true');
     this.soundBtn = document.createElement('button');
     this.soundBtn.setAttribute('data-sound-btn', 'true');
     this.soundBtn.title = 'Sound';
@@ -88,8 +90,6 @@ export class UIManager {
     this.topBarRightDiv.appendChild(saveBtn);
     const loadBtn = this.btn('📂 Load', () => this.callbacks.onLoad());
     this.topBarRightDiv.appendChild(loadBtn);
-    this.topBarFpsSpan = this.el('span', { opacity: '0.5', fontSize: '11px' });
-    this.topBarRightDiv.appendChild(this.topBarFpsSpan);
     this.topBar.appendChild(this.topBarRightDiv);
     this.overlay.appendChild(this.topBar);
 
@@ -255,7 +255,6 @@ export class UIManager {
     level: number;
     population: number;
     housing: number;
-    fps: number;
     soundOn?: boolean;
     gameSpeed?: number;
     foodLow?: boolean;
@@ -268,24 +267,25 @@ export class UIManager {
     const foodStyle = data.foodLow ? ' style="color:#e66;font-weight:bold"' : '';
 
     this.topBarStatsDiv.innerHTML = `
-      <span>🪵 ${Math.floor(data.resources.wood)}</span>
-      <span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>
-      <span>🧥 ${Math.floor(data.resources.fur)}</span>
-      <span>🔧 ${Math.floor(data.resources.tools)}</span>
-      <span style="color:${sc}">
-        ${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}
-      </span>
-      <span style="flex:0 0 80px;height:6px;background:#333;border-radius:3px;overflow:hidden">
-        <span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>
-      </span>
-      <span>😊 ${Math.round(data.comfort * 100)}%</span>
-      <span>👥 ${data.population}/${data.housing}</span>
-      <span>Lv${data.level}</span>
-      <span>⭐ ${Math.floor(data.resources.techPoints)}</span>
+      <div data-topbar-row1 style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span>🪵 ${Math.floor(data.resources.wood)}</span>
+        <span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>
+        <span>🧥 ${Math.floor(data.resources.fur)}</span>
+        <span>🔧 ${Math.floor(data.resources.tools)}</span>
+        <span style="color:${sc}">${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}</span>
+        <span style="flex:0 0 80px;height:6px;background:#333;border-radius:3px;overflow:hidden">
+          <span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>
+        </span>
+        <span>👥 ${data.population}/${data.housing}</span>
+        <span>Lv${data.level}</span>
+        <span>⭐ ${Math.floor(data.resources.techPoints)}</span>
+      </div>
+      <div data-topbar-extra style="display:flex;align-items:center">
+        <span>😊 ${Math.round(data.comfort * 100)}%</span>
+      </div>
     `;
 
     this.soundBtn.textContent = data.soundOn !== false ? '🔊' : '🔇';
-    this.topBarFpsSpan.textContent = `${data.fps} fps`;
 
     if (data.gameSpeed !== undefined) this.setSpeedHighlight(data.gameSpeed);
   }
