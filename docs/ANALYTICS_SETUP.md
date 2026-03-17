@@ -44,7 +44,7 @@ In `public/data/game-balance.json`, set your URL:
 
 ```json
 "analytics": {
-  "analyticsUrl": "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+  "analyticsUrl": "https://script.google.com/macros/s/AKfycbx3VUX14DUHmxh4r0wRnLtUa9SrVWjX67xQqeyuffhIpZdyqJVoC78kBrwnHBH7qBMq/exec"
 }
 ```
 
@@ -54,7 +54,32 @@ Replace the placeholder with the Web app URL from step 5.
 
 ## Google Apps Script code
 
+The game sends **GET** requests with query parameters (so they work from any site and you can test by opening the URL in a browser). The script supports both **doGet** (used by the game) and **doPost** (optional, for JSON body).
+
+Replace the script in Apps Script with this, save, then **Deploy → Manage deployments → Edit (pencil) → Version → New version → Deploy**.
+
 ```javascript
+function doGet(e) {
+  if (!e || !e.parameter || !e.parameter.session_id || !e.parameter.event_type) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Missing session_id or event_type' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  var p = e.parameter;
+  var payload = {
+    session_id: p.session_id,
+    ts: p.ts || '',
+    event_type: p.event_type,
+    season: p.season,
+    year: p.year !== undefined && p.year !== '' ? Number(p.year) : undefined,
+    play_time_seconds: p.play_time_seconds !== undefined && p.play_time_seconds !== '' ? Number(p.play_time_seconds) : undefined,
+    winters_survived: p.winters_survived !== undefined && p.winters_survived !== '' ? Number(p.winters_survived) : undefined,
+    buildings_count: p.buildings_count !== undefined && p.buildings_count !== '' ? Number(p.buildings_count) : undefined,
+    outcome: p.outcome,
+    email_submitted: p.email_submitted === '1' || p.event_type === 'email_submitted'
+  };
+  return processPayload(payload);
+}
+
 function doPost(e) {
   if (!e || !e.postData || !e.postData.contents) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'No body' }))
@@ -62,6 +87,15 @@ function doPost(e) {
   }
   try {
     var payload = JSON.parse(e.postData.contents);
+    return processPayload(payload);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function processPayload(payload) {
+  try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var eventsSheet = ss.getSheetByName('Events');
     var playersSheet = ss.getSheetByName('Players');
@@ -70,7 +104,6 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Append to Events
     eventsSheet.appendRow([
       payload.session_id || '',
       payload.ts || '',
@@ -84,7 +117,6 @@ function doPost(e) {
       payload.event_type === 'email_submitted' ? true : (payload.email_submitted === true)
     ]);
 
-    // Update or append Players
     var sid = payload.session_id;
     if (!sid) {
       return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
@@ -164,12 +196,16 @@ function doPost(e) {
 
 ## Troubleshooting: events not appearing
 
-1. **CORS** — The game sends POST with `Content-Type: text/plain` so the browser does not send a preflight OPTIONS request (Google Apps Script only handles GET/POST). If you changed the client to use `application/json`, change it back to `text/plain`.
+1. **Use GET and doGet** — The game sends **GET** with query params; the script must have **doGet(e)** that reads `e.parameter` and calls **processPayload(payload)**. If you still have the old script with only doPost, replace it with the full script above (doGet + doPost + processPayload), save, then create a **new deployment version** (Deploy → Manage deployments → Edit → Version: New version → Deploy).
 
 2. **Deploy as "Anyone"** — In Apps Script: **Deploy** → **Manage deployments** → ensure "Who has access" is **Anyone** (so the game on GitHub Pages can call the URL).
 
 3. **Correct URL in production** — On GitHub Pages the game loads `game-balance.json` from the repo. Ensure the pushed `public/data/game-balance.json` contains the real `analytics.analyticsUrl` (no placeholder). Hard-refresh the site (Ctrl+Shift+R) to avoid cache.
 
-4. **Browser console** — Open DevTools (F12) → Network. Play the game (open site, start game, wait for a season change). Check for a POST to `script.google.com`: if it’s red or blocked, note the error (CORS, 403, etc.).
+4. **Browser console** — Open DevTools (F12) → Network. Play the game (open site, start game, wait for a season change). Check for a GET to `script.google.com`: if it’s red or blocked, note the error (CORS, 403, etc.).
 
-5. **Script errors** — In Apps Script, **Executions** (left menu) shows recent runs. If POSTs arrive but rows don’t appear, check for errors there.
+5. **Script errors** — In Apps Script, **Executions** (left menu) shows recent runs. If requests arrive but rows don’t appear, check for errors there.
+
+6. **Test GET in browser** — Open in a new tab (use your real Web app URL):  
+   `https://script.google.com/macros/s/AKfycbx3VUX14DUHmxh4r0wRnLtUa9SrVWjX67xQqeyuffhIpZdyqJVoC78kBrwnHBH7qBMq/exec?session_id=test123&ts=2024-01-01T00:00:00.000Z&event_type=site_open`  
+   You should see `{"ok":true}` and a new row in **Events**. If that works, the script is fine and the game will send the same via fetch GET.

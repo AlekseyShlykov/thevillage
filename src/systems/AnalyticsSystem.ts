@@ -138,11 +138,19 @@ export class AnalyticsSystem {
 
   private send(payload: AnalyticsPayload): void {
     if (!this.url) return;
-    // Use text/plain to avoid CORS preflight (OPTIONS); Apps Script only handles GET/POST.
-    fetch(this.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
+    // GET avoids CORS/preflight issues; Apps Script doGet receives query params reliably.
+    const params = new URLSearchParams();
+    params.set('session_id', payload.session_id);
+    params.set('ts', payload.ts);
+    params.set('event_type', payload.event_type);
+    if (payload.season !== undefined) params.set('season', payload.season);
+    if (payload.year !== undefined) params.set('year', String(payload.year));
+    if (payload.play_time_seconds !== undefined) params.set('play_time_seconds', String(payload.play_time_seconds));
+    if (payload.winters_survived !== undefined) params.set('winters_survived', String(payload.winters_survived));
+    if (payload.buildings_count !== undefined) params.set('buildings_count', String(payload.buildings_count));
+    if (payload.outcome !== undefined) params.set('outcome', payload.outcome);
+    if (payload.email_submitted !== undefined) params.set('email_submitted', payload.email_submitted ? '1' : '0');
+    const qs = params.toString();
+    fetch(`${this.url}${this.url.includes('?') ? '&' : '?'}${qs}`, { method: 'GET' }).catch(() => {});
   }
 }
