@@ -13,6 +13,7 @@ import { HordeSystem } from '../systems/HordeSystem';
 import { WeatherSystem } from '../systems/WeatherSystem';
 import { ComfortSystem } from '../systems/ComfortSystem';
 import { SaveSystem } from '../systems/SaveSystem';
+import { AnalyticsSystem } from '../systems/AnalyticsSystem';
 import { SoundManager } from '../audio/SoundManager';
 import { UIManager, UICallbacks } from '../ui/UIManager';
 import { getConfig } from '../data/ConfigLoader';
@@ -36,6 +37,7 @@ export class Game {
   private weatherSystem: WeatherSystem;
   private comfortSystem: ComfortSystem;
   private saveSystem: SaveSystem;
+  private analytics: AnalyticsSystem;
   private soundManager: SoundManager;
   private ui: UIManager;
 
@@ -75,6 +77,7 @@ export class Game {
     this.weatherSystem = new WeatherSystem();
     this.comfortSystem = new ComfortSystem();
     this.saveSystem = new SaveSystem();
+    this.analytics = new AnalyticsSystem();
     this.soundManager = new SoundManager();
     this.villagerSystem.setOnVillagerDeath(() => this.soundManager.playDead());
 
@@ -95,6 +98,7 @@ export class Game {
       onRepairAll: () => this.repairAll(),
       onRestart: () => this.restart(),
       onSoundToggle: () => this.soundManager.toggleSound(),
+      onEmailSubmitted: () => this.analytics.trackEmailSubmitted(),
     };
     this.ui = new UIManager(callbacks);
 
@@ -118,9 +122,18 @@ export class Game {
     this.gameLoop.onRender = () => this.render();
   }
 
+  trackSiteOpen(): void {
+    this.analytics.trackSiteOpen();
+  }
+
   start(): void {
+    this.analytics.trackGameStart();
     this.soundManager.playSeason(this.seasonSystem.season);
     this.gameLoop.start();
+  }
+
+  private getBuildingsCount(): number {
+    return this.buildingSystem.buildings.filter((b) => b.built).length;
   }
 
   private initWorld(): void {
@@ -134,6 +147,14 @@ export class Game {
 
   private setupSeasonCallbacks(): void {
     this.seasonSystem.setOnSeasonChange((season, year) => {
+      const buildingsCount = this.getBuildingsCount();
+      this.analytics.trackSeasonChange({
+        season,
+        year,
+        buildings_count: buildingsCount,
+        outcome: 'playing',
+      });
+
       this.soundManager.playSeason(season);
       this.ui.notify(`${season.charAt(0).toUpperCase() + season.slice(1)} of Year ${year}`);
 
@@ -152,6 +173,11 @@ export class Game {
         this.ui.notify('Spring! Autosaved.');
         this.checkLevelUp();
         if (year > 8) {
+          this.analytics.trackDemoEnd({
+            season: 'spring',
+            year,
+            buildings_count: buildingsCount,
+          });
           this.gameOver = true;
           this.gameLoop.gameSpeed = 0;
           this.ui.showDemoEnd(getConfig().demoEnd?.emailSubmitUrl);
@@ -164,6 +190,11 @@ export class Game {
     if (this.gameOver) return;
 
     if (this.villagerSystem.getAliveCount() === 0) {
+      this.analytics.trackGameOver({
+        season: this.seasonSystem.season,
+        year: this.seasonSystem.year,
+        buildings_count: this.getBuildingsCount(),
+      });
       this.gameOver = true;
       this.gameLoop.gameSpeed = 0;
       this.ui.showGameOver(getConfig().demoEnd?.emailSubmitUrl);

@@ -217,4 +217,5 @@ export interface GameBalanceConfig {
     hungry?: number;
   };
   demoEnd?: { emailSubmitUrl?: string };
+  analytics?: { analyticsUrl?: string };
 }

@@ -18,6 +18,7 @@ async function main(): Promise<void> {
     if (!canvas) throw new Error('Canvas element not found');
 
     const game = new Game(canvas, assets);
+    game.trackSiteOpen();
 
     if (loadingScreen) {
       loadingScreen.style.display = 'none';

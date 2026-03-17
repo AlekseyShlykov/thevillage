@@ -17,6 +17,7 @@ export interface UICallbacks {
   onRepairAll: () => void;
   onRestart: () => void;
   onSoundToggle?: () => void;
+  onEmailSubmitted?: () => void;
 }
 
 export class UIManager {
@@ -489,6 +490,7 @@ export class UIManager {
           if (res.ok) {
             submitFeedback.textContent = "Thank you! We'll notify you when the full version is out.";
             submitFeedback.style.color = '#9e9';
+            this.callbacks.onEmailSubmitted?.();
           } else {
             submitFeedback.textContent = 'Send failed. Try again later.';
             submitFeedback.style.color = '#c96';
@@ -500,6 +502,7 @@ export class UIManager {
       } else {
         submitFeedback.textContent = 'Thank you!';
         submitFeedback.style.color = '#9e9';
+        this.callbacks.onEmailSubmitted?.();
       }
     });
     submitBtn.style.fontSize = '14px';
@@ -571,6 +574,7 @@ export class UIManager {
           if (res.ok) {
             submitFeedback.textContent = "Thank you! We'll notify you when the full version is out.";
             submitFeedback.style.color = '#9e9';
+            this.callbacks.onEmailSubmitted?.();
           } else {
             submitFeedback.textContent = 'Send failed. Try again later.';
             submitFeedback.style.color = '#c96';
@@ -582,6 +586,7 @@ export class UIManager {
       } else {
         submitFeedback.textContent = 'Thank you!';
         submitFeedback.style.color = '#9e9';
+        this.callbacks.onEmailSubmitted?.();
       }
     });
     submitBtn.style.fontSize = '14px';
