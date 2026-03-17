@@ -159,3 +159,17 @@ function doPost(e) {
 
 **Outcome** on Events: `playing` (during play), `game_over`, or `demo_end`.  
 **Outcome** on Players: last known outcome for that session (so "simply left" = last row had `playing` and no later game_over/demo_end).
+
+---
+
+## Troubleshooting: events not appearing
+
+1. **CORS** — The game sends POST with `Content-Type: text/plain` so the browser does not send a preflight OPTIONS request (Google Apps Script only handles GET/POST). If you changed the client to use `application/json`, change it back to `text/plain`.
+
+2. **Deploy as "Anyone"** — In Apps Script: **Deploy** → **Manage deployments** → ensure "Who has access" is **Anyone** (so the game on GitHub Pages can call the URL).
+
+3. **Correct URL in production** — On GitHub Pages the game loads `game-balance.json` from the repo. Ensure the pushed `public/data/game-balance.json` contains the real `analytics.analyticsUrl` (no placeholder). Hard-refresh the site (Ctrl+Shift+R) to avoid cache.
+
+4. **Browser console** — Open DevTools (F12) → Network. Play the game (open site, start game, wait for a season change). Check for a POST to `script.google.com`: if it’s red or blocked, note the error (CORS, 403, etc.).
+
+5. **Script errors** — In Apps Script, **Executions** (left menu) shows recent runs. If POSTs arrive but rows don’t appear, check for errors there.

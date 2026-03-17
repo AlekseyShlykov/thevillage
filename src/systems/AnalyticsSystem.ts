@@ -138,9 +138,10 @@ export class AnalyticsSystem {
 
   private send(payload: AnalyticsPayload): void {
     if (!this.url) return;
+    // Use text/plain to avoid CORS preflight (OPTIONS); Apps Script only handles GET/POST.
     fetch(this.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
     }).catch(() => {});
   }
