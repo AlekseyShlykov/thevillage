@@ -125,6 +125,7 @@ export class TutorialOverlay {
     if (this.running) return;
     this.running = true;
     this.root.style.display = 'block';
+    document.documentElement.classList.add('tutorial-active');
 
     const onResize = () => {
       // Re-apply current step positioning on resize; next step will correct anyway.
@@ -140,6 +141,7 @@ export class TutorialOverlay {
       window.removeEventListener('resize', onResize);
       this.hide();
       this.running = false;
+      document.documentElement.classList.remove('tutorial-active');
     }
   }
 
