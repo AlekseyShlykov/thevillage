@@ -15,7 +15,7 @@ The game sends analytics to a Google Apps Script Web App. Two sheets are used:
 
 | A | B | C | D | E | F | G | H | I | J |
 |---|---|---|---|---|---|---|---|---|---|
-| session_id | ts | event_type | season | year | play_time_seconds | winters_survived | buildings_count | outcome | email_submitted |
+| session_id | ts | event_type | season | year | play_time_seconds | winters_survived | buildings_count | outcome | Z  |
 
 ## 3. Players sheet — headers (row 1)
 

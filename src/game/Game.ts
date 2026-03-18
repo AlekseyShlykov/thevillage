@@ -130,6 +130,7 @@ export class Game {
     this.analytics.trackGameStart();
     this.soundManager.playSeason(this.seasonSystem.season);
     this.gameLoop.start();
+    this.ui.runIntroTutorial();
   }
 
   private getBuildingsCount(): number {
