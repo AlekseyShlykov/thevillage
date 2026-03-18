@@ -1,4 +1,5 @@
 import { ResourceState, Season, BuildingConfig, TechConfig } from '../types';
+import { TutorialOverlay, TutorialStep } from './TutorialOverlay';
 
 export interface UICallbacks {
   onSpeedChange: (speed: number) => void;
@@ -38,11 +39,13 @@ export class UIManager {
   private actionMenuEl: HTMLElement | null = null;
   private actionMenuBackdrop: HTMLElement | null = null;
   private gameOverOverlay: HTMLElement | null = null;
+  private tutorialOverlay: TutorialOverlay;
 
   constructor(callbacks: UICallbacks) {
     this.overlay = document.getElementById('ui-overlay')!;
     this.callbacks = callbacks;
     this.createUI();
+    this.tutorialOverlay = new TutorialOverlay(this.overlay);
   }
 
   private createUI(): void {
@@ -184,6 +187,32 @@ export class UIManager {
     });
     this.notificationEl.setAttribute('data-notification-el', 'true');
     this.overlay.appendChild(this.notificationEl);
+  }
+
+  async runIntroTutorial(): Promise<void> {
+    const steps: TutorialStep[] = [
+      {
+        target: this.topBarStatsDiv,
+        text: 'Watch your resource counts.',
+        durationMs: 4000,
+      },
+      {
+        target: document.getElementById('game-bottom-bar') ?? this.overlay,
+        text: 'Gather food, build structures, and clear space.',
+        durationMs: 4000,
+      },
+      {
+        target: this.topBarTechBtn,
+        text: 'Unlock new buildings.',
+        durationMs: 4000,
+      },
+    ];
+
+    // Ensure targets are in DOM and measurable.
+    const measurable = steps.every(s => !!s.target && s.target.getBoundingClientRect().width >= 0);
+    if (!measurable) return;
+
+    await this.tutorialOverlay.run(steps);
   }
 
   /** Show context menu with actions for selected villager at (screenX, screenY). */
