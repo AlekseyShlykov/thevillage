@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-SZZ53V1H9S"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-SZZ53V1H9S');
+  </script>
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '4281871595291721');
+  fbq('track', 'PageView');
+  </script>
+  <!-- End Meta Pixel Code -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Before Night Falls</title>
@@ -82,6 +104,11 @@
     }
     #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
 
+    /* Tutorial: reliable blur on canvas (not via backdrop-filter masks) */
+    .tutorial-active #game-canvas {
+      filter: blur(2px) brightness(0.75) saturate(0.9);
+    }
+
     /* Mobile: natural wrap for both bars */
     @media (max-width: 768px) {
       #game-top-bar {
@@ -117,16 +144,14 @@
         display: none !important;
       }
       #ui-overlay [data-notification-el] {
-        bottom: auto !important;
-        top: 50%;
-        transform: translateX(-50%) translateY(-50%) !important;
+        bottom: calc(100px + 20px) !important;
       }
       #ui-overlay [data-info-panel] {
         display: none !important;
       }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-ByzmzBIE.js"></script>
+  <script type="module" crossorigin src="./assets/index-DOX8RC9G.js"></script>
 </head>
 <body>
   <div id="loading-screen">
@@ -147,5 +172,9 @@
     <canvas id="game-canvas"></canvas>
     <div id="ui-overlay"></div>
   </div>
+  <!-- Meta Pixel Code (noscript at end of body: valid HTML + itch-build img check uses first game img) -->
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=4281871595291721&ev=PageView&noscript=1"
+  alt="" /></noscript>
 </body>
 </html>
