@@ -85,6 +85,7 @@ export class VillagerSystem {
     for (const v of this.villagers) {
       if (v.health === HealthState.Dead || v.state === VillagerState.Dead) continue;
       if (v.state !== VillagerState.Idle) continue;
+      if (v.currentTask !== null || v.assignedBuildingId !== null) continue;
       const dist = Math.abs(v.x - tx) + Math.abs(v.y - ty);
       if (dist < bestDist) {
         bestDist = dist;
@@ -245,12 +246,26 @@ export class VillagerSystem {
     if (!building || !building.built) return false;
     const cfg = getConfig().buildings[building.configId] as { maxWorkers?: number } | undefined;
     if (!cfg || (cfg.maxWorkers ?? 0) <= 0) return false;
+    if (building.assignedWorkers.includes(villagerId)) return true;
     if (building.assignedWorkers.length >= (cfg.maxWorkers ?? 0)) return false;
+
+    let pathAssigned = false;
+    const arrivalY = building.tileY + getConfig().buildings[building.configId].height;
+    for (let dx = 0; dx < getConfig().buildings[building.configId].width; dx++) {
+      if (this.assignPath(v, building.tileX + dx, arrivalY)) {
+        pathAssigned = true;
+        break;
+      }
+    }
+    if (!pathAssigned) return false;
+
+    if (v.assignedBuildingId) {
+      const previous = buildings.find(b => b.id === v.assignedBuildingId);
+      if (previous) previous.assignedWorkers = previous.assignedWorkers.filter(id => id !== villagerId);
+    }
     v.assignedBuildingId = buildingId;
+    v.currentTask = null;
     building.assignedWorkers.push(villagerId);
-    const bx = building.tileX;
-    const by = building.tileY + 1;
-    this.assignPath(v, bx, by);
     v.taskAttempts = 0;
     return true;
   }

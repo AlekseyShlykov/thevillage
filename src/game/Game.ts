@@ -14,6 +14,7 @@ import { WeatherSystem } from '../systems/WeatherSystem';
 import { ComfortSystem } from '../systems/ComfortSystem';
 import { SaveSystem } from '../systems/SaveSystem';
 import { AnalyticsSystem } from '../systems/AnalyticsSystem';
+import { TutorialSystem, TutorialState } from '../systems/TutorialSystem';
 import { SoundManager } from '../audio/SoundManager';
 import { UIManager, UICallbacks } from '../ui/UIManager';
 import { getConfig } from '../data/ConfigLoader';
@@ -38,6 +39,7 @@ export class Game {
   private comfortSystem: ComfortSystem;
   private saveSystem: SaveSystem;
   private analytics: AnalyticsSystem;
+  private tutorialSystem: TutorialSystem;
   private soundManager: SoundManager;
   private ui: UIManager;
 
@@ -78,6 +80,7 @@ export class Game {
     this.comfortSystem = new ComfortSystem();
     this.saveSystem = new SaveSystem();
     this.analytics = new AnalyticsSystem();
+    this.tutorialSystem = new TutorialSystem();
     this.soundManager = new SoundManager();
     this.villagerSystem.setOnVillagerDeath(() => this.soundManager.playDead());
 
@@ -97,6 +100,7 @@ export class Game {
       onLeaveShelter: () => this.leaveShelter(),
       onRepairAll: () => this.repairAll(),
       onRestart: () => this.restart(),
+      onTutorialSkip: () => this.tutorialSystem.skip(),
       onSoundToggle: () => this.soundManager.toggleSound(),
       onEmailSubmitted: () => this.analytics.trackEmailSubmitted(),
     };
@@ -130,7 +134,6 @@ export class Game {
     this.analytics.trackGameStart();
     this.soundManager.playSeason(this.seasonSystem.season);
     this.gameLoop.start();
-    this.ui.runIntroTutorial();
   }
 
   private getBuildingsCount(): number {
@@ -219,6 +222,7 @@ export class Game {
       if (!isDefense) {
         this.resourceSystem.addTechPoints(getConfig().technology.techPointsPerBuildingBuilt);
       }
+      this.tutorialSystem.onBuildingCompleted(building.id, building.configId);
     });
     this.releaseBuildersFromCompletedBuildings();
 
@@ -292,6 +296,11 @@ export class Game {
     this.resourceSystem.updateStorageCapacity(storageBonuses);
 
     this.updateComfort();
+    this.tutorialSystem.update(
+      this.resourceSystem.resources.food,
+      this.seasonSystem.season,
+      this.seasonSystem.year,
+    );
 
     this.handleInput();
     this.updateUI();
@@ -457,7 +466,9 @@ export class Game {
       return;
     }
     if (this.villagerSystem.sendVillagerToHunt(villagerId)) {
+      this.detachVillagerFromPreviousWork(villagerId);
       this.soundManager.playHunt();
+      this.tutorialSystem.onHuntStarted(villagerId);
       this.ui.notify('Villager went hunting. Risk in the forest!');
     } else {
       this.ui.notify('Cannot send this villager to hunt.');
@@ -470,6 +481,7 @@ export class Game {
       return;
     }
     if (this.villagerSystem.sendVillagerToChop(villagerId, tx, ty)) {
+      this.detachVillagerFromPreviousWork(villagerId);
       this.ui.notify('Villager will chop this tile.');
     } else {
       this.ui.notify('Cannot chop here.');
@@ -485,6 +497,7 @@ export class Game {
       }
     }
     if (this.villagerSystem.sendVillagerToTile(villagerId, tx, ty)) {
+      this.detachVillagerFromPreviousWork(villagerId);
       this.ui.notify('Villager going there.');
     } else {
       this.ui.notify('Cannot go there.');
@@ -506,25 +519,36 @@ export class Game {
       this.ui.notify('Another villager is already building this.');
       return;
     }
-    const arrivalTiles = this.buildingSystem.getArrivalTiles(building);
-    if (arrivalTiles.length === 0) {
-      this.ui.notify('Cannot send worker there.');
-      return;
-    }
     const v = this.villagerSystem.getVillagerById(villagerId);
     if (!v || v.health === HealthState.Dead) {
       this.ui.notify('Villager unavailable.');
       return;
     }
-    const tx = arrivalTiles[0].x;
-    const ty = arrivalTiles[0].y;
-    if (this.villagerSystem.assignPath(v, tx, ty)) {
-      v.currentTask = 'building';
-      v.taskAttempts = 0;
+    if (this.dispatchBuilder(villagerId, buildingId)) {
       this.ui.notify('Villager going to construction site.');
     } else {
       this.ui.notify('No path to construction site.');
     }
+  }
+
+  /** Reserve a construction site immediately, then send its builder to an arrival tile. */
+  private dispatchBuilder(villagerId: string, buildingId: string): boolean {
+    const building = this.buildingSystem.buildings.find(b => b.id === buildingId);
+    const villager = this.villagerSystem.getVillagerById(villagerId);
+    if (!building || building.built || !villager || villager.health === HealthState.Dead) return false;
+    if (building.assignedWorkers.length > 0) return false;
+
+    const arrivalTiles = this.buildingSystem.getArrivalTiles(building);
+    for (const tile of arrivalTiles) {
+      if (!this.villagerSystem.assignPath(villager, tile.x, tile.y)) continue;
+      this.detachVillagerFromPreviousWork(villager.id);
+      building.assignedWorkers.push(villager.id);
+      villager.assignedBuildingId = building.id;
+      villager.currentTask = 'building';
+      villager.taskAttempts = 0;
+      return true;
+    }
+    return false;
   }
 
   private villagerActionWork(villagerId: string, buildingId: string): void {
@@ -532,6 +556,7 @@ export class Game {
       const cfg = this.buildingSystem.getBuildingConfig(
         this.buildingSystem.buildings.find(b => b.id === buildingId)!.configId
       );
+      if (cfg?.id === 'garden') this.tutorialSystem.onGardenWorkerAssigned();
       this.ui.notify(`Assigned to ${cfg?.name ?? buildingId}`);
     } else {
       this.ui.notify('Cannot assign here.');
@@ -543,9 +568,22 @@ export class Game {
     if (!bcfg) return;
     const hx = building.tileX + Math.floor(bcfg.width / 2);
     const hy = building.tileY + Math.floor(bcfg.height / 2);
+    const previousBuildingId = this.villagerSystem.getVillagerById(villagerId)?.assignedBuildingId ?? null;
     if (this.villagerSystem.sendVillagerToHousing(villagerId, hx, hy)) {
+      this.detachVillagerFromPreviousWork(villagerId, previousBuildingId);
       this.ui.notify('Villager returning to shelter.');
     }
+  }
+
+  /** Remove a villager from a former production/construction roster after a new order succeeds. */
+  private detachVillagerFromPreviousWork(villagerId: string, buildingId?: string | null): void {
+    const villager = this.villagerSystem.getVillagerById(villagerId);
+    const previousId = buildingId === undefined ? villager?.assignedBuildingId : buildingId;
+    if (previousId) {
+      const previous = this.buildingSystem.buildings.find(b => b.id === previousId);
+      if (previous) previous.assignedWorkers = previous.assignedWorkers.filter(id => id !== villagerId);
+    }
+    if (villager && villager.assignedBuildingId === previousId) villager.assignedBuildingId = null;
   }
 
   private tryAssignWorker(buildingId: string): void {
@@ -590,6 +628,7 @@ export class Game {
       if (b.configId === 'palisadeGate') {
         b.rotation = this.detectPalisadeOrientation(tx, ty) ? 90 : 0;
       }
+      this.tutorialSystem.onBuildingPlaced(b.id, b.configId);
       this.ui.notify(`Placed ${cfg.name}`);
     }
   }
@@ -660,6 +699,7 @@ export class Game {
     const tile = this.tileMap.getTile(tx, ty);
     if (tile && tile.type === TileType.Forest && !tile.markedForClearing) {
       tile.markedForClearing = true;
+      this.tutorialSystem.onForestMarked();
       this.ui.notify('Marked tile for clearing');
     }
   }
@@ -763,7 +803,8 @@ export class Game {
 
       v.currentTask = null;
       v.state = VillagerState.Idle;
-      if (Math.random() < deathChance) {
+      const protectedByTutorial = this.tutorialSystem.isProtectedHunter(v.id);
+      if (!protectedByTutorial && Math.random() < deathChance) {
         this.villagerSystem.damageVillager(v, 100);
         this.ui.notify('A villager died in the forest...');
       } else {
@@ -783,6 +824,7 @@ export class Game {
         this.villagerSystem.assignPath(v, home.x, home.y);
         v.currentTask = 'returnHome';
       }
+      this.tutorialSystem.onHuntResolved(v.id);
     }
   }
 
@@ -992,7 +1034,19 @@ export class Game {
   }
 
   private assignIdleVillagers(): void {
-    // No auto-assign of builders: construction starts only when a worker steps on the building's arrival tile.
+    if (this.stayInShelterMode) return;
+    for (const building of this.buildingSystem.buildings) {
+      if (building.built) continue;
+      building.assignedWorkers = building.assignedWorkers.filter((villagerId) => {
+        const villager = this.villagerSystem.getVillagerById(villagerId);
+        return !!villager && villager.health !== HealthState.Dead &&
+          villager.assignedBuildingId === building.id && villager.currentTask === 'building';
+      });
+      if (building.assignedWorkers.length > 0) continue;
+      const idle = this.villagerSystem.findClosestIdleVillager(building.tileX, building.tileY);
+      if (!idle) return;
+      this.dispatchBuilder(idle.id, building.id);
+    }
   }
 
   private getAvailableBuilders(): number {
@@ -1044,6 +1098,7 @@ export class Game {
       if (!building || building.assignedWorkers.includes(v.id)) continue;
       if (building.assignedWorkers.length >= 1) continue;
       building.assignedWorkers.push(v.id);
+      v.assignedBuildingId = building.id;
       v.state = VillagerState.Building;
       v.currentTask = 'building';
     }
@@ -1058,6 +1113,7 @@ export class Game {
         if (v && v.health !== HealthState.Dead) {
           v.state = VillagerState.Idle;
           v.currentTask = null;
+          v.assignedBuildingId = null;
           v.path = [];
           v.targetX = null;
           v.targetY = null;
@@ -1127,7 +1183,13 @@ export class Game {
     if (cfg) {
       this.resourceSystem.addWood(Math.floor(cfg.costWood * 0.5));
     }
-    for (const vid of building.assignedWorkers) {
+    const assignedIds = new Set([
+      ...building.assignedWorkers,
+      ...this.villagerSystem.villagers
+        .filter(v => v.assignedBuildingId === buildingId)
+        .map(v => v.id),
+    ]);
+    for (const vid of assignedIds) {
       const v = this.villagerSystem.getVillagerById(vid);
       if (v) {
         v.state = VillagerState.Idle;
@@ -1228,7 +1290,9 @@ export class Game {
       return;
     }
     if (this.villagerSystem.sendVillagerToHunt(villagerId)) {
+      this.detachVillagerFromPreviousWork(villagerId);
       this.soundManager.playHunt();
+      this.tutorialSystem.onHuntStarted(villagerId);
       this.ui.notify('One villager went hunting. Risk in the forest!');
     } else {
       this.ui.notify('This villager cannot hunt (already hunting or busy).');
@@ -1301,6 +1365,7 @@ export class Game {
     }
 
     const n = this.villagerSystem.assignAllReturnHome(housingTiles);
+    this.tutorialSystem.onShelterCalled();
     this.ui.notify(n > 0 ? `Everyone going to shelter (${n}). Stay in shelter mode on.` : 'Stay in shelter mode on.');
   }
 
@@ -1480,11 +1545,14 @@ export class Game {
       this.ui.notify('Cannot reach the garden.');
       return;
     }
+    const previousBuildingId = v.assignedBuildingId;
     if (this.villagerSystem.assignPath(v, arrivalTiles[0].x, arrivalTiles[0].y)) {
+      this.detachVillagerFromPreviousWork(villagerId, previousBuildingId);
       v.currentTask = 'farming';
       v.assignedBuildingId = buildingId;
       v.taskProgress = 0;
       v.taskAttempts = 0;
+      this.tutorialSystem.onGardenWorkerAssigned();
       this.ui.notify('Villager sent to grow food.');
     } else {
       this.ui.notify('No path to the garden.');
@@ -1511,7 +1579,9 @@ export class Game {
       this.ui.notify('Cannot reach the gate.');
       return;
     }
+    const previousBuildingId = v.assignedBuildingId;
     if (this.villagerSystem.assignPath(v, arrivalTiles[0].x, arrivalTiles[0].y)) {
+      this.detachVillagerFromPreviousWork(villagerId, previousBuildingId);
       v.currentTask = 'toggleGate';
       v.assignedBuildingId = buildingId;
       v.taskAttempts = 0;
@@ -1548,6 +1618,7 @@ export class Game {
     this.demoMessageShown = false;
     this.foodLowSoundPlayed = false;
     this.clearModeHintCount = 0;
+    this.tutorialSystem.reset();
 
     this.initWorld();
 
@@ -1590,6 +1661,7 @@ export class Game {
 
     this.resourceSystem.resources.techPoints -= tech.cost;
     const newBuildings = this.techSystem.unlockTech(techId);
+    this.tutorialSystem.onTechnologyUnlocked(techId);
     this.ui.notify(`Unlocked: ${tech.name}`);
     if (newBuildings.length > 0) {
       this.ui.notify(`New buildings: ${newBuildings.join(', ')}`);
@@ -1628,6 +1700,7 @@ export class Game {
       gameSpeed: this.gameLoop.gameSpeed,
       foodLow,
     });
+    this.ui.updateTutorial(this.tutorialSystem.getObjective(this.resourceSystem.resources.food));
 
     this.uiUpdateCounter++;
     if (this.uiUpdateCounter % 15 === 0) {
@@ -1699,6 +1772,7 @@ export class Game {
       furAges: [...this.furAges],
       furClothingProduced: this.furClothingProduced,
       stayInShelterMode: this.stayInShelterMode,
+      tutorial: this.tutorialSystem.serialize(),
       cameraX: this.camera.x,
       cameraY: this.camera.y,
     };
@@ -1744,6 +1818,12 @@ export class Game {
     }
     if (data.stayInShelterMode !== undefined) {
       this.stayInShelterMode = data.stayInShelterMode as boolean;
+    }
+    if (data.tutorial) {
+      this.tutorialSystem.deserialize(data.tutorial as TutorialState);
+    } else {
+      // Older saves may already be far beyond the onboarding sequence.
+      this.tutorialSystem.skip();
     }
     if (data.cameraX !== undefined && data.cameraY !== undefined) {
       this.camera.x = data.cameraX as number;

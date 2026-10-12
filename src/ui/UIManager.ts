@@ -1,5 +1,5 @@
 import { ResourceState, Season, BuildingConfig, TechConfig } from '../types';
-import { TutorialOverlay, TutorialStep } from './TutorialOverlay';
+import { TutorialObjective } from '../systems/TutorialSystem';
 
 export interface UICallbacks {
   onSpeedChange: (speed: number) => void;
@@ -17,6 +17,7 @@ export interface UICallbacks {
   onLeaveShelter: () => void;
   onRepairAll: () => void;
   onRestart: () => void;
+  onTutorialSkip: () => void;
   onSoundToggle?: () => void;
   onEmailSubmitted?: () => void;
 }
@@ -33,19 +34,19 @@ export class UIManager {
   private techPanel!: HTMLElement;
   private infoPanel!: HTMLElement;
   private notificationEl!: HTMLElement;
+  private tutorialPanel!: HTMLElement;
+  private tutorialContentKey = '';
   private callbacks: UICallbacks;
   private buildPanelOpen = false;
   private techPanelOpen = false;
   private actionMenuEl: HTMLElement | null = null;
   private actionMenuBackdrop: HTMLElement | null = null;
   private gameOverOverlay: HTMLElement | null = null;
-  private tutorialOverlay: TutorialOverlay;
 
   constructor(callbacks: UICallbacks) {
     this.overlay = document.getElementById('ui-overlay')!;
     this.callbacks = callbacks;
     this.createUI();
-    this.tutorialOverlay = new TutorialOverlay(this.overlay);
   }
 
   private createUI(): void {
@@ -59,14 +60,6 @@ export class UIManager {
       zIndex: '10', fontFamily: 'inherit', color: '#e0d8c8',
     });
     this.topBar.id = 'game-top-bar';
-    this.topBar.addEventListener('click', (e) => {
-      const el = e.target instanceof HTMLElement ? e.target : (e.target as Node).parentElement;
-      const target = el?.closest?.('[data-tech-btn],[data-save-btn],[data-load-btn]') as HTMLElement | null;
-      if (!target) return;
-      if (target.hasAttribute('data-tech-btn')) this.toggleTechPanel();
-      else if (target.hasAttribute('data-save-btn')) this.callbacks.onSave();
-      else if (target.hasAttribute('data-load-btn')) this.callbacks.onLoad();
-    });
     this.topBarStatsDiv = this.el('div', { display: 'flex', alignItems: 'center', gap: '16px' });
     this.topBarStatsDiv.setAttribute('data-topbar-stats', 'true');
     this.topBar.appendChild(this.topBarStatsDiv);
@@ -77,6 +70,7 @@ export class UIManager {
     }) as HTMLButtonElement;
     this.topBarTechBtn.setAttribute('data-tech-btn', 'true');
     this.topBarTechBtn.textContent = '📖 Tech';
+    this.topBarTechBtn.addEventListener('click', () => this.toggleTechPanel());
     this.topBar.appendChild(this.topBarTechBtn);
     this.topBarRightDiv = this.el('div', { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' });
     this.topBarRightDiv.setAttribute('data-topbar-buttons', 'true');
@@ -187,32 +181,39 @@ export class UIManager {
     });
     this.notificationEl.setAttribute('data-notification-el', 'true');
     this.overlay.appendChild(this.notificationEl);
+
+    this.tutorialPanel = this.el('div', {
+      position: 'absolute', left: '8px', top: '56px', width: '300px',
+      background: 'rgba(25,25,45,0.96)', borderRadius: '8px', padding: '10px 12px',
+      zIndex: '12', border: '1px solid rgba(255,224,160,0.45)',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.35)', display: 'none',
+    });
+    this.tutorialPanel.setAttribute('data-ui', 'true');
+    this.tutorialPanel.setAttribute('data-tutorial-panel', 'true');
+    this.overlay.appendChild(this.tutorialPanel);
   }
 
-  async runIntroTutorial(): Promise<void> {
-    const steps: TutorialStep[] = [
-      {
-        target: this.topBarStatsDiv,
-        text: 'Watch your resource counts.',
-        durationMs: 4000,
-      },
-      {
-        target: document.getElementById('game-bottom-bar') ?? this.overlay,
-        text: 'Gather food, build structures, and clear space.',
-        durationMs: 4000,
-      },
-      {
-        target: this.topBarTechBtn,
-        text: 'Unlock new buildings.',
-        durationMs: 4000,
-      },
-    ];
+  updateTutorial(objective: TutorialObjective | null): void {
+    if (!objective) {
+      this.tutorialPanel.style.display = 'none';
+      this.tutorialContentKey = '';
+      return;
+    }
 
-    // Ensure targets are in DOM and measurable.
-    const measurable = steps.every(s => !!s.target && s.target.getBoundingClientRect().width >= 0);
-    if (!measurable) return;
-
-    await this.tutorialOverlay.run(steps);
+    const key = `${objective.step}:${objective.title}:${objective.text}`;
+    if (key !== this.tutorialContentKey) {
+      this.tutorialPanel.innerHTML = '';
+      const heading = this.el('div', { fontSize: '13px', fontWeight: 'bold', color: '#ffe0a0', marginBottom: '4px' });
+      heading.textContent = `First winter ${objective.step}/${objective.totalSteps} — ${objective.title}`;
+      const body = this.el('div', { fontSize: '12px', lineHeight: '1.4', marginBottom: '8px' });
+      body.textContent = objective.text;
+      const skip = this.btn('Skip tutorial', () => this.callbacks.onTutorialSkip());
+      skip.style.padding = '4px 8px';
+      skip.style.fontSize = '11px';
+      this.tutorialPanel.append(heading, body, skip);
+      this.tutorialContentKey = key;
+    }
+    this.tutorialPanel.style.display = 'block';
   }
 
   /** Show context menu with actions for selected villager at (screenX, screenY). */

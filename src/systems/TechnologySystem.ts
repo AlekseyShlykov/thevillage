@@ -3,7 +3,11 @@ import { getConfig } from '../data/ConfigLoader';
 
 export class TechnologySystem {
   public unlockedTechs: Set<string> = new Set();
-  public unlockedBuildings: Set<string> = new Set(['hut', 'palisadeWall', 'palisadeGate']);
+  public unlockedBuildings: Set<string> = this.getInitialBuildings();
+
+  private getInitialBuildings(): Set<string> {
+    return new Set(['hut']);
+  }
 
   getAllTechs(): Record<string, TechConfig> {
     return getConfig().technology.techs;
@@ -56,7 +60,7 @@ export class TechnologySystem {
   /** Reset tech to initial state (for new game). */
   reset(): void {
     this.unlockedTechs = new Set();
-    this.unlockedBuildings = new Set(['hut']);
+    this.unlockedBuildings = this.getInitialBuildings();
   }
 
   isTechUnlocked(techId: string): boolean {

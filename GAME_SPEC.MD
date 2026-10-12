@@ -37,6 +37,26 @@ Spring (1 minute)
 - population may grow
 - repairs and rebuilding
 
+## First-Year Tutorial
+
+The first year uses a non-blocking, action-driven tutorial. Instructions remain
+visible until the player completes the requested action and can be skipped at
+any time.
+
+The tutorial teaches the player to:
+
+- mark a 2×2 forest area for clearing
+- send a villager hunting
+- place and complete a hut
+- unlock and build a garden
+- assign a farmer
+- stockpile food
+- send villagers to shelter before the first winter
+
+The first tutorial hunt cannot kill its hunter. Tutorial progress is included
+in manual saves and autosaves. Loading an older save without tutorial data does
+not restart onboarding.
+
 ---
 
 # Map
@@ -432,9 +452,13 @@ Tier 5
 
 Players place buildings manually.
 
-Villagers automatically become builders.
+The nearest free, unassigned villager automatically becomes a builder and walks
+to a newly placed construction site. When construction finishes, that villager
+is released for another task.
 
-Multiple villagers can work on construction simultaneously.
+The current prototype assigns one builder per construction site. Multiple sites
+can be built simultaneously when enough free villagers are available. Players
+may also assign a specific villager from the construction site's action menu.
 
 ---
 
