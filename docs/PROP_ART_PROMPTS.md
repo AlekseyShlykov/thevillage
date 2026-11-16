@@ -1,5 +1,7 @@
 # Garden and herbal hearth artwork
 
+For the modular moat atlas, see [MOAT_ART_PROMPT.md](MOAT_ART_PROMPT.md).
+
 Generated with the built-in `image_gen` tool through the imagegen skill; no CLI
 fallback or external image processing. Style reference:
 `public/assets/isometric/village-atlas.png`.

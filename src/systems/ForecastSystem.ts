@@ -4,6 +4,7 @@ import { SeasonSystem } from './SeasonSystem';
 import { ResourceSystem } from './ResourceSystem';
 import { BuildingSystem } from './BuildingSystem';
 import { VillagerSystem } from './VillagerSystem';
+import { heatedShelters } from './HeatingSystem';
 import { hasCoat } from './EquipmentSystem';
 
 const order = [Season.Spring, Season.Summer, Season.Autumn, Season.Winter];
@@ -40,9 +41,10 @@ export function makeForecast(seasons: SeasonSystem, resources: ResourceSystem, b
   const fire = buildings.getBuildingsOfType('herbalFire')[0];
   const herbSeconds = cfg.seasons.winterDuration / cfg.herbs.perWinter;
   const fuel = fire?.wardFuelSeconds ?? 0;
+  const houses=heatedShelters(buildings.buildings),heatingWoodNeeded=houses.length*cfg.heating.woodPerShelterPerWinter*winterLeft/cfg.seasons.winterDuration;
   const coats = people.filter(hasCoat).length;
   const exposed = people.filter(v => (v.coldExposure ?? 0) >= cfg.cold.warningFraction * cfg.cold.unclothedSurvivalSeconds).length;
-  return { population, food: resources.resources.food, winterFood, beforeFood, expectedHarvest,
+  return { heatedShelters:houses.length,heatingWoodNeeded,woodBalance:resources.resources.wood-heatingWoodNeeded,unheatedShelters:seasons.isWinter()&&resources.resources.wood<=0?houses.length:0,population, food: resources.resources.food, winterFood, beforeFood, expectedHarvest,
     reserve: winterFood * (1 + cfg.forecast.foodReserveBuffer),
     springBalance: resources.resources.food + expectedHarvest - beforeFood - winterFood,
     nextHarvestSeconds: crops.length ? Math.min(...crops.map(c => c.seconds)) : null,

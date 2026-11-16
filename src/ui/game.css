@@ -52,13 +52,9 @@ html, body { background: #314b39 !important; }
 #status-ribbon small { display: block; font-size: 10px; color: #d4dbc5; margin-top: 6px; }
 .status-dot { width: 6px; height: 6px; border-radius: 0; background: #e4c37f; box-shadow: 0 0 12px #d6b87a88; }
 .status-dot.sheltered { background: #b3ca89; }
-[data-build-panel], [data-tech-panel], [data-tutorial-panel], [data-info-panel] { background: var(--panel) !important; border: 1px solid var(--edge) !important; border-radius: 0!important; box-shadow: 0 8px 28px #11271b22 !important; }
+[data-build-panel], [data-tech-panel], [data-info-panel] { background: var(--panel) !important; border: 1px solid var(--edge) !important; border-radius: 0!important; box-shadow: 0 8px 28px #11271b22 !important; }
 [data-build-panel] { left: 20px !important; top: var(--hud-top) !important; width: 270px !important; padding: 14px !important; max-height: calc(100% - 275px) !important; }
 [data-tech-panel] { top: 108px !important; right: 20px !important; width: 295px !important; padding: 14px !important; max-height: calc(100% - 220px) !important; }
-[data-tutorial-panel] { left: 28px !important; top: 184px !important; width: 266px !important; padding: 14px !important; }
-[data-tutorial-panel] button { font-size: 10px !important; min-height: 28px !important; opacity: .8; }
-[data-tutorial-panel] > div:first-child { color: #e9d4a2 !important; font-size: 12px !important; }
-[data-tutorial-panel] > div:nth-child(2) { font-size: 11px !important; line-height: 1.6 !important; color: #cdd2bb !important; }
 [data-building-id] { background: rgba(92,109,74,.24) !important; border: 1px solid #b7bd8c22 !important; padding: 12px !important; border-radius: 0!important; margin-bottom: 8px !important; min-height: 62px; }
 [data-building-id]:hover { background: #52684788 !important; }
 [data-building-id] > div:nth-child(2) { margin-top: 4px; line-height: 1.45; }
@@ -119,7 +115,6 @@ html, body { background: #314b39 !important; }
   #status-ribbon strong { font-size: 11px; }#status-ribbon small { font-size: 9px; max-width: calc(100vw - 45px); }
   .camera-controls { right: 12px; bottom: 180px; flex-direction: column; }
   .camera-controls button { min-width: 44px; min-height: 44px; background: var(--panel) !important; }
-  [data-tutorial-panel] { top: auto !important; bottom: 178px !important; left: 12px !important; width: min(270px,calc(100% - 80px)) !important; }
   [data-build-panel], [data-tech-panel] { top: var(--hud-top) !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: calc(100dvh - 310px) !important; padding: 12px !important; }
   #ui-overlay [data-info-panel] { display: block !important; bottom: 180px !important; left: 12px !important; right: auto !important; width: 200px !important; }
   #ui-overlay [data-info-panel][style*='display: none'] { display: none !important; }
@@ -134,7 +129,7 @@ html, body { background: #314b39 !important; }
   #intro-screen .intro-text { font-size: .9rem !important; line-height: 1.5 !important; }
   #intro-screen .intro-image-placeholder { width: 240px !important; height: 135px !important; margin-bottom: 1rem !important; }
 }
-@media (max-height: 560px) { [data-tutorial-panel] { display: none !important; }.game-heading { display: none; } }
+@media (max-height: 560px) { .game-heading { display: none; } }
 
 /* Angular panel treatment applies to menus, dialogs, input fields and intro. */
 #ui-overlay *, #intro-screen *, #loading-screen * { border-radius: 0 !important; }
@@ -166,10 +161,8 @@ html, body { background: #314b39 !important; }
 #settlement-warnings[hidden] { display:none; }
 #settlement-warnings>div { display:flex;gap:8px;padding:10px 12px;margin-bottom:6px;border:1px solid #c3a96f88;background:#26382cf2;color:#eed9ac;font-size:11px;line-height:1.45; }
 #settlement-warnings .warning-urgent { border-color:#d29976;color:#f3c4a9; }
-[data-tutorial-panel] { top:calc(var(--hud-bottom,100px) + var(--warnings-height,0px) + 12px) !important; }
 @media(max-width:768px) {
   #settlement-warnings { left:12px;right:12px;width:auto;top:calc(var(--hud-bottom,136px) + 54px);max-height:18vh; }
-  [data-tutorial-panel] { top:auto !important; }
   .resource { min-width:15%; }
   [data-topbar-stats] { gap:6px !important; }
 }
@@ -204,4 +197,34 @@ html, body { background: #314b39 !important; }
   .camera-controls {bottom:calc(var(--toolbar-height,112px) + 68px);}
   [data-notification-el] {width:calc(100% - 24px);box-sizing:border-box;bottom:calc(var(--toolbar-height,112px) + 22px) !important;}
   #ui-overlay [data-info-panel],#ui-overlay [data-info-panel][data-villager] {bottom:calc(var(--toolbar-height,112px) + 24px) !important;}
+}
+
+/* Season lessons pause the village while keeping the relevant controls visible. */
+#season-tutorial {position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:calc(var(--hud-bottom,100px) + 12px) 16px calc(var(--toolbar-height,64px) + 24px);background:#0d1c18a8;pointer-events:auto;}
+#season-tutorial[hidden] {display:none;}
+#season-tutorial section {width:440px;max-width:100%;max-height:100%;display:flex;flex-direction:column;box-sizing:border-box;padding:24px;background:#24372efb;border:1px solid #c6ac73;box-shadow:7px 8px 0 #10251b77;color:#eee4cb;}
+.season-tutorial-eyebrow {display:flex;align-items:center;gap:8px;color:#d6b87a;text-transform:uppercase;font-size:11px;letter-spacing:1.3px;flex-shrink:0;}
+#season-tutorial h2 {font:700 24px 'PT Sans',sans-serif;margin:14px 0 10px;flex-shrink:0;}
+#season-tutorial p {font-size:15px;line-height:1.6;margin:0 0 20px;overflow:auto;min-height:0;}
+.season-tutorial-note {display:block;margin-top:8px;color:#cfbb91;line-height:1.4;}
+.season-tutorial-actions {display:flex;gap:8px;flex-shrink:0;}
+#season-tutorial button {min-height:44px;padding:10px 18px;flex:1;}
+#season-tutorial [data-tutorial-acknowledge] {background:#6a7650 !important;border-color:#d6b87a !important;}
+#ui-overlay .tutorial-focus-bar {z-index:61 !important;}
+#ui-overlay button.tutorial-highlight {background:#8b784a !important;outline:3px solid #f2d399;outline-offset:3px;box-shadow:0 0 0 6px #f2d3992b;}
+#ui-overlay button[data-tutorial-locked]::after {content:'Later';font-size:9px;color:#eee4cb;}
+@media(max-width:768px) {
+  #season-tutorial section {padding:18px;}
+  #season-tutorial h2 {font-size:21px;margin-top:10px;}
+  #season-tutorial p {font-size:14px;line-height:1.5;margin-bottom:14px;}
+  #season-tutorial button {padding:8px;}
+}
+@media(max-height:560px) {
+  #game-top-bar.tutorial-focus-bar [data-topbar-stats] {display:none !important;}
+  #game-top-bar.tutorial-focus-bar {min-height:0 !important;padding:6px 10px !important;}
+  #season-tutorial section {width:660px;padding:12px;}
+  #season-tutorial h2 {font-size:19px;margin:5px 0;}
+  #season-tutorial p {font-size:13px;line-height:1.4;margin-bottom:8px;min-height:42px;}
+  .season-tutorial-note {margin-top:4px;font-size:11px;}
+  #season-tutorial button {padding:6px 10px;}
 }

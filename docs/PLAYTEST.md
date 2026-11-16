@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 79 browser checks passed, without sound.
+Recorded 2026-11-16. All 90 browser checks passed, without sound.
 
 ## Browser coverage
 
@@ -90,15 +90,26 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | recall moves residents already inside a house into both towers and keeps the home group | PASS |
 | unreachable towers fall back to homes; tower-only settlements still use free places | PASS |
 | monster damage cannot destroy a finished moat or unfinished ditch, but manual demolition works | PASS |
+| painted moat covers all sixteen adjacency patterns with matching open mouths | PASS |
+| moat joins refresh after construction, demolition and save loading | PASS |
+| moat artwork renders bends, junctions, winter and missing-asset fallback | PASS |
+| Spring briefing highlights Hunt and Build and gates simulation until Got it | PASS |
+| season changes require acknowledgement and show the matching controls | PASS |
+| season acknowledgement, pending modal and Skip tutorial survive save loading | PASS |
+| mobile season modal keeps Got it and Skip reachable in portrait and landscape | PASS |
+| heating consumes exactly four wood per completed shelter per winter | PASS |
+| unheated shelters slow hypothermia while fuel restores warming | PASS |
+| winter forecast and warnings include remaining firewood and indoor hypothermia | PASS |
+| midwinter save loading charges only the remaining winter fuel | PASS |
 | no unhandled browser exceptions | PASS |
 
 ## Gameplay and UX observations
 
-The first year was completed through visible controls: press Clear, hunt, build a
+The first year was completed through visible controls: acknowledge Spring, press Clear, hunt, build a
 garden, and wait for its builder to sow and harvest. Crops mature over 1.125 calendar
 seasons. Shelter protected unclothed residents; spring automatically restored work,
-awarded one star and autosaved. Food remained after winter. The tutorial budgets
-consumption before winter as well as during it.
+awarded one star and autosaved. Food remained after winter. Winter plan budgets
+consumption before winter as well as during it, plus heating wood.
 
 Available jobs start with one click and replace only the selected resident's
 previous task. Unavailable farm, craft, repair and construction jobs are absent.
@@ -212,7 +223,7 @@ label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
 its previous time and biological crop growth is another 25% shorter. Workshop
 removal refunded wood and obsolete research exactly once on repeated loading.
 
-The final compiled build `index-BmhJLlAG.js` passed silent checks on
+The final compiled build `index-CEUSgf02.js` passed silent checks on
 `http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
 removed tool counter, background dismissal, shelter toggle, square controls,
 tooltips and loaded interface art. All four local PT Sans faces loaded, and
@@ -246,3 +257,35 @@ The final production localhost build also passed touch dismissal and aligned
 mobile-row checks after compilation. Eighteen additional mobile layout variants
 confirmed consistent icon placement and hidden unavailable buttons. All tests
 ran muted; temporary browser/server processes were closed after verification.
+
+
+## Connected moat art, seasonal lessons and winter heating
+
+All 90 browser scenarios passed silently. Six generated terrain sprites covered
+all sixteen orthogonal connection masks. Painted mouths had matching opaque water
+at each join. Corners and branches refreshed after adding/removing a section and
+loading a save; unfinished neighbours also connected. The 34-section village scene
+was reviewed in spring and winter. Shape fallbacks rendered every mask. Captures:
+`moat-connected-spring.png`, `moat-connected-winter.png`.
+
+Spring, summer, autumn and winter each required Got it before time or residents
+advanced. The actual Hunt/Build, Clear/Herbs, Tech and Shelter controls received
+highlights. Summer previewed the locked herb order without revealing herb stocks.
+Acknowledgements, a pending briefing and Skip tutorial survived save/load; a new
+year displayed its spring message. Escape and Space did not bypass the lesson.
+Touch acknowledgement worked at 390 × 844 and 844 × 390; both action buttons were
+at least 44 px tall, and landscape text retained a readable scrolling area.
+Captures: `season-briefing-spring.png`, `season-briefing-summer.png`,
+`season-briefing-mobile.png`, `season-briefing-landscape.png`.
+
+Two completed shelters consumed exactly eight wood over a winter; unfinished
+homes and non-winter seasons used none. Fuel exhaustion disabled warming, and
+adding wood restored it. Unheated indoor cold could kill an unclothed resident
+while coats slowed exposure. The half-winter forecast requested two wood for one
+shelter. Warnings distinguished indoor fuel shortages from outdoor recall.
+A midwinter save charged only the remaining fuel after loading.
+
+The compiled localhost build passed startup acknowledgement plus the existing
+jobs, mobile dismissal, toolbar alignment, typography and layout checks with no
+browser exceptions. The local preview uses `index-CEUSgf02.js`; both distribution
+folders contain the moat atlas and heating configuration. Tests remained muted.

@@ -5,7 +5,7 @@ import { getConfig } from '../data/ConfigLoader';
 import { FenceArt } from './FenceArt';
 import { CropArt } from './CropArt';
 import { chimneySmoke } from './BuildingEffects';
-import { drawMoat } from './MoatArt';
+import { MoatArt } from './MoatArt';
 import { WardFireArt } from './WardFireArt';
 
 export type Point = { x: number; y: number };
@@ -26,8 +26,9 @@ export class IsometricArt {
   private fences: FenceArt;
   private crops: CropArt;
   private ward: WardFireArt;
+  private moats: MoatArt;
   constructor(private camera: Camera, private assets: AssetLoader) {
-    this.fences = new FenceArt(camera); this.crops = new CropArt(camera, assets); this.ward = new WardFireArt(assets);
+    this.fences = new FenceArt(camera); this.crops = new CropArt(camera, assets); this.ward = new WardFireArt(assets);this.moats=new MoatArt(camera,assets);
   }
   atlas(season: Season): CanvasImageSource | null {
     const image = this.assets.getAtlas(season); if (!image) return null;
@@ -69,7 +70,7 @@ export class IsometricArt {
     ctx.save();
     if (!b.built) { ctx.globalAlpha = .45 + b.buildProgress * .4; polygon(ctx, pts, 'rgba(181,142,79,.16)', '#e4bf75'); }
     if (b.configId === 'garden') this.crops.draw(ctx, b, cfg, season, time);
-    else if(b.configId==='moat')drawMoat(ctx,this.camera,b,buildings,season);
+    else if(b.configId==='moat')this.moats.draw(ctx,b,buildings,season);
     else if(b.configId==='watchtower') {
       const tower=this.assets.getTower?.(),h=this.buildingBounds(b,cfg).height;
       if(tower) {ctx.imageSmoothingEnabled=true;ctx.drawImage(tower,x-size/2,y-h,size,h);}

@@ -693,5 +693,16 @@
   },
   "forecast": {
     "foodReserveBuffer": 0.2
+  },
+  "heating": {
+    "woodPerShelterPerWinter": 4,
+    "unheatedExposureMultiplier": 0.35,
+    "buildingIds": [
+      "hut",
+      "house",
+      "largeHouse",
+      "watchtower",
+      "campFire"
+    ]
   }
 }

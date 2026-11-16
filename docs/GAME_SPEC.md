@@ -73,8 +73,8 @@ Press Clear to chop the nearest trees, hunt deep in the forest, build the initia
 garden, assign a farmer and harvest before frost. Expand housing and prepare
 food, worn coats and protective herbs. Call Shelter before winter exposure or
 the horde threatens residents.
-Repair, resume work and expand in spring. The skippable tutorial follows actual
-actions rather than a timer and protects the first hunter from death.
+Repair, resume work and expand in spring. A short seasonal briefing pauses time
+until acknowledged or skipped. The first guided hunter remains protected from death.
 
 ## Systems
 
@@ -205,10 +205,22 @@ while the settlement stays in shelter mode.
 ### ColdSystem
 
 Unclothed residents die after 30 exposure-seconds outside in winter. Snowstorms
-increase exposure by 1.5×; a worn coat reduces it to 0.1×. Shelter removes three
-exposure-seconds per second, and exposure resets outside winter. Residents show
+increase exposure by 1.5×; a worn coat reduces it to 0.1×. A heated shelter removes
+three exposure-seconds per second. An unheated shelter accumulates exposure at
+0.35× the outdoor rate, further reduced by worn coats. Exposure resets outside winter. Residents show
 their coat, cargo and exposure in their command card. First-winter horde
 protection does not prevent hypothermia: Shelter remains necessary.
+
+### HeatingSystem
+
+Every completed hut, house, large house, guard tower and forest camp fire uses
+four wood over one full winter, including empty shelters. Consumption is continuous,
+shared equally between shelters, and absent in other seasons. Unfinished buildings
+use no fuel. No extra charge occurs on entering a season or loading a save.
+When wood runs out, shelter still conceals residents from monsters but stops
+warming them; gathering wood immediately restores heat. Fuel demand, shelter IDs
+and indoor cold exposure are configured in `game-balance.json`. Winter plan and
+the Wood tooltip explain the reserve, with warnings for a deficit or no heating.
 
 ### BuildingSystem
 
@@ -246,7 +258,7 @@ inside on each click, reserves incoming places, and works during global shelter.
 Only living residents inside can fire: each contributes 18 damage every 1.25
 seconds against the nearest monster within seven tiles. An empty tower does not
 shoot. Brief animated arrows show attacks; tower occupants are hidden and counted
-as sheltered, so they warm up and avoid hypothermia. Old towers receive the new
+as sheltered, so they warm up when supplied with firewood. Old towers receive the new
 maximum HP while retaining their health fraction. All combat values live in JSON.
 
 Moats are walkable 1 × 1 terrain projects, each requiring six build units and no
@@ -258,6 +270,12 @@ do not attack trenches. The JSON `indestructible` flag also rejects damage in
 does not damage them. The player may still cancel or manually demolish them. Moats can
 surround a house without making its entrances impassable. Terrain state is
 reconstructed from saved construction state on load.
+The generated six-cell transparent moat atlas supplies isolated pits, ends,
+straights, elbows, T junctions and crosses. Four-neighbour masks select and rotate
+these pieces before isometric projection, including unfinished adjacent sections.
+Shared painted mouth samples and extruded edge pixels keep joins continuous at
+fractional zoom. Connections recalculate after digging, demolition and loading.
+Winter uses a muted frost tint; missing art uses connected Canvas shapes.
 
 ### HordeSystem
 
@@ -336,10 +354,19 @@ catalogue and migration policy are described in [BUILDING_ROLES.md](BUILDING_ROL
 
 ### TutorialSystem and UIManager
 
-The seven-step first-year guide is action-driven and skippable. Its food target
-includes consumption until winter, winter consumption and a reserve buffer, using
-actual population. It rechecks reserves after arrivals. Opening build/research panels
-hides the tutorial so it cannot intercept controls. The HUD shows resources,
+A short English modal appears at the start of each season, including a new game.
+Spring explains food and highlights Hunt/Build. Summer highlights Clear/Herbs and
+explains four wood per shelter for winter plus ward herbs. Autumn highlights Tech
+and explains fur clothing. Winter highlights Shelter and explains hypothermia,
+firewood and forest monsters. Simulation and world commands wait for Got it;
+Escape, clicking the backdrop or changing speed cannot bypass acknowledgement.
+Skip tutorial disables future briefings in that saved game. Acknowledged seasons,
+pending messages and skipping persist across loading; older completed/skipped
+tutorials remain skipped. SeasonTutorial manages focus, touch-sized buttons and
+compact portrait/landscape layouts. Relevant toolbar controls remain visible and
+highlighted but cannot issue orders until the message closes. The summer lesson
+temporarily previews a locked Herbs button; its counter and Winter plan details
+remain hidden until a ward is complete. The HUD shows resources,
 population, comfort, season time, idle residents and food reserve in seconds.
 Mobile main controls are at least 44 px high; saving, loading and repair remain
 available. A previous notification timer cannot hide a newer message.
@@ -348,8 +375,7 @@ using the game's timber, parchment, sage and aged-iron palette. Resource counter
 action buttons, villager orders, context menus and building/research costs use the
 same typed icon collection. No platform emoji are used. Icons are decorative;
 button labels and accessible names remain present, including on icon-only controls.
-Selecting a resident also hides the tutorial. Job buttons are at least 44 px
-high. Available jobs use two columns with readable labels and start immediately.
+Job buttons are at least 44 px high. Available jobs use two columns with readable labels and start immediately.
 The redundant game heading below the HUD is removed. The HUD always shows pelts and finished coats (worn plus spare). Protective
 herbs and their order appear after the ward fire is completed. Tools have no
 resource counter or research. Zero tool construction costs are omitted. Coats
@@ -373,7 +399,8 @@ update. Tooltips are kept inside the viewport and close on pointer exit/Escape.
 ### ForecastSystem
 
 The collapsible Winter plan panel estimates consumption until winter and during
-winter, a 20% safety reserve, harvest readiness and spring food balance. It warns
+winter, a 20% safety reserve, harvest readiness, spring food balance and remaining
+winter heating wood. It warns
 when crops cannot ripen before frost and requires harvest labor before counting
 a yield. It shows worn/spare coats, residents at risk from cold, and the next
 winter's star reward. Stored/carried herbs and remaining fuel coverage appear

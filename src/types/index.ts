@@ -231,6 +231,7 @@ export interface GameBalanceConfig {
   retiredBuildings: Record<string, { refundWood: number; refundTools: number; refundResearch: number; replacement?: string }>;
   herbs: { capacity: number; perWinter: number; gatherSeconds: number; searchRadius: number; minimumForestDepth: number; maximumForestDepth: number; deathChance: number };
   equipment: { clothingLifetimeWinters: number };
+  heating: { woodPerShelterPerWinter: number; unheatedExposureMultiplier: number; buildingIds: string[] };
   cold: { unclothedSurvivalSeconds: number; clothedExposureMultiplier: number; snowstormExposureMultiplier: number; warmupMultiplier: number; warningFraction: number };
   farming: { growthSeasons: number; sowingWorkSeconds: number; harvestWorkSeconds: number; harvestFood: number };
   forecast: { foodReserveBuffer: number };

@@ -41,7 +41,7 @@ async function clickSelector(selector) {
 async function button(text) { const selector = await ev(`(() => {const b=[...document.querySelectorAll('button')].find(b=>b.textContent.includes(${JSON.stringify(text)}));if(!b)throw Error('Missing button: '+${JSON.stringify(text)});b.dataset.qa='target';return '[data-qa="target"]';})()`); await clickSelector(selector); await ev('document.querySelector(\'[data-qa="target"]\')?.removeAttribute("data-qa")'); }
 async function tile(x, y) { const p = await ev(`g.camera.worldToScreen(${x}*48,${y}*48)`); await mouse(p.x, p.y); }
 async function until(expression, seconds = 90) {
-  const r = await ev(`(() => {let elapsed=0;while(!(${expression}) && elapsed<${seconds} && !g.gameOver){g.update(.05);elapsed+=.05;}g.updateUI();g.render();return {pass:!!(${expression}),elapsed,food:g.resourceSystem.resources.food,pop:g.villagerSystem.getAliveCount(),season:g.seasonSystem.season,year:g.seasonSystem.year};})()`);
+  const r = await ev(`(() => {let elapsed=0;while(!(${expression}) && elapsed<${seconds} && !g.gameOver){if(g.tutorialSystem.isAwaitingAcknowledgement())g.acknowledgeTutorial();g.update(.05);elapsed+=.05;}g.updateUI();g.render();return {pass:!!(${expression}),elapsed,food:g.resourceSystem.resources.food,pop:g.villagerSystem.getAliveCount(),season:g.seasonSystem.season,year:g.seasonSystem.year};})()`);
   assert(r.pass, `Timed out: ${expression} ${JSON.stringify(r)}`); return r;
 }
 async function check(name, fn) { try { const detail = await fn(); checks.push({ name, pass: true, detail }); console.log('PASS', name, JSON.stringify(detail ?? '')); } catch (e) { checks.push({ name, pass: false, error: e.message }); console.log('FAIL', name, e.message); await shot('failure-' + checks.length).catch(() => {}); await fs.writeFile(`${output}/failure-state-${checks.length}.json`,JSON.stringify(await ev('g.serializeState()'),null,2)).catch(()=>{}); } }
@@ -54,7 +54,7 @@ try {
   await call('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await call('Page.navigate', { url: base }); await wait('document.getElementById("intro-screen")?.style.display === "flex"');
   await ev(`(async()=>{const gameUrl=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/game/Game.ts')).at(-1)?.name ?? '/src/game/Game.ts';const {Game}=await import(gameUrl);const original=Game.prototype.start;Game.prototype.start=function(){window.g=this;if(!${checkAudio}&&this.soundManager.isSoundEnabled())this.soundManager.toggleSound();original.call(this);};document.getElementById('intro-start-btn').click();})()`);
-  await wait('!!window.g'); await ev('g.gameLoop.stop();g.updateUI();g.render()'); await shot('spring-desktop');
+  await wait('!!window.g'); await ev('g.gameLoop.stop();window.restartWithBriefings=g.restart.bind(g);g.restart=function(){window.restartWithBriefings();this.tutorialSystem.skip();this.updateUI();};g.tutorialSystem.skip();g.updateUI();g.render()'); await shot('spring-desktop');
   await check('custom interface artwork loads and buttons keep accessible labels', async()=>{
     const result=await ev(`(async()=>{const url=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/ui/icons.ts')).at(-1).name;const {iconNames,iconMarkup}=await import(url);const loaded=await Promise.all(iconNames.map(name=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve({name,ok:img.naturalWidth===48});img.onerror=()=>resolve({name,ok:false});img.src='./assets/ui/icons/'+name+'.svg';})));const icons=[...document.querySelectorAll('[data-ui-icon]')];const emoji=[...document.querySelector('#ui-overlay').textContent].filter(c=>{const n=c.codePointAt(0);return n>=0x1f000&&n<=0x1faff||n>=0x2600&&n<=0x27ff});const unlabeled=[...document.querySelectorAll('button')].filter(b=>!b.getAttribute('aria-label')&&!b.textContent.trim()).length;const preview=document.createElement('div');preview.id='qa-icon-sheet';preview.dataset.ui='true';preview.style.cssText='position:fixed;inset:0;z-index:2000;background:#21382d;padding:40px;color:#ecdfbf;font:14px Trebuchet MS';preview.innerHTML='<div style="font:32px Georgia;margin-bottom:10px">Before Night Falls</div><div style="color:#b5bd9b;margin-bottom:25px">Timber · parchment · aged iron</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:22px">'+iconNames.map(name=>'<div style="height:112px;border:1px solid #d3b57626;border-radius:10px;background:#50614326;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">'+iconMarkup(name)+'<span>'+name+'</span></div>').join('')+'</div>';preview.querySelectorAll('img').forEach(img=>{img.style.width='56px';img.style.height='56px'});document.body.appendChild(preview);await new Promise(requestAnimationFrame);return{loaded,visibleIcons:icons.length,emoji:emoji.length,unlabeled}})()`);
     const preview=await call('Page.captureScreenshot',{format:'png'});await fs.writeFile(output+'/interface-icon-sheet.png',Buffer.from(preview.data,'base64'));await ev('document.getElementById("qa-icon-sheet").remove()');
@@ -64,7 +64,8 @@ try {
     const result = await ev(`(()=>{const c=g.camera,old=c.zoom;let error=0;for(const z of [.6,1,1.5]){c.setZoom(z);for(const [x,y]of[[.25,.7],[40.5,30.5],[79.1,59.9]]){const p=c.worldToScreen(x*48,y*48),q=c.screenToWorld(p.x,p.y);error=Math.max(error,Math.abs(q.x-x*48),Math.abs(q.y-y*48));}}c.setZoom(old);return error;})()`); assert(result < 1e-8); return result;
   });
   await check('first year through visible controls', async () => {
-    await ev('g.restart();g.gameLoop.stop();g.updateUI();g.render()');
+    await ev('window.restartWithBriefings();g.gameLoop.stop();g.updateUI();g.render()');
+    await clickSelector('[data-tutorial-acknowledge]');
     await button('Clear');
     const p=await ev('(()=>{const v=g.villagerSystem.villagers[0],p=g.camera.worldToScreen((v.x+.5)*48,(v.y+.5)*48);return{x:p.x,y:p.y-18}})()');await mouse(p.x,p.y);await button('Hunt');
     await button('Build');await clickSelector('[data-building-id="garden"]');await tile(42.2,27.2);
@@ -301,6 +302,8 @@ try {
   await (await import('./ux-checks.mjs')).runUXChecks({check,ev,shot,clickSelector,button,tile,until,mouse,call});
   await (await import('./defense-checks.mjs')).runDefenseChecks({check,ev,shot,button,until,call});
   await (await import('./mobile-shelter-checks.mjs')).runMobileShelterChecks({check,ev,shot,call,until});
+  await (await import('./moat-art-checks.mjs')).runMoatArtChecks({check,ev,shot,call});
+  await (await import('./season-heating-checks.mjs')).runSeasonHeatingChecks({check,ev,shot,call,clickSelector});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

@@ -18,6 +18,7 @@ import { TutorialSystem, TutorialState } from '../systems/TutorialSystem';
 import { ProductionSystem } from '../systems/ProductionSystem';
 import { ProtectionSystem } from '../systems/ProtectionSystem';
 import { EquipmentSystem, hasTool, hasCoat, workerProductivity } from '../systems/EquipmentSystem';
+import { HeatingSystem } from '../systems/HeatingSystem';
 import { ColdSystem } from '../systems/ColdSystem';
 import { TowerCombatSystem } from '../systems/TowerCombatSystem';
 import { CropSystem } from '../systems/CropSystem';
@@ -72,6 +73,7 @@ export class Game {
   private furClothingProduced = 0;
   private equipmentSystem = new EquipmentSystem();
   private coldSystem = new ColdSystem();
+  private heatingSystem = new HeatingSystem();
   private cropSystem = new CropSystem();
   private towerCombatSystem = new TowerCombatSystem();
   private foragingSystem: ForagingSystem;
@@ -130,7 +132,8 @@ export class Game {
       onToggleShelter: () => { if (this.stayInShelterMode) this.leaveShelter(); else this.returnHome(); this.updateUI(); },
       onRepairAll: () => this.repairAll(),
       onRestart: () => this.restart(),
-      onTutorialSkip: () => this.tutorialSystem.skip(),
+      onTutorialAcknowledge: () => this.acknowledgeTutorial(),
+      onTutorialSkip: () => {this.tutorialSystem.skip();this.updateUI();},
       onSoundToggle: () => this.soundManager.toggleSound(),
       onEmailSubmitted: () => this.analytics.trackEmailSubmitted(),
       onCameraZoom: (factor) => this.camera.setZoom(this.camera.zoom * factor),
@@ -144,6 +147,7 @@ export class Game {
     });
 
     window.addEventListener('keydown', e => {
+      if(this.tutorialSystem.isAwaitingAcknowledgement())return;
       if ((e.target as HTMLElement)?.matches('input, textarea') || (e.code !== 'Escape' && (e.target as HTMLElement)?.matches('button'))) return;
       if (e.code === 'Space') { e.preventDefault(); this.setSpeed(this.gameLoop.gameSpeed ? 0 : 1); }
       if (e.code === 'Escape') { if (this.pendingOrder) { this.pendingOrder = null; this.mode = 'normal'; this.updateUI(); } else { this.cancelBuild(); this.deselectVillager(); } }
@@ -175,8 +179,11 @@ export class Game {
   start(): void {
     this.analytics.trackGameStart();
     this.soundManager.playSeason(this.seasonSystem.season);
-    this.gameLoop.start();
+    this.tutorialSystem.enterSeason(this.seasonSystem.season,this.seasonSystem.year);
+    this.updateUI();this.gameLoop.start();
   }
+
+  private acknowledgeTutorial():void {this.tutorialSystem.acknowledge();this.updateUI();this.render();}
 
   private getBuildingsCount(): number {
     return this.buildingSystem.buildings.filter((b) => b.built).length;
@@ -194,6 +201,8 @@ export class Game {
 
   private setupSeasonCallbacks(): void {
     this.seasonSystem.setOnSeasonChange((season, year) => {
+      this.tutorialSystem.enterSeason(season,year);
+      if(this.tutorialSystem.isAwaitingAcknowledgement()){this.cancelBuild();this.deselectVillager();this.ui.closeForecast();}
       const buildingsCount = this.getBuildingsCount();
       this.analytics.trackSeasonChange({
         season,
@@ -257,7 +266,9 @@ export class Game {
       return;
     }
 
+    if(this.tutorialSystem.isAwaitingAcknowledgement())return;
     this.seasonSystem.update(dt);
+    if(this.tutorialSystem.isAwaitingAcknowledgement()){this.updateUI();return;}
     this.weatherSystem.update(dt, this.seasonSystem.season);
     this.equipmentSystem.update(dt, this.villagerSystem.villagers, this.resourceSystem, this.seasonSystem.season);
 
@@ -269,9 +280,7 @@ export class Game {
     this.updateForestClearing(effectiveDt);
     this.updatePopulationGrowth(dt);
 
-    this.buildingSystem.updateConstruction(effectiveDt, (buildingId) => this.getBuildersOnSite(buildingId), undefined, (building) => {
-      this.tutorialSystem.onBuildingCompleted(building.id, building.configId);
-    });
+    this.buildingSystem.updateConstruction(effectiveDt, (buildingId) => this.getBuildersOnSite(buildingId));
     this.releaseBuildersFromCompletedBuildings();
 
     const isWinter = this.seasonSystem.isWinter();
@@ -297,9 +306,10 @@ export class Game {
     this.updateResourceProduction(effectiveDt);
     this.cropSystem.update(dt, this.seasonSystem.season, this.seasonSystem.getCurrentDuration(), this.buildingSystem, this.villagerSystem, this.resourceSystem, this.techSystem, amount => this.ui.notify(`Harvest stored: +${Math.round(amount)} food`));
     this.equipmentSystem.issue(this.villagerSystem.getAliveVillagers(), this.resourceSystem);
+    this.heatingSystem.update(dt,this.buildingSystem.buildings,this.resourceSystem,this.seasonSystem.season);
     this.coldSystem.update(dt, this.villagerSystem.villagers, housingTiles, this.seasonSystem.season, this.weatherSystem.currentEvent?.type === 'snowstorm', v => {
-      this.villagerSystem.damageVillager(v, v.maxHp); this.ui.notify('A resident died from hypothermia. Fur coats or shelter are needed.');
-    });
+      this.villagerSystem.damageVillager(v, v.maxHp); this.ui.notify('A resident died from hypothermia. Warm clothing and heated shelter are needed.');
+    },(x,y)=>this.heatingSystem.at(x,y));
     this.updateToggleGate(dt);
     this.assignWorkersToUnbuiltBuildingsOnArrival();
 
@@ -361,20 +371,13 @@ export class Game {
     this.resourceSystem.updateStorageCapacity(storageBonuses);
 
     this.updateComfort();
-    this.tutorialSystem.update(
-      this.resourceSystem.resources.food,
-      this.seasonSystem.season,
-      this.seasonSystem.year,
-      this.getWinterFoodTarget(),
-    );
-    if (this.stayInShelterMode) this.tutorialSystem.onShelterCalled();
 
   }
 
   private render(): void {
     this.renderer.renderWorld(this.tileMap, this.seasonSystem.season, this.buildingSystem.buildings,
       this.buildingSystem.getAllBuildingConfigs(), this.villagerSystem.villagers, this.hordeSystem.enemies,
-      this.selectedVillagerId, this.input.state, this.weatherSystem.currentEvent, this.gameLoop.gameSpeed === 0,this.resourceSystem.resources.herbs,this.towerCombatSystem.shots);
+      this.selectedVillagerId, this.input.state, this.weatherSystem.currentEvent, this.gameLoop.gameSpeed === 0 || this.tutorialSystem.isAwaitingAcknowledgement(),this.resourceSystem.resources.herbs,this.towerCombatSystem.shots);
 
     if (this.mode === 'build' && this.selectedBuildingId) {
       const state = this.input.state;
@@ -401,6 +404,7 @@ export class Game {
   }
 
   private handleInput(): void {
+    if(this.tutorialSystem.isAwaitingAcknowledgement()){this.input.consumeClick();this.input.consumeRightClick();return;}
     if (this.selectedVillagerId) {
       const v = this.villagerSystem.getVillagerById(this.selectedVillagerId);
       if (!v || v.health === HealthState.Dead) {
@@ -709,7 +713,6 @@ export class Game {
       const cfg = this.buildingSystem.getBuildingConfig(
         this.buildingSystem.buildings.find(b => b.id === buildingId)!.configId
       );
-      if (cfg?.id === 'garden') this.tutorialSystem.onGardenWorkerAssigned();
       this.ui.notify(`Assigned to ${cfg?.name ?? buildingId}`);
       return true;
     } else {
@@ -788,7 +791,6 @@ export class Game {
         if(Object.values(v.cargo??{}).some(n=>n>0))continue;
         if(this.dispatchBuilder(v.id,b.id))break;
       }
-      this.tutorialSystem.onBuildingPlaced(b.id, b.configId);
       this.ui.notify(`Placed ${cfg.name}`);
       if(b.configId!=='moat')this.cancelBuild();
     }
@@ -849,7 +851,6 @@ export class Game {
     const tile = this.tileMap.getTile(tx, ty);
     if (tile && tile.type === TileType.Forest && !tile.markedForClearing) {
       tile.markedForClearing = true;
-      this.tutorialSystem.onForestMarked();
       this.ui.notify('Marked tile for clearing');
     }
   }
@@ -1155,7 +1156,6 @@ export class Game {
             v.currentTask = b.configId === 'garden' ? 'farming' : 'working';
             v.annualJob={task:v.currentTask,buildingId:b.id};
             v.taskProgress = 0;
-            if (b.configId === 'garden') this.tutorialSystem.onGardenWorkerAssigned();
             continue;
           }
           v.state = VillagerState.Idle;
@@ -1370,7 +1370,7 @@ export class Game {
 
   private toggleClearMode(): void {
     this.mode='normal';this.pendingOrder=null;
-    if(this.dispatchOrder('chop')) {this.tutorialSystem.onClearStarted();this.ui.notify('A resident is chopping the nearest trees.');}
+    if(this.dispatchOrder('chop')) {this.ui.notify('A resident is chopping the nearest trees.');}
   }
 
   private goHunting(): void {this.dispatchOrder('hunt');}
@@ -1450,7 +1450,6 @@ export class Game {
     }
 
     const n = this.villagerSystem.assignAllReturnHome(housingTiles,this.buildingSystem.buildings);
-    this.tutorialSystem.onShelterCalled();
     this.ui.notify(n===this.villagerSystem.getAliveCount()?`Everyone going to shelter (${n}). Towers first; a group stays at home.`:`Only ${n} residents have a reachable shelter. Build more housing or clear a route.`);
   }
 
@@ -1665,10 +1664,12 @@ export class Game {
     this.foodLowSoundPlayed = false;
     this.clearModeHintCount = 0;
     this.tutorialSystem.reset();
+    this.tutorialSystem.enterSeason(Season.Spring,1);
 
     this.initWorld();
 
     this.gameLoop.gameSpeed = 1;
+    this.heatingSystem.update(0,this.buildingSystem.buildings,this.resourceSystem,this.seasonSystem.season);
     this.protectionSystem.update(this.buildingSystem.buildings);
     this.ui.hideGameOver();
     this.ui.hideInfo(); this.ui.hideActionMenu(); this.ui.closePanels();
@@ -1715,7 +1716,6 @@ export class Game {
 
     this.resourceSystem.resources.techPoints -= tech.cost;
     const newBuildings = this.techSystem.unlockTech(techId);
-    this.tutorialSystem.onTechnologyUnlocked(techId);
     this.ui.notify(`Unlocked: ${tech.name}`);
     if (newBuildings.length > 0) {
       this.ui.notify(`New buildings: ${newBuildings.join(', ')}`);
@@ -1762,14 +1762,14 @@ export class Game {
     const plan=makeForecast(this.seasonSystem,this.resourceSystem,this.buildingSystem,this.villagerSystem);
     this.ui.updateForecast(plan);
     this.ui.updateWarnings(settlementWarnings(plan,this.villagerSystem.getAliveVillagers(),this.seasonSystem.season,
-      id=>this.isVillagerInShelter(id),this.weatherSystem.currentEvent?.type==='snowstorm'));
-    this.ui.updateTutorial(this.tutorialSystem.getObjective(this.resourceSystem.resources.food, this.getWinterFoodTarget()));
+      id=>this.isVillagerInShelter(id),this.weatherSystem.currentEvent?.type==='snowstorm',id=>{const v=this.villagerSystem.getVillagerById(id);return v?this.heatingSystem.at(v.x,v.y):1;}));
+    this.ui.updateTutorial(this.tutorialSystem.getBriefing());
 
     this.ui.updateStatus({ mode: this.mode, shelter: this.stayInShelterMode,
       season: this.seasonSystem.season, secondsLeft: Math.ceil(this.seasonSystem.getCurrentDuration() - this.seasonSystem.seasonTimer),
       foodSeconds: foodConsumptionPerSecond > 0 ? Math.floor(this.resourceSystem.resources.food / foodConsumptionPerSecond) : 0,
       idle: this.villagerSystem.getAliveVillagers().filter(v => !v.currentTask && !v.assignedBuildingId).length,
-      enemies: this.hordeSystem.getActiveEnemies().length, paused: this.gameLoop.gameSpeed === 0 });
+      enemies: this.hordeSystem.getActiveEnemies().length, paused: this.gameLoop.gameSpeed === 0 || this.tutorialSystem.isAwaitingAcknowledgement() });
     if (this.selectedVillagerId) {
       const v = this.villagerSystem.getVillagerById(this.selectedVillagerId);
       if (v && v.health !== HealthState.Dead) {
@@ -1938,6 +1938,8 @@ export class Game {
       // Older saves may already be far beyond the onboarding sequence.
       this.tutorialSystem.skip();
     }
+    this.tutorialSystem.enterSeason(this.seasonSystem.season,this.seasonSystem.year);
+    this.heatingSystem.update(0,this.buildingSystem.buildings,this.resourceSystem,this.seasonSystem.season);
     this.villagerSystem.setShelters(this.buildingSystem.getHousingTiles());
     for (const v of this.villagerSystem.getAliveVillagers()) {
       if (v.currentTask === 'hunting') {

@@ -54,3 +54,9 @@ location, retain their health fraction and gain winter shelter and shooting.
 Settlement recall fills towers before other shelters while reserving a home
 group: 25% of residents rounded up, at least one. Tower places are reserved only
 after pathfinding succeeds, and remaining residents go to ordinary homes.
+
+Each completed hut, house, large house, guard tower and forest camp fire now
+requires four wood per full winter for heating, consumed continuously. Empty
+shelters also use fuel; unfinished shelters do not. Without wood residents remain
+hidden from monsters indoors but accumulate cold at 35% of the outdoor rate.
+Winter plan displays the remaining wood requirement and warns of shortages.

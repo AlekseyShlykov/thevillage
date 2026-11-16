@@ -131,3 +131,15 @@ the village's painted ochre timber and sage palette. Original alpha is retained;
 assets load locally and have Canvas shape fallbacks. Cargo moves with the
 resident's smooth walking pose. The tower replaces the generic cottage prop.
 Exact generation prompts are in [PROP_ART_PROMPTS.md](PROP_ART_PROMPTS.md).
+
+## Modular moat atlas
+
+`public/assets/isometric/moat-tiles-atlas.png` is a generated 1536 × 1024 RGBA
+atlas with six 512-pixel square cells: isolated pit, north-facing end, north–south
+straight, north–east elbow, north–east–west T, and cross. Painted earth, roots,
+mossy stone and dark teal water match the village palette. The original is
+unmodified; Canvas rotates and projects the cells, normalizes connection mouths,
+and caches padded tiles for smooth joins. All sixteen orthogonal neighbour
+patterns are supported, with winter/construction tints and shape fallbacks.
+Generation used the built-in `image_gen` tool with transparency, without CLI or
+offline image editing. See [the exact prompt](MOAT_ART_PROMPT.md).
