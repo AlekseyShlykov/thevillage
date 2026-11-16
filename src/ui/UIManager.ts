@@ -142,6 +142,7 @@ export class UIManager {
     }
 
     const clearBtn = this.btn('Clear', () => this.callbacks.onToggleClearMode(), 'axe');
+    clearBtn.title='Start chopping now, then click trees to add them to a queue. Click Clear again to finish selecting.';
     clearBtn.dataset.globalClear='true';bottomBar.appendChild(clearBtn);
 
     const huntBtn = this.btn('Hunt', () => this.callbacks.onGoHunting(), 'bow');
@@ -629,9 +630,9 @@ export class UIManager {
 
   updateWarnings(warnings: SettlementWarning[]): void { this.notifications.updateWarnings(warnings); }
 
-  updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean }): void {
+  updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean; clearingQueued:number }): void {
     const title = data.paused ? 'Time to make a plan' : data.shelter ? 'Safe by the hearth' : data.mode === 'clear' ? 'Make room for your village' : data.mode === 'build' ? 'Find a place to call home' : 'A little care goes a long way';
-    const detail = data.mode === 'clear' ? 'Tap trees to mark them · Free villagers will do the rest' : data.mode === 'build' ? 'Tap a green footprint to place · Esc or right-click to cancel' :
+    const detail = data.mode === 'clear' ? `${data.clearingQueued} trees queued · Tap trees to add · Clear / Esc / right-click to finish` : data.mode === 'build' ? 'Tap a green footprint to place · Esc or right-click to cancel' :
       `${data.secondsLeft}s of ${data.season} left · ${data.idle} free villagers · Food for ${data.foodSeconds}s${data.enemies ? ` · ${data.enemies} in the woods` : ''} · Tap a villager to give orders`;
     this.statusEl.innerHTML = `<span class="status-dot ${data.shelter ? 'sheltered' : ''}"></span><div><strong>${title}</strong><small>${detail}</small></div>`;
     this.overlay.dataset.mode = data.mode;
@@ -646,7 +647,7 @@ export class UIManager {
     this.layoutBottomBar();
     this.shelterBtn.title = data.shelter ? 'Release everyone and resume their jobs' : 'Call everyone to shelter';
     for (const button of this.overlay.querySelectorAll<HTMLElement>('#game-bottom-bar button')) {
-      if (button.textContent?.includes('Clear')) button.classList.toggle('active-action', data.mode === 'clear');
+      if (button.hasAttribute('data-global-clear')) {button.classList.toggle('active-action', data.mode === 'clear');button.setAttribute('aria-pressed',String(data.mode==='clear'));}
       if (button.textContent?.includes('Build')) button.classList.toggle('active-action', data.mode === 'build' || this.buildPanelOpen);
     }
   }

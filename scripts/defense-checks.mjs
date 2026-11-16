@@ -10,7 +10,7 @@ export async function runDefenseChecks({check,ev,shot,button,until,call}) {
   });
   await check('Clear immediately finds the nearest tree and continues with the next one',async()=>{
     const r=await ev(`(()=>{econReset();g.toggleClearMode();const v=g.villagerSystem.getAliveVillagers().find(v=>v.currentTask==='clearing');const first={x:v.targetX,y:v.targetY};const d=Math.hypot(v.x-first.x,v.y-first.y);const minimum=Math.min(...g.tileMap.tiles.flatMap((row,y)=>row.flatMap((t,x)=>t.type==='forest'?[Math.hypot(v.x-x,v.y-y)]:[])));Object.assign(v,{x:first.x,y:first.y,path:[],state:'working'});g.updateForestClearing(balance.villagers.clearForestTime+.1);g.updateForestClearing(balance.villagers.clearingDispatchInterval+.1);return{d,minimum,mode:g.mode,next:v.currentTask,firstCleared:g.tileMap.getTile(first.x,first.y).type==='clear',repeat:v.repeatClearing};})()`);
-    assert.equal(r.d,r.minimum);assert.equal(r.mode,'normal');assert(r.firstCleared&&r.repeat);assert.equal(r.next,'clearing');return r;
+    assert.equal(r.d,r.minimum);assert.equal(r.mode,'clear');assert(r.firstCleared&&r.repeat);assert.equal(r.next,'clearing');return r;
   });
   await check('one resident leaves shelter and receives a job while everyone else stays inside',async()=>{
     await ev('econReset();g.resourceSystem.resources.food=50;g.returnHome()');

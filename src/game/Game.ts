@@ -2,6 +2,7 @@ import { GameLoop } from '../core/GameLoop';
 import { Camera } from '../core/Camera';
 import { InputManager } from '../input/InputManager';
 import { TileMap } from '../world/TileMap';
+import { clearingTargets, queueForestTile, queuedForestTiles } from '../world/ForestClearingQueue';
 import { Renderer } from '../render/Renderer';
 import { AssetLoader } from '../render/AssetLoader';
 import { SeasonSystem } from '../systems/SeasonSystem';
@@ -848,11 +849,14 @@ export class Game {
   }
 
   private handleClearClick(tx: number, ty: number): void {
-    const tile = this.tileMap.getTile(tx, ty);
-    if (tile && tile.type === TileType.Forest && !tile.markedForClearing) {
-      tile.markedForClearing = true;
-      this.ui.notify('Marked tile for clearing');
+    if(this.renderer.pickVillager(this.input.state.mouseX,this.input.state.mouseY,this.villagerSystem.villagers,this.tileMap)) {
+      this.mode='normal';this.handleNormalClick(tx,ty);return;
     }
+    const tile=this.tileMap.getTile(tx,ty);
+    if(tile?.type===TileType.Forest && !tile.buildingId) {
+      if(queueForestTile(this.tileMap,tx,ty))this.ui.notify(`Tree added to the clearing queue (${queuedForestTiles(this.tileMap).length}).`);
+    } else {this.cancelBuild();this.deselectVillager();this.ui.closeForecast();}
+    this.updateUI();this.render();
   }
 
   private handleDemolishClick(tx: number, ty: number): void {
@@ -887,13 +891,9 @@ export class Game {
     this.clearingAssignTimer += dt;
     if (this.clearingAssignTimer >= cfg.villagers.clearingDispatchInterval) {
       this.clearingAssignTimer = 0;
-      const marked = this.tileMap.getMarkedClearingTiles();
       for (const v of villagers.getAliveVillagers()) {
         if (this.isHeldInShelter(v.id) || v.state !== VillagerState.Idle || v.currentTask || v.assignedBuildingId || v.holdPosition) continue;
-        if(v.repeatClearing) { this.startNearestClearing(v.id);continue; }
-        const targets = marked.filter(t => !villagers.isTileAlreadyBeingClearedByOther(v.id, t.x, t.y))
-          .sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
-        for (const t of targets) if (villagers.sendVillagerToChop(v.id, t.x, t.y)) break;
+        this.startNearestClearing(v.id,!v.repeatClearing);
       }
     }
     let chopping = false;
@@ -906,6 +906,7 @@ export class Game {
       tile.clearingProgress += dt * health / cfg.villagers.clearForestTime; chopping = true;
       if (tile.clearingProgress >= 1) {
         this.tileMap.setTileType(x, y, TileType.Clear); tile.markedForClearing = false; tile.clearingProgress = 0;
+        delete tile.clearingQueueOrder;
         this.resourceSystem.addWood(cfg.resources.woodPerForestTile *
           (this.buildingSystem.isTileInLumberCampRadius(x, y) ? cfg.resources.lumberCampWoodBonus : 1));
         v.currentTask = null; v.state = VillagerState.Idle;
@@ -1320,12 +1321,10 @@ export class Game {
         Number(['hunting','gatheringHerbs'].includes(a.currentTask??''))-Number(['hunting','gatheringHerbs'].includes(b.currentTask??'')));
   }
 
-  private startNearestClearing(id: string): boolean {
+  private startNearestClearing(id: string,onlyMarked=false): boolean {
     const v=this.villagerSystem.getVillagerById(id);if(!v)return false;
-    const trees:Position[]=[];
-    for(let y=0;y<this.tileMap.height;y++)for(let x=0;x<this.tileMap.width;x++)
-      if(this.tileMap.getTile(x,y)?.type===TileType.Forest && !this.villagerSystem.isTileAlreadyBeingClearedByOther(id,x,y))trees.push({x,y});
-    trees.sort((a,b)=>Math.hypot(a.x-v.x,a.y-v.y)-Math.hypot(b.x-v.x,b.y-v.y));
+    const trees=clearingTargets(this.tileMap,v,!onlyMarked)
+      .filter(t=>!this.villagerSystem.isTileAlreadyBeingClearedByOther(id,t.x,t.y));
     for(const t of trees)if(this.villagerSystem.sendVillagerToChop(id,t.x,t.y)) {
       this.detachVillagerFromPreviousWork(id);return true;
     }
@@ -1369,8 +1368,12 @@ export class Game {
   }
 
   private toggleClearMode(): void {
-    this.mode='normal';this.pendingOrder=null;
-    if(this.dispatchOrder('chop')) {this.ui.notify('A resident is chopping the nearest trees.');}
+    if(this.mode==='clear') {this.cancelBuild();this.updateUI();return;}
+    this.cancelBuild();
+    const started=this.dispatchOrder('chop');
+    this.deselectVillager();this.ui.closeForecast();this.mode='clear';
+    if(started)this.ui.notify('Chopping started. Click trees to queue them; Clear or Esc finishes selection.');
+    this.updateUI();this.render();
   }
 
   private goHunting(): void {this.dispatchOrder('hunt');}
@@ -1766,6 +1769,7 @@ export class Game {
     this.ui.updateTutorial(this.tutorialSystem.getBriefing());
 
     this.ui.updateStatus({ mode: this.mode, shelter: this.stayInShelterMode,
+      clearingQueued:queuedForestTiles(this.tileMap).length,
       season: this.seasonSystem.season, secondsLeft: Math.ceil(this.seasonSystem.getCurrentDuration() - this.seasonSystem.seasonTimer),
       foodSeconds: foodConsumptionPerSecond > 0 ? Math.floor(this.resourceSystem.resources.food / foodConsumptionPerSecond) : 0,
       idle: this.villagerSystem.getAliveVillagers().filter(v => !v.currentTask && !v.assignedBuildingId).length,

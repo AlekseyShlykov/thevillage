@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 90 browser checks passed, without sound.
+Recorded 2026-11-16. All 96 browser checks passed, without sound.
 
 ## Browser coverage
 
@@ -101,6 +101,12 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | unheated shelters slow hypothermia while fuel restores warming | PASS |
 | winter forecast and warnings include remaining firewood and indoor hypothermia | PASS |
 | midwinter save loading charges only the remaining winter fuel | PASS |
+| Clear starts busy residents immediately and accepts many tree clicks without duplicates | PASS |
+| queued trees are chopped in click order before automatic nearby trees | PASS |
+| clearing queue survives loading and spring recall; workers reserve distinct targets | PASS |
+| unreachable queued trees do not block reachable work and older marks still work | PASS |
+| Clear, Escape, right-click and background exit selection without deleting queued work | PASS |
+| mobile Clear starts chopping, taps queue trees and camera drags do not add work | PASS |
 | no unhandled browser exceptions | PASS |
 
 ## Gameplay and UX observations
@@ -180,7 +186,8 @@ sound, omit the Chrome mute flag and use `CHECK_AUDIO=1`.
 The runner modifies only its dedicated profile and writes ignored `.qa/results.json`
 and screenshots. Economy and UX scenarios live in `scripts/economy-checks.mjs` and
 `scripts/ux-checks.mjs`; direct orders, annual work and defenses are checked in
-`scripts/defense-checks.mjs`. Close test Chrome and temporary servers after checking;
+`scripts/defense-checks.mjs`; immediate clearing, ordered tree selection, saved queues
+and touch input are covered by `scripts/forest-clearing-checks.mjs`. Close test Chrome and temporary servers after checking;
 leave the user's localhost preview running.
 
 ## Release builds
@@ -223,7 +230,7 @@ label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
 its previous time and biological crop growth is another 25% shorter. Workshop
 removal refunded wood and obsolete research exactly once on repeated loading.
 
-The final compiled build `index-CEUSgf02.js` passed silent checks on
+The final compiled build `index-B-5_UBht.js` passed silent checks on
 `http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
 removed tool counter, background dismissal, shelter toggle, square controls,
 tooltips and loaded interface art. All four local PT Sans faces loaded, and
@@ -287,5 +294,31 @@ A midwinter save charged only the remaining fuel after loading.
 
 The compiled localhost build passed startup acknowledgement plus the existing
 jobs, mobile dismissal, toolbar alignment, typography and layout checks with no
-browser exceptions. The local preview uses `index-CEUSgf02.js`; both distribution
+browser exceptions. The local preview uses `index-B-5_UBht.js`; both distribution
 folders contain the moat atlas and heating configuration. Tests remained muted.
+
+
+## Immediate clearing and selectable tree queue
+
+All 96 scenarios passed without sound. Clicking Clear immediately interrupted a
+busy farmer, started a valid chopping path and enabled persistent selection. Six
+canvas tree clicks queued six tiles in click order; clicking one again added no
+duplicate. The current automatic tree finished first, then all six explicit trees
+were cut in the selected order before automatic nearest-tree work resumed. Each
+tree awarded wood once and removed its queue metadata.
+
+A 25-tree queue retained order after saving/loading and spring recall. Two workers
+reserved separate trees. An unreachable first request stayed queued while reachable
+work proceeded, and older saved tiles with only a marked flag remained usable.
+Clear, Escape, right-click and clicking empty ground exited selection without
+cancelling current work or deleting the queue. The first-year playthrough also
+verified that a resident could still be selected after pressing Clear.
+
+On a 390 × 844 touch viewport, Clear started chopping, three taps added three
+trees, and dragging the camera added none. A queued tree was then reached and
+cut in the actual simulation. Desktop/mobile numbered markers were reviewed in
+`forest-clearing-queue.png` and `forest-clearing-queue-mobile.png`.
+The production build on localhost:4173 also accepted three actual canvas tree
+clicks and toggled selection off while keeping its queue. It passed the existing
+font, menu, touch-dismissal and layout checks without browser exceptions.
+`npm run build:itch` passed and the local itch archive was refreshed.

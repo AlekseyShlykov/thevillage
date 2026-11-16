@@ -43,6 +43,8 @@ export interface TileData {
   buildingId: string | null;
   markedForClearing: boolean;
   clearingProgress: number;
+  /** Explicit tree selection order; absent for automatic nearest-tree work. */
+  clearingQueueOrder?: number;
   moatDug?: boolean;
 }
 

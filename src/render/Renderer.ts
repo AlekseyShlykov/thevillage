@@ -1,5 +1,6 @@
 import { Camera } from '../core/Camera';
 import { TileMap } from '../world/TileMap';
+import { queuedForestTiles } from '../world/ForestClearingQueue';
 import { BuildingConfig, BuildingInstance, VillagerData, EnemyData, Season, WeatherEvent, Position, HealthState } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 import { AssetLoader } from './AssetLoader';
@@ -69,6 +70,7 @@ export class Renderer {
       ctx.beginPath(); ctx.ellipse(destination.x, destination.y, 12 * this.camera.zoom, 6 * this.camera.zoom, 0, 0, Math.PI * 2); ctx.stroke();
     }
     const scene: SceneItem[] = [];
+    const clearingQueue=new Map(queuedForestTiles(map).map((p,i)=>[`${p.x},${p.y}`,i+1]));
     const active = villagers.filter(v => v.health !== HealthState.Dead);
     const choppers = new Map(active.filter(v => v.currentTask === 'clearing' && isWorking(v)).map(v => [`${v.targetX},${v.targetY}`, v]));
     const shelterIds = new Set(buildings.filter(b => b.built && ['hut', 'house', 'largeHouse', 'campFire', 'watchtower'].includes(b.configId)).map(b => b.id));
@@ -83,6 +85,8 @@ export class Renderer {
       scene.push({ depth: p.y, draw: () => this.art.tree(ctx, x, y, season, nearWorker || nearCursor || tile.markedForClearing ? .4 : 1, shake) });
       if (tile.markedForClearing) {
         polygon(ctx, footprint(this.camera, x, y), 'rgba(231,187,100,.16)', '#e7bb64');
+        const order=clearingQueue.get(`${x},${y}`);
+        if(order)scene.push({depth:p.y+.1,draw:()=>this.label(p.x,p.y-8,`#${order}`)});
         if (tile.clearingProgress > 0) this.bar(p.x, p.y + 7, 34, tile.clearingProgress, '#ebcc83');
       }
     }

@@ -171,8 +171,20 @@ expeditions are interrupted only when no other worker is available; a selected
 resident has priority. Former work rosters are released immediately. Carried
 supplies are delivered first, then the accepted order starts without another click.
 
-Clear needs no marked target: the worker finds the nearest reachable unreserved
-tree, marks it and continues to the next nearest tree after chopping. Farming,
+Clear immediately dispatches a worker to a reachable unreserved tree, interrupting
+another job if necessary, and enters tree-selection mode. Click forest tiles to
+queue any number of specific trees in click order; duplicates are ignored. Queued
+tiles show numbered markers and the status ribbon shows the queue size. A worker
+finishes its current tree, then chooses queued trees before automatic nearby work.
+Workers reserve distinct targets, skip unreachable requests without deleting them,
+and fall back to nearby trees when no selected target is available. Idle residents
+may help with marked work, while Stop and settlement shelter still prevent automatic
+dispatch. Click Clear again, press Escape, right-click or click empty ground to
+leave selection; current work and queued trees remain. Clicking a resident exits
+selection and opens their usual orders. Mobile taps select trees and camera drags
+never enqueue them. Tile metadata saves explicit ordering across reloads and
+spring recall; old unordered marked tiles remain usable. Completed trees leave
+the queue and yield wood once. Farming,
 construction, ordinary production and clearing are remembered as annual jobs.
 Shelter cancels outdoor orders; Resume and spring restore these jobs before
 spring autosave. If a carrier is still returning at spring, their annual job
@@ -450,7 +462,9 @@ selection and open menus. Click/tap buildings without a resident selected for ge
 actions. Drag to pan, scroll/pinch or use +/−
 to zoom, and use the home button to center the village. Space pauses; Escape or
 right-click cancels placement. Orders remain available while paused.
-Clear sends a resident to the nearest trees immediately. Shelter calls everybody
+Clear starts chopping immediately and enables repeated tree clicks to form an
+ordered queue. Click Clear again, use Escape/right-click, or click empty ground
+to finish selecting; queued work continues. Shelter calls everybody
 home; the same button becomes Resume and releases them. Release one keeps
 everyone else sheltered. Click a completed tower and choose Garrison tower to
 send a resident into it. Moat allows repeated single-cell placement.
