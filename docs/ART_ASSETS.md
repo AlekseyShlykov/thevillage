@@ -121,3 +121,13 @@ are under `public/assets/fonts/`; the embedded SIL Open Font License and
 ParaType copyright notice are preserved in `OFL.txt`. No external font service
 is required. Regular and Bold load with game assets before Canvas text is drawn;
 missing fonts fall back to the browser sans-serif.
+
+## Carried supplies and timber tower · 2026-11-16
+
+Generated transparent sprites: `public/assets/cargo/herbs.png` (sage basket),
+`public/assets/cargo/hunt.png` (hunter's basket with pelt and wrapped venison), and
+`public/assets/isometric/guard-tower.png` (timber archery shelter). All three use
+the village's painted ochre timber and sage palette. Original alpha is retained;
+assets load locally and have Canvas shape fallbacks. Cargo moves with the
+resident's smooth walking pose. The tower replaces the generic cottage prop.
+Exact generation prompts are in [PROP_ART_PROMPTS.md](PROP_ART_PROMPTS.md).

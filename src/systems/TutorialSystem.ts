@@ -58,6 +58,8 @@ export class TutorialSystem {
     this.enabled = false;
   }
 
+  onClearStarted(): void {if(this.stage==='markForest')this.advance('hunt');}
+
   onForestMarked(): void {
     if (this.stage !== 'markForest') return;
     this.clearingMarks++;
@@ -132,9 +134,9 @@ export class TutorialSystem {
 
     switch (this.stage) {
       case 'markForest':
-        return this.objective(1, 'Make room', `Press “Clear” and mark a 2×2 area beside the clearing (${this.clearingMarks}/4 tiles).`);
+        return this.objective(1, 'Make room', 'Press “Clear” to send a resident to chop the nearest trees.');
       case 'hunt':
-        return this.objective(2, 'Find food', 'Press “Hunt” to send one free villager into the forest.');
+        return this.objective(2, 'Find food', 'Press “Hunt” to send one villager into the forest.');
       case 'placeHut':
         return this.objective(3, 'Plan a new hut', 'Open “Build”, choose Hut, and place it on cleared ground.');
       case 'buildHut':

@@ -27,11 +27,8 @@
     "startingTechPoints": 0,
     "woodPerForestTile": 2,
     "lumberCampWoodBonus": 1.5,
-    "workshopToolCostWood": 10,
-    "workshopToolProductionTime": 15,
     "furWorkshopProcessTime": 20,
     "smokehouseFoodEfficiencyBonus": 1.3,
-    "toolProductivityBonus": 1.5,
     "toolDefenseBonus": 1.2,
     "lumberCampWoodPerSecond": 0.35,
     "furPerClothing": 1,
@@ -86,28 +83,13 @@
       "height": 2,
       "costWood": 10,
       "costTools": 0,
-      "buildTime": 22,
+      "buildTime": 5.5,
       "capacity": 0,
       "category": "food",
       "tier": 1,
       "maxWorkers": 2,
       "hp": 60,
-      "description": "Sow outside winter. Crops mature in 1.5 seasons, then a farmer harvests food. Winter kills unharvested crops."
-    },
-    "workshop": {
-      "id": "workshop",
-      "name": "Workshop",
-      "width": 2,
-      "height": 2,
-      "costWood": 30,
-      "costTools": 0,
-      "buildTime": 28,
-      "capacity": 0,
-      "category": "production",
-      "tier": 2,
-      "maxWorkers": 2,
-      "hp": 100,
-      "description": "Produces tools from wood"
+      "description": "Quick to build. Crops mature in 1.125 seasons, then a farmer harvests food. Winter kills unharvested crops."
     },
     "lumberCamp": {
       "id": "lumberCamp",
@@ -216,7 +198,7 @@
       "width": 2,
       "height": 2,
       "costWood": 20,
-      "costTools": 1,
+      "costTools": 0,
       "buildTime": 26,
       "capacity": 0,
       "category": "food",
@@ -227,20 +209,23 @@
     },
     "watchtower": {
       "id": "watchtower",
-      "name": "Watchtower",
+      "name": "Timber Guard Tower",
       "width": 1,
       "height": 1,
       "costWood": 30,
-      "costTools": 2,
-      "buildTime": 30,
-      "capacity": 0,
-      "category": "detection",
-      "tier": 4,
+      "costTools": 0,
+      "buildTime": 35,
+      "capacity": 3,
+      "category": "housing",
+      "tier": 2,
       "maxWorkers": 0,
-      "hp": 120,
+      "hp": 360,
       "detectionRadius": 8,
       "lightRadius": 4,
-      "description": "Reveals monsters within 8 tiles and lights the perimeter. No worker needed."
+      "description": "Strong winter shelter for 3 archers. Occupants shoot approaching monsters from safety.",
+      "towerRange": 7,
+      "towerDamage": 18,
+      "towerAttackInterval": 1.25
     },
     "house": {
       "id": "house",
@@ -248,7 +233,7 @@
       "width": 3,
       "height": 2,
       "costWood": 40,
-      "costTools": 2,
+      "costTools": 0,
       "buildTime": 28,
       "capacity": 6,
       "category": "housing",
@@ -264,7 +249,7 @@
       "width": 3,
       "height": 3,
       "costWood": 60,
-      "costTools": 3,
+      "costTools": 0,
       "buildTime": 30,
       "capacity": 8,
       "category": "housing",
@@ -291,6 +276,23 @@
       "lightRadius": 3,
       "description": "One per settlement. Burns 4 protective herbs per winter; protects 5 tiles in every direction while fueled.",
       "maxCount": 1
+    },
+    "moat": {
+      "id": "moat",
+      "name": "Moat",
+      "width": 1,
+      "height": 1,
+      "costWood": 0,
+      "costTools": 0,
+      "buildTime": 6,
+      "capacity": 0,
+      "category": "terrain",
+      "tier": 1,
+      "maxWorkers": 0,
+      "hp": 1,
+      "description": "Dig an indestructible ditch. Monsters cannot destroy it and cross completed moat tiles six times more slowly. Joins adjacent sections.",
+      "enemySpeedMultiplier": 0.16666666666666666,
+      "indestructible": true
     }
   },
   "storage": {
@@ -408,16 +410,6 @@
         ],
         "description": "Store up to 50 more of each resource"
       },
-      "workshop": {
-        "id": "workshop",
-        "name": "Workshop",
-        "tier": 2,
-        "cost": 1,
-        "unlocks": [
-          "workshop"
-        ],
-        "description": "Enables tool production"
-      },
       "lumberCamp": {
         "id": "lumberCamp",
         "name": "Lumber Camp",
@@ -471,25 +463,13 @@
       },
       "watchtower": {
         "id": "watchtower",
-        "name": "Watchtower",
-        "tier": 4,
+        "name": "Timber Guard Tower",
+        "tier": 2,
         "cost": 2,
         "unlocks": [
           "watchtower"
         ],
-        "description": "Long range detection and light"
-      },
-      "betterTools": {
-        "id": "betterTools",
-        "name": "Better Tools",
-        "tier": 4,
-        "cost": 2,
-        "unlocks": [],
-        "description": "Improved tool effectiveness",
-        "effect": {
-          "toolProductivityBonus": 1.8,
-          "toolDefenseBonus": 1.4
-        }
+        "description": "Build a strong timber shelter whose occupants shoot monsters from range."
       },
       "house": {
         "id": "house",
@@ -552,7 +532,8 @@
     ],
     "initialBuildings": [
       "hut",
-      "garden"
+      "garden",
+      "moat"
     ]
   },
   "levels": {
@@ -640,7 +621,8 @@
       0.52,
       0.72,
       0.9
-    ]
+    ],
+    "towerShotSeconds": 0.35
   },
   "tutorial": {
     "minimumFoodReserve": 20,
@@ -651,7 +633,9 @@
     "foodWarningSeconds": 40,
     "foodComfortPerVillager": 10,
     "defenseComfortHP": 200,
-    "refundFraction": 0.5
+    "refundFraction": 0.5,
+    "shelterMinimumHomeResidents": 1,
+    "shelterHomeReserveFraction": 0.25
   },
   "retiredBuildings": {
     "hunterHut": {
@@ -670,6 +654,16 @@
       "refundTools": 0,
       "refundResearch": 5,
       "replacement": "campFire"
+    },
+    "workshop": {
+      "refundWood": 30,
+      "refundTools": 0,
+      "refundResearch": 1
+    },
+    "betterTools": {
+      "refundWood": 0,
+      "refundTools": 0,
+      "refundResearch": 2
     }
   },
   "herbs": {
@@ -682,7 +676,6 @@
     "deathChance": 0.08
   },
   "equipment": {
-    "toolWorkSeconds": 240,
     "clothingLifetimeWinters": 3
   },
   "cold": {
@@ -693,7 +686,7 @@
     "warningFraction": 0.5
   },
   "farming": {
-    "growthSeasons": 1.5,
+    "growthSeasons": 1.125,
     "sowingWorkSeconds": 4,
     "harvestWorkSeconds": 3,
     "harvestFood": 45

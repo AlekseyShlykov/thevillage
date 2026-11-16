@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 59 browser checks passed, without sound.
+Recorded 2026-11-16. All 79 browser checks passed, without sound.
 
 ## Browser coverage
 
@@ -23,7 +23,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | walking uses continuous steps with eased starts and stops | PASS |
 | retired buildings migrate without ghost tiles or lost research | PASS |
 | hunters reach ten to twenty tiles inside forest and bring back fur | PASS |
-| production persists and workshop respects its recipe timer | PASS |
+| retired workshop refunds once and releases its workers on load | PASS |
 | remaining production and passive buildings provide useful effects | PASS |
 | winter totals grow gradually from one to twenty-five independently of village level and reloads | PASS |
 | all scheduled winter enemies arrive while earlier waves survive | PASS |
@@ -48,11 +48,11 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | gathered herbs arrive only when a living gatherer reaches home | PASS |
 | one ward per village includes unfinished construction and survives saving | PASS |
 | four herbs fuel exactly a winter and an empty fire provides no field | PASS |
-| tools are issued individually and wear only during work | PASS |
-| one resident gets the tool bonus while their neighbour works at base speed | PASS |
+| permanent personal tools require no workshop, stock or replacement | PASS |
+| all healthy farmers work at full speed without spare tools | PASS |
 | raw pelts must be crafted and clothing wears by winters per person | PASS |
 | cold kills unclothed residents, shelter warms them and worn coats protect | PASS |
-| crops grow for 1.5 calendar seasons regardless of farmers and tools | PASS |
+| crops ripen after 1.125 calendar seasons, 25% faster | PASS |
 | winter destroys every unharvested crop and sowing resumes only in spring | PASS |
 | ripe crops wait for storage and partial harvests cannot duplicate food | PASS |
 | science comes only from survived winters: five single stars then doubles | PASS |
@@ -60,7 +60,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | a stranded carrier retries delivery after a house is rebuilt | PASS |
 | winter forecasts distinguish clothes, cargo and crops that cannot mature | PASS |
 | background clicks dismiss selection and every auxiliary menu | PASS |
-| herbs and worn coats are resources while tools wait for their unlock | PASS |
+| herbs unlock only after a completed ward; tools never clutter resources | PASS |
 | construction offers one cancel action and a distinct close control | PASS |
 | a garden builder becomes its farmer and harvested food enters storage | PASS |
 | a fur workshop builder sews wearable coats and the resource survives loading | PASS |
@@ -70,12 +70,32 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | a monster takes much longer to destroy a building | PASS |
 | generated rake, axe and hammer load with distinct animated work poses | PASS |
 | expanded resources and job cards fit phone, tablet and desktop screens | PASS |
+| global Hunt and Herbs interrupt employed workers immediately | PASS |
+| Clear immediately finds the nearest tree and continues with the next one | PASS |
+| one resident leaves shelter and receives a job while everyone else stays inside | PASS |
+| a carrier completes delivery before a queued manual hunting order | PASS |
+| annual farming, clearing and unfinished construction resume but expeditions do not | PASS |
+| injured residents regenerate past the healthy threshold up to full HP | PASS |
+| finished moat is walkable and slows monsters exactly sixfold; unfinished ditch does not | PASS |
+| only an occupied tower fires; its occupants shelter from cold and retain upgraded durability | PASS |
+| garrison commands send different residents into a tower while the settlement shelters | PASS |
+| moats can surround every side of a house without blocking residents | PASS |
+| a spring delivery resumes last year farming rather than another expedition | PASS |
+| garden construction is four times quicker and crops another quarter quicker | PASS |
+| generated cargo and tower artwork load; ward stock is drawn directly on the fire | PASS |
+| mobile toasts and warnings close with touch and stay dismissed during the same danger | PASS |
+| dismissed warnings return for greater urgency; central cold alerts are also dismissible | PASS |
+| both mobile toolbar rows have identical edges for every resource and shelter state | PASS |
+| Shelter fills tower places first and keeps a configured home reserve | PASS |
+| recall moves residents already inside a house into both towers and keeps the home group | PASS |
+| unreachable towers fall back to homes; tower-only settlements still use free places | PASS |
+| monster damage cannot destroy a finished moat or unfinished ditch, but manual demolition works | PASS |
 | no unhandled browser exceptions | PASS |
 
 ## Gameplay and UX observations
 
-The first year was completed through visible controls: mark trees, hunt, build a
-garden, and wait for its builder to sow and harvest. Crops mature over 1.5 calendar
+The first year was completed through visible controls: press Clear, hunt, build a
+garden, and wait for its builder to sow and harvest. Crops mature over 1.125 calendar
 seasons. Shelter protected unclothed residents; spring automatically restored work,
 awarded one star and autosaved. Food remained after winter. The tutorial budgets
 consumption before winter as well as during it.
@@ -84,8 +104,8 @@ Available jobs start with one click and replace only the selected resident's
 previous task. Unavailable farm, craft, repair and construction jobs are absent.
 Background clicks clear selection and dismiss construction, research and forecast
 panels while residents continue working. Construction offers Cancel construction
-and a distinct Close control. Tools are hidden until workshop research or existing
-tools; herbs and finished coats have resource counters, including coats already worn.
+and a distinct Close control. Tools have no resource counter or unlock. Herbs
+appear only after a ward is built; finished coats include coats already worn.
 The redundant heading and oval cottage shadow are gone.
 
 A newly built garden retains its builder as a farmer. A ripe crop delivered 45
@@ -96,6 +116,7 @@ loading. Production waits for ingredients rather than pre-completing recipes.
 
 Persistent warnings cover food deficits and lethal cold. A resident with 16 cold
 exposure-seconds received a warning with approximately 14 seconds remaining.
+The warning is red, centred on both screen axes and does not capture clicks.
 Shelter resolved that warning. Desktop and mobile captures were inspected:
 `ux-jobs-390.png`, `ux-jobs-1280.png`, `cold-danger-warning.png`,
 `ripe-harvest-ready.png`, `fur-workshop-coat-produced.png`, `resources-coats-herbs.png`.
@@ -147,7 +168,8 @@ playback and disable game sound before starting. Only when explicitly checking
 sound, omit the Chrome mute flag and use `CHECK_AUDIO=1`.
 The runner modifies only its dedicated profile and writes ignored `.qa/results.json`
 and screenshots. Economy and UX scenarios live in `scripts/economy-checks.mjs` and
-`scripts/ux-checks.mjs`. Close test Chrome and temporary servers after checking;
+`scripts/ux-checks.mjs`; direct orders, annual work and defenses are checked in
+`scripts/defense-checks.mjs`. Close test Chrome and temporary servers after checking;
 leave the user's localhost preview running.
 
 ## Release builds
@@ -169,3 +191,58 @@ loading succeeded, and all interface buttons/counters used PT Sans. Widths
 390, 768, 900, 1024 and 1280 had no horizontal overflow. The compiled startup,
 immediate orders, dismissal, shelter and tooltips checks also passed without
 sound or browser exceptions after the font change.
+
+## Timber tower, moat and direct orders
+
+Occupied towers fired only with residents inside, shelter prevented cold, and
+legacy towers kept their HP fraction while upgrading to 360 maximum HP. Garrison
+commands reserved different residents and worked while the rest of the settlement
+was sheltered. Finished moats slowed monsters exactly sixfold; unfinished moats
+did not. Full house surrounds remained walkable and trenches were not targets.
+
+Hunt and Herbs reassigned employed workers and released their old rosters. A
+carrier delivered supplies before starting an accepted queued order. Clear found
+the nearest tree immediately and continued to the next one. Farming, clearing
+and unfinished construction resumed in spring; hunts did not. An overdue spring
+carrier returned to last year's farming after delivery. Injured residents healed
+past the halfway health threshold all the way to full HP.
+
+Generated herb and hunting baskets and the timber tower loaded locally. The ward
+label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
+its previous time and biological crop growth is another 25% shorter. Workshop
+removal refunded wood and obsolete research exactly once on repeated loading.
+
+The final compiled build `index-BmhJLlAG.js` passed silent checks on
+`http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
+removed tool counter, background dismissal, shelter toggle, square controls,
+tooltips and loaded interface art. All four local PT Sans faces loaded, and
+390/768/900/1024/1280 px layouts had no horizontal overflow. The itch archive
+contains all three new generated sprites, fonts and the current balance JSON.
+Temporary test Chrome and the development server were closed; localhost:4173
+remains running with the latest compiled build.
+
+## Mobile notices and tower-priority recall
+
+All 79 silent browser checks passed after the mobile changes. Touch taps closed
+ordinary toasts, persistent settlement warnings and the central cold alert without
+deselecting a resident underneath. Dismissals survived changing countdowns and
+resource totals; a resolved/new danger or an escalation showed warnings again.
+Hidden warning cards immediately released their layout height.
+
+Toolbar checks covered 320, 360, 390, 430, 600, 768, 900 and 1280 px with initial,
+Herbs and Shelter/Release one states. Mobile rows had identical left/right edges,
+no clipped labels and at least 44 px button height. Screenshots:
+`mobile-toolbar-aligned.png`, `mobile-notices-before.png`,
+`mobile-notices-dismissed.png`.
+
+Recall reserved 25% of residents (at least one) for ordinary homes, filled towers
+up to three residents each, and sent the rest home. Eight residents with two
+towers physically reached six tower places and two home places. An inaccessible
+tower fell back to homes; a settlement with only a tower used its free places.
+Moats rejected repeated damage even while unfinished and remained outside enemy
+target lists; manual demolition still cleared the ground.
+
+The final production localhost build also passed touch dismissal and aligned
+mobile-row checks after compilation. Eighteen additional mobile layout variants
+confirmed consistent icon placement and hidden unavailable buttons. All tests
+ran muted; temporary browser/server processes were closed after verification.

@@ -33,16 +33,12 @@ export class ProductionSystem {
           if (forest) resources.addWood(rates.lumberCampWoodPerSecond * work);
           break;
         }
-        case 'workshop':
         case 'furWorkshop': {
-          const isTools = b.configId === 'workshop', duration = isTools ? rates.workshopToolProductionTime : rates.furWorkshopProcessTime;
-          if(isTools ? resources.resources.wood<rates.workshopToolCostWood || resources.resources.tools>=resources.capacity.tools : resources.resources.fur<rates.furPerClothing) break;
-          b.productionProgress = Math.min(duration, (b.productionProgress ?? 0) + work);
-          if (b.productionProgress < duration) break;
-          if (isTools && resources.resources.tools < resources.capacity.tools && resources.consumeWood(rates.workshopToolCostWood)) {
-            resources.addTools(1); b.productionProgress -= duration;
-          } else if (!isTools && resources.resources.fur >= rates.furPerClothing) {
-            resources.resources.fur -= rates.furPerClothing; onClothing(1); b.productionProgress -= duration;
+          if(resources.resources.fur<rates.furPerClothing) break;
+          const duration=rates.furWorkshopProcessTime;
+          b.productionProgress=Math.min(duration,(b.productionProgress??0)+work);
+          if(b.productionProgress>=duration) {
+            resources.resources.fur-=rates.furPerClothing;onClothing(1);b.productionProgress-=duration;
           }
           break;
         }

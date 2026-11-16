@@ -65,7 +65,7 @@ try {
   });
   await check('first year through visible controls', async () => {
     await ev('g.restart();g.gameLoop.stop();g.updateUI();g.render()');
-    await button('Clear');for(const y of [28.5,29.5,30.5,31.5])await tile(34.5,y);await button('Clear');
+    await button('Clear');
     const p=await ev('(()=>{const v=g.villagerSystem.villagers[0],p=g.camera.worldToScreen((v.x+.5)*48,(v.y+.5)*48);return{x:p.x,y:p.y-18}})()');await mouse(p.x,p.y);await button('Hunt');
     await button('Build');await clickSelector('[data-building-id="garden"]');await tile(42.2,27.2);
     await until('g.buildingSystem.buildings.some(b=>b.configId==="garden"&&b.built)',65);
@@ -149,8 +149,9 @@ try {
       return{depth,fur:g.resourceSystem.resources.fur-before,returning:v.currentTask==='returnHome',forestPath:v.path.length>0};})()`);
     assert(r.depth>=10&&r.depth<=20);assert.equal(r.fur,0);assert(r.returning&&r.forestPath);await until('g.resourceSystem.resources.fur>=2&&!g.villagerSystem.villagers[0].cargo',40);return{...r,delivered:await ev('g.resourceSystem.resources.fur')};
   });
-  await check('production persists and workshop respects its recipe timer', async()=>{
-    const result=await ev(`(()=>{g.restart();g.gameLoop.stop();const b=g.buildingSystem.placeStartingBuilding('workshop',42,27);const v=g.villagerSystem.villagers[0];v.x=42;v.y=29;g.resourceSystem.resources.wood=50;g.villagerSystem.assignVillagerToBuilding(v.id,b.id,g.buildingSystem.buildings);for(let i=0;i<100;i++)g.update(.05);const early=g.resourceSystem.resources.tools;for(let i=0;i<240;i++)g.update(.05);return{early,late:g.resourceSystem.resources.tools+Number((v.toolDurability??0)>0),workers:b.assignedWorkers.length,wood:g.resourceSystem.resources.wood};})()`); assert.equal(result.early,0);assert(result.late>0);assert.equal(result.workers,1);return result;
+  await check('retired workshop refunds once and releases its workers on load', async()=>{
+    const result=await ev(`(()=>{g.restart();g.gameLoop.stop();const saved=g.serializeState(),v=saved.villagers[0];saved.buildings.push({id:'old-workshop',configId:'workshop',tileX:42,tileY:27,built:true,buildProgress:1,hp:80,maxHp:80,assignedWorkers:[v.id],needsRepair:false});saved.tileMap[27][42].buildingId='old-workshop';saved.tileMap[27][42].type='building';v.assignedBuildingId='old-workshop';v.currentTask='working';saved.resources.wood=5;saved.resources.techPoints=0;saved.technology.unlockedTechs.push('workshop','betterTools');saved.technology.unlockedBuildings.push('workshop');g.deserializeState(saved);const first=g.serializeState();g.deserializeState(first);return{removed:!g.buildingSystem.buildings.some(b=>b.configId==='workshop'),wood:g.resourceSystem.resources.wood,stars:g.resourceSystem.resources.techPoints,task:g.villagerSystem.villagers[0].currentTask,unlocked:g.techSystem.unlockedBuildings.has('workshop')};})()`);
+    assert(result.removed&&!result.unlocked);assert.equal(result.wood,35);assert.equal(result.stars,3);assert.equal(result.task,null);return result;
   });
   await check('remaining production and passive buildings provide useful effects',async()=>{
     const r=await ev(`(()=>{
@@ -269,7 +270,7 @@ try {
     const before=await ev('({x:g.camera.x,y:g.camera.y})');
     await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:190,y:370}]});await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:245,y:395}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     const after=await ev('({x:g.camera.x,y:g.camera.y})');assert(Math.abs(after.x-before.x)>20);
-    const layout=await ev(`({canvas:document.querySelector('canvas').width,css:document.querySelector('canvas').clientWidth,dpr:devicePixelRatio,overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('#game-bottom-bar button')].every(b=>b.getBoundingClientRect().height>=44)})`);assert(!layout.overflow);assert(layout.buttons);assert.equal(layout.canvas,layout.css*layout.dpr);return layout;
+    const layout=await ev(`({canvas:document.querySelector('canvas').width,css:document.querySelector('canvas').clientWidth,dpr:devicePixelRatio,overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('#game-bottom-bar button')].filter(b=>!b.hidden).every(b=>b.getBoundingClientRect().height>=44)})`);assert(!layout.overflow);assert(layout.buttons);assert.equal(layout.canvas,layout.css*layout.dpr);return layout;
   });
   await check('existing researched buildings appear in the build menu',async()=>{
     await ev("g.ui.closePanels();g.restart();g.gameLoop.stop();g.techSystem.unlockTech('smokehouse');g.refreshBuildPanel()");
@@ -298,6 +299,8 @@ try {
   });
   await (await import('./economy-checks.mjs')).runEconomyChecks({check,ev,shot,clickSelector,button,tile,until});
   await (await import('./ux-checks.mjs')).runUXChecks({check,ev,shot,clickSelector,button,tile,until,mouse,call});
+  await (await import('./defense-checks.mjs')).runDefenseChecks({check,ev,shot,button,until,call});
+  await (await import('./mobile-shelter-checks.mjs')).runMobileShelterChecks({check,ev,shot,call,until});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

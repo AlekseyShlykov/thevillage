@@ -5,6 +5,7 @@ import { getConfig } from '../data/ConfigLoader';
 import { FenceArt } from './FenceArt';
 import { CropArt } from './CropArt';
 import { chimneySmoke } from './BuildingEffects';
+import { drawMoat } from './MoatArt';
 import { WardFireArt } from './WardFireArt';
 
 export type Point = { x: number; y: number };
@@ -60,6 +61,7 @@ export class IsometricArt {
     const pts = footprint(this.camera, b.tileX, b.tileY, cfg.width, cfg.height);
     const size = (cfg.width + cfg.height) * this.camera.tileWidth / 2 * 1.12;
     const centerX = (pts[0].x + pts[2].x) / 2, baseline = pts[2].y;
+    if(b.configId==='watchtower') {const w=118*this.camera.zoom,h=172*this.camera.zoom;return {x:centerX-w/2,y:baseline-h,width:w,height:h,centerX,baseline,pts};}
     return { x: centerX - size / 2, y: baseline - size * .92, width: size, height: size, centerX, baseline, pts };
   }
   building(ctx: CanvasRenderingContext2D, b: BuildingInstance, cfg: BuildingConfig, season: Season, time: number, buildings: BuildingInstance[] = [], occupants = 0): void {
@@ -67,6 +69,17 @@ export class IsometricArt {
     ctx.save();
     if (!b.built) { ctx.globalAlpha = .45 + b.buildProgress * .4; polygon(ctx, pts, 'rgba(181,142,79,.16)', '#e4bf75'); }
     if (b.configId === 'garden') this.crops.draw(ctx, b, cfg, season, time);
+    else if(b.configId==='moat')drawMoat(ctx,this.camera,b,buildings,season);
+    else if(b.configId==='watchtower') {
+      const tower=this.assets.getTower?.(),h=this.buildingBounds(b,cfg).height;
+      if(tower) {ctx.imageSmoothingEnabled=true;ctx.drawImage(tower,x-size/2,y-h,size,h);}
+      else {
+        ctx.fillStyle='#79563d';ctx.fillRect(x-size*.28,y-h*.75,size*.56,h*.75);
+        ctx.fillStyle='#a98150';ctx.fillRect(x-size*.4,y-h*.72,size*.8,h*.13);
+        polygon(ctx,[{x:x-size*.5,y:y-h*.78},{x,y:y-h},{x:x+size*.5,y:y-h*.78}],'#bda568','#69533c');
+        ctx.fillStyle='#302f24';ctx.fillRect(x-size*.12,y-h*.7,size*.24,h*.12);
+      }
+    }
     else if (cfg.category === 'defense') this.fences.draw(ctx, b, buildings, season);
     else if (b.configId === 'campFire' || b.configId === 'herbalFire') {
       const py = (pts[0].y + pts[2].y) / 2;
@@ -82,7 +95,6 @@ export class IsometricArt {
         polygon(ctx, raised, '#b99a55', '#6c5533');
       }
       if (b.built && cfg.category === 'housing' && occupants > 0) chimneySmoke(ctx, x, y, size, time);
-      if (b.configId === 'watchtower') { ctx.fillStyle = '#c7a473'; ctx.fillRect(x - 6 * z, y - size * .85, 12 * z, size * .4); }
     }
     ctx.restore();
   }

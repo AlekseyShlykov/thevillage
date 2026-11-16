@@ -4,7 +4,7 @@ import { SeasonSystem } from './SeasonSystem';
 import { ResourceSystem } from './ResourceSystem';
 import { BuildingSystem } from './BuildingSystem';
 import { VillagerSystem } from './VillagerSystem';
-import { hasCoat, hasTool } from './EquipmentSystem';
+import { hasCoat } from './EquipmentSystem';
 
 const order = [Season.Spring, Season.Summer, Season.Autumn, Season.Winter];
 function durations() { const c = getConfig().seasons; return [c.springDuration, c.summerDuration, c.autumnDuration, c.winterDuration]; }
@@ -24,7 +24,7 @@ export function cropSecondsToRipe(progress: number, seasons: SeasonSystem): numb
   }
   return Infinity;
 }
-export function makeForecast(seasons: SeasonSystem, resources: ResourceSystem, buildings: BuildingSystem, villagers: VillagerSystem, toolsAvailable=false) {
+export function makeForecast(seasons: SeasonSystem, resources: ResourceSystem, buildings: BuildingSystem, villagers: VillagerSystem) {
   const cfg = getConfig(), people = villagers.getAliveVillagers(), population = people.length;
   const beforeWinter = untilWinter(seasons), winterLeft = seasons.isWinter() ? Math.max(0, cfg.seasons.winterDuration - seasons.seasonTimer) : cfg.seasons.winterDuration;
   const efficiency = buildings.getBuildingsOfType('smokehouse').length ? cfg.resources.smokehouseFoodEfficiencyBonus : 1;
@@ -40,14 +40,14 @@ export function makeForecast(seasons: SeasonSystem, resources: ResourceSystem, b
   const fire = buildings.getBuildingsOfType('herbalFire')[0];
   const herbSeconds = cfg.seasons.winterDuration / cfg.herbs.perWinter;
   const fuel = fire?.wardFuelSeconds ?? 0;
-  const coats = people.filter(hasCoat).length, tools = people.filter(hasTool).length;
+  const coats = people.filter(hasCoat).length;
   const exposed = people.filter(v => (v.coldExposure ?? 0) >= cfg.cold.warningFraction * cfg.cold.unclothedSurvivalSeconds).length;
   return { population, food: resources.resources.food, winterFood, beforeFood, expectedHarvest,
     reserve: winterFood * (1 + cfg.forecast.foodReserveBuffer),
     springBalance: resources.resources.food + expectedHarvest - beforeFood - winterFood,
     nextHarvestSeconds: crops.length ? Math.min(...crops.map(c => c.seconds)) : null,
     dyingCrops: crops.filter(c => !Number.isFinite(c.seconds)).length,
-    coats, coatsStored: resources.resources.clothing, tools, toolsStored: resources.resources.tools, toolsAvailable:toolsAvailable||tools>0||resources.resources.tools>0, exposed,
+    coats, coatsStored: resources.resources.clothing, exposed,
     herbs: resources.resources.herbs, herbCapacity: cfg.herbs.capacity,
     herbsInTransit: people.reduce((n, v) => n + (v.cargo?.herbs ?? 0), 0),
     herbsNeeded: Math.ceil(Math.max(0, winterLeft - fuel) / herbSeconds - 1e-8),

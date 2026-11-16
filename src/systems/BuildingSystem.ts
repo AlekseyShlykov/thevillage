@@ -56,7 +56,7 @@ export class BuildingSystem {
     if (cfg.maxCount && this.buildings.filter(b => b.configId === configId).length >= cfg.maxCount) return false;
     if (!this.tileMap.canPlaceBuilding(tx, ty, cfg.width, cfg.height, cfg.canPlaceInForest)) return false;
 
-    const isPalisade = cfg.category === 'defense';
+    const isPalisade = cfg.category === 'defense' || cfg.category === 'terrain';
 
     const newTiles = new Set<string>();
     for (let dy = 0; dy < cfg.height; dy++) {
@@ -70,7 +70,7 @@ export class BuildingSystem {
     }
 
     for (const b of this.buildings) {
-      const bIsPalisade = b.configId === 'palisadeWall' || b.configId === 'palisadeGate';
+      const bIsPalisade = b.configId === 'palisadeWall' || b.configId === 'palisadeGate' || b.configId === 'moat';
       if (bIsPalisade && isPalisade) continue;
       const bcfg = this.getBuildingConfig(b.configId);
       if (!bcfg) continue;
@@ -79,7 +79,7 @@ export class BuildingSystem {
         return false;
       }
 
-      if (!bIsPalisade && !this.hasWalkablePerimeter(b.tileX, b.tileY, bcfg.width, bcfg.height, newTiles)) {
+      if (!bIsPalisade && cfg.category!=='terrain' && !this.hasWalkablePerimeter(b.tileX, b.tileY, bcfg.width, bcfg.height, newTiles)) {
         return false;
       }
     }
@@ -138,7 +138,7 @@ export class BuildingSystem {
       needsRepair: false,
     };
 
-    const tileType = cfg.category === 'defense' ? TileType.Palisade : TileType.Building;
+    const tileType = cfg.category === 'terrain' ? TileType.Moat : cfg.category === 'defense' ? TileType.Palisade : TileType.Building;
     this.tileMap.placeBuilding(tx, ty, cfg.width, cfg.height, id, tileType);
     this.buildings.push(building);
     return building;
@@ -149,6 +149,7 @@ export class BuildingSystem {
     if (b) {
       b.built = true;
       b.buildProgress = 1;
+      this.syncTerrain(b);
     }
     return b;
   }
@@ -192,6 +193,7 @@ export class BuildingSystem {
       if (b.buildProgress >= 1) {
         b.buildProgress = 1;
         b.built = true;
+        this.syncTerrain(b);
         onBuildingCompleted?.(b);
       }
     }
@@ -199,11 +201,17 @@ export class BuildingSystem {
 
   damageBuilding(buildingId: string, damage: number): void {
     const b = this.buildings.find(b => b.id === buildingId);
-    if (!b) return;
+    if (!b || this.getBuildingConfig(b.configId)?.indestructible) return;
     b.hp -= damage;
     if (b.hp <= 0) {
       this.demolishBuilding(buildingId);
     }
+  }
+
+  private syncTerrain(b: BuildingInstance): void {
+    if(b.configId!=='moat') return;
+    const tile=this.tileMap.getTile(b.tileX,b.tileY);
+    if(tile) { tile.moatDug=b.built;this.tileMap.revision++; }
   }
 
   repairBuilding(buildingId: string): void {
@@ -219,7 +227,7 @@ export class BuildingSystem {
   advanceWinterRepairCounters(): void {
     const repairCfg = getConfig().repair;
     for (const b of [...this.buildings]) {
-      if (!b.built) continue;
+      if (!b.built || this.getBuildingConfig(b.configId)?.category === 'terrain') continue;
       b.wintersSinceRepair++;
       if (b.wintersSinceRepair >= repairCfg.repairNeededAfterWinters) {
         b.needsRepair = true;
@@ -242,7 +250,7 @@ export class BuildingSystem {
   /** Tiles that count as "inside" for winter (hut, house, largeHouse, campFire). */
   getHousingTiles(): { x: number; y: number }[] {
     const out: { x: number; y: number }[] = [];
-    const housingIds = new Set(['hut', 'house', 'largeHouse', 'campFire']);
+    const housingIds = new Set(['hut', 'house', 'largeHouse', 'campFire', 'watchtower']);
     for (const b of this.buildings) {
       if (!b.built) continue;
       const cfg = this.getBuildingConfig(b.configId);
@@ -262,7 +270,7 @@ export class BuildingSystem {
     for (const b of this.buildings) {
       if (!b.built) continue;
       const cfg = this.getBuildingConfig(b.configId);
-      if (!cfg) continue;
+      if (!cfg || cfg.category === 'terrain' || cfg.indestructible) continue;
       for (let dy = 0; dy < cfg.height; dy++) {
         for (let dx = 0; dx < cfg.width; dx++) {
           out.push({ x: b.tileX + dx, y: b.tileY + dy, buildingId: b.id });
@@ -373,8 +381,9 @@ export class BuildingSystem {
     for (const b of data) {
       const cfg = this.getBuildingConfig(b.configId);
       if (cfg) {
-        const tileType = cfg.category === 'defense' ? TileType.Palisade : TileType.Building;
+        const tileType = cfg.category === 'terrain' ? TileType.Moat : cfg.category === 'defense' ? TileType.Palisade : TileType.Building;
         this.tileMap.placeBuilding(b.tileX, b.tileY, cfg.width, cfg.height, b.id, tileType);
+        this.syncTerrain(b);
       }
     }
     this.buildings = data;

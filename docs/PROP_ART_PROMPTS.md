@@ -52,3 +52,19 @@ Axe:
 Hammer:
 
 > A carpenter's cross-peen hammer with a straight honey-brown wooden handle, heavy horizontal worn steel head with a flat square striking face on the left and a tapered peen on the right. Compact head, long readable handle.
+
+## Cargo and timber guard tower · 2026-11-16
+
+Generated with the built-in `image_gen` tool, one call per asset, `transparent_background=true`. Originals were copied into the project without image editing. Alpha is preserved; Canvas scales the sprites at runtime.
+
+### public/assets/cargo/herbs.png
+
+Use case: stylized-concept. Asset type: a handheld cargo sprite for a cozy northern medieval village browser game. Primary request: one compact thick bundle of protective sage herbs tied with coarse golden twine, small weathered wicker gathering basket around the bottom, plentiful muted sage and olive leaves protruding from top. Full recognizable silhouette readable at 20 pixels. Style: richly detailed hand-painted isometric storybook game art, slightly pixel-art-adjacent edges, same rustic warm ochre wood, moss green and parchment palette as a thatched cottage village. 30-degree isometric view, warm upper-left lighting, fine dark edges. Transparent background with real alpha. Centered full object occupies 80 percent of a square canvas. No people, hands, text, icons, scenery, floor, cast shadows, glow or extra objects.
+
+### public/assets/cargo/hunt.png
+
+Use case: stylized-concept. Asset type: a handheld cargo sprite for a cozy northern medieval village browser game. Primary request: one compact wicker hunter's carrying basket holding a rolled warm brown animal pelt and a wrapped pinkish-red venison haunch with a small ivory bone end visible, tied down with coarse golden twine. Clear broad distinct silhouette, recognizable food and pelt supplies readable at 20 pixels. Style: richly detailed hand-painted isometric storybook game art, slightly pixel-art-adjacent edges, same rustic warm ochre wood, moss green and parchment palette as a thatched cottage village. 30-degree isometric view, warm upper-left lighting, fine dark edges. Transparent background with real alpha. Centered full object occupies 80 percent of square canvas. No blood, gore, people, hands, text, icons, scenery, floor, cast shadows, glow or extra objects.
+
+### public/assets/isometric/guard-tower.png
+
+Use case: stylized-concept. Asset type: production building sprite for a cozy northern medieval isometric village browser game. Primary request: one sturdy protective timber guard tower with a compact enclosed lower log shelter, four massive weathered golden-brown oak corner posts, a raised enclosed archery platform with three visible arrow slits and waist-high wooden parapet, a steep straw-thatched roof, stone footings, small wooden ground-level door. Looks strong and usable as shelter in winter. Exactly one complete building, no people. True 2:1 isometric perspective from above at 30 degrees, front corner toward viewer, coherent geometry, detailed warm wood grain and straw, muted ochre, mossy gray stones and sage accents, upper-left lighting, illustrated hand-painted pixel-art-adjacent style matching a detailed cottage with a straw roof and stone base. Square canvas, tall narrow tower takes 88 percent canvas height and 64 percent width, complete silhouette and footings visible, bottom on 94 percent canvas baseline. Real transparent background, no landscape, grass platform, sky, text, interface, cast shadow or dramatic glow.

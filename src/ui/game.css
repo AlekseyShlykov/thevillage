@@ -78,7 +78,7 @@ html, body { background: #314b39 !important; }
 [data-order-cancel][hidden] { display: none; }
 #ui-overlay:has([data-info-panel][data-villager]) [data-notification-el] { bottom: auto !important; top: 108px; }
 #game-container:has([data-mode='order']) canvas { cursor: crosshair; }
-[data-notification-el] { bottom: 148px !important; max-width: min(480px,calc(100% - 32px)); background: var(--panel) !important; border-color: var(--edge) !important; font-size: 12px !important; line-height: 1.5; box-shadow: 0 4px 20px #11271b33; }
+[data-notification-el] { pointer-events:none !important;position:absolute;left:50%;transform:translateX(-50%);padding:12px 50px 12px 16px;border:1px solid var(--edge);z-index:20;text-align:center;bottom:148px !important; max-width: min(480px,calc(100% - 32px)); background: var(--panel) !important; border-color: var(--edge) !important; font-size: 12px !important; line-height: 1.5; box-shadow: 0 4px 20px #11271b33; }
 .camera-controls { position: absolute; right: 24px; bottom: 98px; display: flex; gap: 4px; }
 .camera-controls button { width: 38px; background: var(--panel) !important; font-size: 18px !important; }
 .action-menu { background: var(--panel) !important; border-color: var(--edge) !important; max-height: calc(100dvh - 170px); overflow-y: auto; }
@@ -181,4 +181,27 @@ html, body { background: #314b39 !important; }
 [data-notification-el] * { pointer-events:none !important; }
 @media(max-width:768px) {
   #ui-overlay:has([data-info-panel][data-villager]) [data-notification-el] { top:calc(var(--hud-bottom,136px) + var(--warnings-height,0px) + 62px) !important; }
+}
+
+/* Hypothermia is an immediate, screen-centred danger. This never captures input. */
+#cold-warning {position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100% - 32px));padding:18px 24px;border:2px solid #f35c50;background:#281b17ed;color:#ff665c !important;font-size:20px;font-weight:700;line-height:1.4;text-align:center;text-shadow:0 1px 2px #000;pointer-events:none !important;z-index:40;box-sizing:border-box;}
+#cold-warning[hidden] {display:none;}
+
+/* Only close controls capture input; the world remains draggable through notice text. */
+#ui-overlay .notice-close {position:absolute;right:2px;top:2px;width:44px;min-width:44px;min-height:44px;padding:10px !important;pointer-events:auto !important;}
+#ui-overlay .notice-close .game-icon {width:18px;height:18px;}
+[data-notification-el][hidden] {display:none !important;}
+#settlement-warnings>div {position:relative;padding-right:48px;min-height:44px;box-sizing:border-box;}
+#cold-warning {padding-right:54px;}
+@media(max-width:768px) {
+  #game-bottom-bar {display:grid !important;grid-template-columns:repeat(var(--toolbar-columns,20),minmax(0,1fr));align-items:stretch !important;gap:4px !important;box-sizing:border-box;}
+  #game-bottom-bar button {min-width:0;padding:5px 3px !important;}
+  #game-bottom-bar button.icon-button:not([hidden]) {display:flex !important;flex-direction:column;gap:2px;}
+  #game-bottom-bar .button-label {max-width:100%;white-space:normal;line-height:1.1;}
+  #game-bottom-bar [data-speed] {min-width:0;padding:5px 3px !important;}
+  #game-bottom-bar .game-icon {width:18px;height:18px;}
+  #status-ribbon {bottom:calc(var(--toolbar-height,112px) + 24px);}
+  .camera-controls {bottom:calc(var(--toolbar-height,112px) + 68px);}
+  [data-notification-el] {width:calc(100% - 24px);box-sizing:border-box;bottom:calc(var(--toolbar-height,112px) + 22px) !important;}
+  #ui-overlay [data-info-panel],#ui-overlay [data-info-panel][data-villager] {bottom:calc(var(--toolbar-height,112px) + 24px) !important;}
 }

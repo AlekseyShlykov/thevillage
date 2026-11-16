@@ -47,7 +47,9 @@ export class HordeNavigation {
       return;
     }
     e.blockedTimer = 0;
-    const dx = next.x - e.x, dy = next.y - e.y, distance = Math.hypot(dx, dy), step = Math.min(distance, e.speed * dt);
+    const tile=this.map.getTile(Math.floor(e.x+.5),Math.floor(e.y+.5));
+    const slowdown=tile?.type==='moat' && tile.moatDug ? getConfig().buildings.moat.enemySpeedMultiplier! : 1;
+    const dx = next.x - e.x, dy = next.y - e.y, distance = Math.hypot(dx, dy), step = Math.min(distance, e.speed * dt * slowdown);
     if (!distance) { e.path.shift(); return; }
     const x = e.x + dx / distance * step, y = e.y + dy / distance * step;
     if (this.protection.blocksPoint(x, y)) { e.path = []; e.repathTimer = 0; return; }

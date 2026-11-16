@@ -35,7 +35,7 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
     if (tree && v.currentTask !== 'clearing') jobs.push({key:'chop',kind:'chop',label:'Chop wood',icon:'axe',target:tree});
     if (!cargo && v.currentTask !== 'hunting' && villagers.huntingGrounds.candidates(v).some(reach))
       jobs.push({key:'hunt',kind:'hunt',label:'Hunt',icon:'bow'});
-    if (!cargo && v.currentTask !== 'gatheringHerbs' && resources.resources.herbs+foraging.reservedHerbs(villagers)<cfg.herbs.capacity &&
+    if (buildings.getBuildingsOfType('herbalFire').length && !cargo && v.currentTask !== 'gatheringHerbs' && resources.resources.herbs+foraging.reservedHerbs(villagers)<cfg.herbs.capacity &&
       villagers.huntingGrounds.candidates(v,undefined,{minimum:cfg.herbs.minimumForestDepth,maximum:cfg.herbs.maximumForestDepth,searchRadius:cfg.herbs.searchRadius}).some(reach))
       jobs.push({key:'herbs',kind:'herbs',label:'Gather herbs',icon:'herbs'});
     const offered = new Set<string>();
@@ -57,9 +57,8 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
       if (garden && season===Season.Winter) continue;
       if (!garden && v.assignedBuildingId===b.id) continue;
       if (b.configId==='furWorkshop' && resources.resources.fur<cfg.resources.furPerClothing) continue;
-      if (b.configId==='workshop' && (resources.resources.wood<cfg.resources.workshopToolCostWood || resources.resources.tools>=resources.capacity.tools)) continue;
-      const label = garden ? b.cropState==='ripe'?'Harvest food':'Tend garden' : b.configId==='furWorkshop'?'Make fur coats':b.configId==='workshop'?'Make tools':'Gather wood';
-      jobs.push({key:`${garden?'farm':'work'}:${b.configId}`,kind:garden?'farm':'work',label,icon:garden?'wheat':b.configId==='furWorkshop'?'clothing':b.configId==='workshop'?'hammer':'axe',buildingId:b.id});
+      const label = garden ? b.cropState==='ripe'?'Harvest food':'Tend garden' : b.configId==='furWorkshop'?'Make fur coats':'Gather wood';
+      jobs.push({key:`${garden?'farm':'work'}:${b.configId}`,kind:garden?'farm':'work',label,icon:garden?'wheat':b.configId==='furWorkshop'?'clothing':'axe',buildingId:b.id});
       offered.add(b.configId);
     }
   }

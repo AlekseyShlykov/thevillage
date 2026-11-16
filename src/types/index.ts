@@ -5,6 +5,7 @@ export enum TileType {
   Farm = 'farm',
   Palisade = 'palisade',
   Path = 'path',
+  Moat = 'moat',
 }
 
 export enum Season {
@@ -30,7 +31,7 @@ export enum HealthState {
   Dead = 'dead',
 }
 
-export type BuildingCategory = 'housing' | 'food' | 'production' | 'resource' | 'defense' | 'detection' | 'comfort';
+export type BuildingCategory = 'housing' | 'food' | 'production' | 'resource' | 'defense' | 'detection' | 'comfort' | 'terrain';
 
 export interface Position {
   x: number;
@@ -42,6 +43,7 @@ export interface TileData {
   buildingId: string | null;
   markedForClearing: boolean;
   clearingProgress: number;
+  moatDug?: boolean;
 }
 
 export interface ResourceState {
@@ -77,6 +79,11 @@ export interface BuildingConfig {
   protectionRadius?: number;
   storageBonus?: { wood: number; food: number; fur: number; tools: number };
   maxCount?: number;
+  indestructible?: boolean;
+  enemySpeedMultiplier?: number;
+  towerRange?: number;
+  towerDamage?: number;
+  towerAttackInterval?: number;
 }
 
 export interface BuildingInstance {
@@ -104,6 +111,7 @@ export interface BuildingInstance {
   harvestRemaining?: number;
   wardFuelSeconds?: number;
   wardActive?: boolean;
+  towerAttackCooldown?: number;
 }
 
 export interface VillagerData {
@@ -122,6 +130,12 @@ export interface VillagerData {
   taskProgress: number;
   /** A direct Stop/Move order keeps this villager out of automatic job dispatch. */
   holdPosition?: boolean;
+  /** A direct release/order affects one resident while everyone else stays sheltered. */
+  shelterExempt?: boolean;
+  repeatClearing?: boolean;
+  queuedExpedition?: 'hunt' | 'herbs' | 'chop';
+  resumeAnnualAfterDelivery?: boolean;
+  annualJob?: { task: string; buildingId?: string; target?: Position; progress?: number };
   /** Seconds spent outside during winter (resets when entering housing). */
   timeOutsideInWinter?: number;
   /** Failed attempts to reach current task goal; after 2, villager is sent to shelter. */
@@ -208,15 +222,15 @@ export interface GameBalanceConfig {
     viewportTilesY: number;
     startClearingSize: number;
   };
-  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[] };
+  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[]; towerShotSeconds: number };
   tutorial: { minimumFoodReserve: number; winterReserveMultiplier: number };
-  gameplay: { demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number };
+  gameplay: { demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number; shelterMinimumHomeResidents: number; shelterHomeReserveFraction: number };
   resources: Record<string, number>;
   villagers: Record<string, number>;
   buildings: Record<string, BuildingConfig>;
   retiredBuildings: Record<string, { refundWood: number; refundTools: number; refundResearch: number; replacement?: string }>;
   herbs: { capacity: number; perWinter: number; gatherSeconds: number; searchRadius: number; minimumForestDepth: number; maximumForestDepth: number; deathChance: number };
-  equipment: { toolWorkSeconds: number; clothingLifetimeWinters: number };
+  equipment: { clothingLifetimeWinters: number };
   cold: { unclothedSurvivalSeconds: number; clothedExposureMultiplier: number; snowstormExposureMultiplier: number; warmupMultiplier: number; warningFraction: number };
   farming: { growthSeasons: number; sowingWorkSeconds: number; harvestWorkSeconds: number; harvestFood: number };
   forecast: { foodReserveBuffer: number };

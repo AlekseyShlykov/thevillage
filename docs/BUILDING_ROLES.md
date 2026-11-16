@@ -8,16 +8,16 @@ Reviewed against the running simulation on 2026-11-16. Current values are in
 | Hut | Four shelter places; the inexpensive first housing | None |
 | House | Six shelter places and additional comfort | None |
 | Large House | Eight shelter places and a larger comfort bonus | None |
-| Garden | Sowing and harvest around a 1.5-season growth cycle; frost kills unharvested crops | Builder stays as farmer; up to two farmers, none needed during growth |
+| Garden | Sowing and harvest around a 1.125-season growth cycle; frost kills unharvested crops | Builder stays as farmer; up to two farmers, none needed during growth |
 | Lumber Camp | Steady wood near forest; improved nearby tree-clearing yield | Up to three lumberjacks |
-| Workshop | Converts wood into individual tools with finite work durability | Up to two craftspeople |
 | Fur Workshop | Converts raw pelts into personal coats lasting three winters | Builder stays as craftsperson; up to two craftspeople |
 | Smokehouse | Reduces the entire village's food consumption | Passive; removed misleading worker slot |
-| Storage | Raises wood, food, raw fur and spare tool capacity; herbs remain capped at five | None |
+| Storage | Raises wood, food, raw fur capacity; herbs remain capped at five | None |
 | Palisade Wall | Physical defense; monsters attack it before houses or crops | None after construction |
 | Palisade Gate | Opens a passage through connected defenses | A resident operates it; no permanent worker |
 | Forest Camp Fire | Builds directly in forest; nearby warning, comfort, light and one shelter place | None |
-| Watchtower | Longer detection range than the camp fire; perimeter light | Passive; removed misleading worker slot |
+| Timber Guard Tower | 360 HP, three shelter places, detection and ranged defense | Sheltered residents fire arrows: 18 damage each every 1.25s within seven tiles |
+| Moat | Indestructible connected trench; monsters cross six times slower, residents cross normally | Builder digs each section, no permanent worker |
 | Herbal Ward Fire | One per village; burns four herbs per winter to protect its 11 × 11 square | None after construction; residents gather herbs through an order |
 
 Removed Hunter Hut: it produced food and fur with workers standing beside the
@@ -44,3 +44,13 @@ research is refunded; acquiring the replacement camp-fire research deducts its
 cost only if it was not already owned. Idle worker assignments at smokehouses
 and watchtowers are also cleared. The next save uses current IDs, so loading it
 again does not repeat refunds.
+
+Removed the tool Workshop and Better Tools research: all residents own permanent
+tools. Old workshops return 30 wood; removed research returns one and two stars,
+respectively, once. Fur Workshop remains because personal warm clothing must
+still be sewn from pelts. Old watchtowers become Timber Guard Towers at the same
+location, retain their health fraction and gain winter shelter and shooting.
+
+Settlement recall fills towers before other shelters while reserving a home
+group: 25% of residents rounded up, at least one. Tower places are reserved only
+after pathfinding succeeds, and remaining residents go to ordinary homes.

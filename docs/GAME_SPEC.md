@@ -18,8 +18,10 @@ Terrain is cached until the map revision, camera or season changes. Visible
 trees, buildings, residents and enemies are sorted together by depth. Illustrated
 summer/winter atlases supply trees, huts, storage and lumber camps. Other existing
 buildings share the cottage silhouette with labels and worker counts. Generated
-transparent atlases supply garden stages and the animated herbal ward hearth;
-fences and the ordinary camp fire use Canvas geometry. Original resident and enemy sprites remain.
+transparent atlases supply garden stages and the animated herbal ward hearth. Separate
+transparent illustrations supply the timber guard tower and carried herb/hunting
+baskets. `MoatArt` draws connected earth banks and dark water; fences and the
+ordinary camp fire use Canvas geometry. Original resident and enemy sprites remain.
 Missing images fall back to shapes. Snow covers roofs and trees in winter;
 shelters give warm light. Canvas backing resolution follows device pixel ratio,
 capped at 2, while input stays in CSS pixels.
@@ -67,7 +69,7 @@ responsibilities independently of the simulation systems.
 ## Gameplay loop
 
 Start with one hut, two villagers, a 10 × 10 clearing and configured supplies.
-Mark trees to gather wood, hunt deep in the forest, build the initially known
+Press Clear to chop the nearest trees, hunt deep in the forest, build the initially known
 garden, assign a farmer and harvest before frost. Expand housing and prepare
 food, worn coats and protective herbs. Call Shelter before winter exposure or
 the horde threatens residents.
@@ -85,37 +87,34 @@ control simulation time. Frame input and UI continue while paused.
 
 ### ResourceSystem and ProductionSystem
 
-Wood, food, raw fur, spare tools, spare clothing, protective herbs and research
-persist. Storage expands wood/food/fur/tool capacity; herbs have a separate fixed
+Wood, food, raw fur, spare clothing, protective herbs and research persist.
+Storage expands wood/food/fur capacity; the saved tools field is compatibility-only; herbs have a separate fixed
 limit of five, including outbound reservations and returning carriers.
 notifications fire when reaching a limit, not on every frame. Food is consumed
 continuously, with higher winter consumption and a smokehouse efficiency bonus.
 Starvation uses a configurable grace period and death interval.
 
 Production requires living assigned workers who have reached a building's
-perimeter. Injuries, tools, comfort, weather and winter affect work. Building
-production progress is saved. Workshops respect their configured
-15 worker-second / 10 wood recipe and do not consume wood when tool storage is
-full. Lumber camps require nearby forest; fur workshops process fur from direct
-hunting into clothing. Smokehouses reduce consumption and watchtowers reveal
-enemies passively; these two buildings have no worker slots.
+perimeter. Injuries, comfort, weather and winter affect work. Building production
+progress is saved. Lumber camps require nearby forest; fur workshops process
+pelts from direct hunting into clothing. Smokehouses reduce consumption passively.
+The tool Workshop and Better Tools research are removed: every resident has
+permanent tools and no construction recipe requires spare tools.
 
 ### EquipmentSystem
 
-Tools and coats belong to individual residents. A single spare tool is consumed
-when issued and benefits only its wearer: 1.5× work and the configured combat
-bonus. It lasts 240 working seconds; travel and idle time do not wear it. A coat
-requires one raw pelt and 20 worker-seconds in a fur workshop. Finished coats are
-issued automatically, one per resident, and last three winters. Stored coats do
-not age. Raw pelts and historical production totals provide no cold protection.
-Both worn durability and spare inventories are saved. All values are JSON data.
+All living residents have their own permanent tools, including the combat bonus.
+Tools never wear out, require production, or occupy a resource counter. Fur coats
+remain individual: one pelt and 20 worker-seconds produce a coat, issued
+automatically to an uncoated resident. It lasts three winters; stored coats do not
+age. Raw pelts and historical production totals provide no cold protection.
+Worn coat lifetime and spare inventories are saved. All values are JSON data.
 
 ### CropSystem
 
-Farmers sow in spring, summer or autumn: four worker-seconds, then 1.5 calendar
-seasons of biological growth. For example, one complete spring plus 50% of summer
-advances a crop from zero to maturity. Tools and more farmers speed sowing and
-harvesting, not growth. Ripe crops require three worker-seconds to gather 45 food.
+Farmers sow in spring, summer or autumn: four worker-seconds, then 1.125 calendar
+seasons of biological growth. For example, one complete spring plus 12.5% of summer
+advances a crop from zero to maturity. Additional farmers speed sowing and harvesting, not biological growth. Ripe crops require three worker-seconds to gather 45 food.
 Full storage leaves the uncollected portion on the plot; later delivery cannot
 duplicate food. A farmer must be present to sow and harvest but may leave during
 growth. At winter onset every unharvested crop, including ripe crops, dies;
@@ -166,28 +165,58 @@ rather than stopping on that edge tile. These limits and target search radius
 are configured in the villagers data. Successful expeditions bring 15 food and
 two fur. Older saves with a shallow hunting destination receive a new deep
 destination when loaded. Later
-hunts retain their configured risk. Shelter cancels outdoor orders and records
-production, clearing, hunting, herb, construction and repair assignments; Resume
-restores valid jobs for surviving workers. Spring automatically releases shelter
-and restores these planned jobs before autosaving. Repairs preserve prepaid
-progress; resumed forest expeditions keep their progress. Older saves containing
-only building jobs remain compatible. A single Shelter/Resume button toggles both actions. Resume
-also cancels outstanding return-home paths and sends unassigned residents outside
-through available perimeter tiles. Immigration requires housing, comfort and sufficient food
-and does not occur in winter.
+hunts retain their configured risk. Global Hunt, Herbs and Clear commands choose
+an idle resident, or interrupt another job when nobody is idle. Existing
+expeditions are interrupted only when no other worker is available; a selected
+resident has priority. Former work rosters are released immediately. Carried
+supplies are delivered first, then the accepted order starts without another click.
+
+Clear needs no marked target: the worker finds the nearest reachable unreserved
+tree, marks it and continues to the next nearest tree after chopping. Farming,
+construction, ordinary production and clearing are remembered as annual jobs.
+Shelter cancels outdoor orders; Resume and spring restore these jobs before
+spring autosave. If a carrier is still returning at spring, their annual job
+resumes after delivery. Finished construction sites fall back to another unfinished
+site. Hunting and herb expeditions require a fresh explicit order and never
+restart because of Resume or spring. Stop clears the remembered job.
+
+The Shelter/Resume button toggles recall and release of everybody. Release one,
+or a named resident in a shelter's context menu, exempts just that resident from
+the settlement shelter order and selects them for immediate job commands. The
+others stay inside. Resume also cancels empty return-home paths and sends
+unassigned residents outside through available perimeter tiles. Immigration
+requires housing, comfort and sufficient food and does not occur in winter.
+Residents regenerate gradually to full HP, including after crossing the injured
+health threshold.
+
+### ShelterSystem
+
+The settlement Shelter button reserves ordinary home places for 25% of living
+residents, rounded up, with a minimum of one. Both values are configurable under
+`gameplay`. Remaining residents first fill reachable Timber Guard Tower places,
+up to each tower's configured capacity, then return to ordinary homes. Routes
+are checked before a place is reserved; an inaccessible tower falls back to homes.
+If there are no ordinary shelters, free tower places are still used. The command
+reports any residents without a reachable place. Repeated recalls recompute the
+plan from living residents rather than adding stale reservations. Residents
+already inside a house can complete their new return-home path into a tower
+while the settlement stays in shelter mode.
 
 ### ColdSystem
 
 Unclothed residents die after 30 exposure-seconds outside in winter. Snowstorms
 increase exposure by 1.5×; a worn coat reduces it to 0.1×. Shelter removes three
 exposure-seconds per second, and exposure resets outside winter. Residents show
-their coat, tool, cargo and exposure in their command card. First-winter horde
+their coat, cargo and exposure in their command card. First-winter horde
 protection does not prevent hypothermia: Shelter remains necessary.
 
 ### BuildingSystem
 
 The JSON catalogue defines costs, footprints, capacities, workers and HP. One
-builder reserves each site and must arrive before construction advances.
+builder reserves each site and must arrive before construction advances. New
+placement can reassign an occupied worker if no idle builder is available. Garden
+construction uses 5.5 build units instead of 22 (four times faster); at base
+construction speed 0.8 that is 6.875 seconds on site.
 A completed garden or fur workshop retains its builder as the first farmer or
 craftsperson. Other completed sites release their builders without releasing
 production workers. Ordinary
@@ -204,8 +233,31 @@ The last rewarded winter is saved to prevent repeat awards. A new village has
 zero stars and already knows gardens. Research prices are one or two stars;
 fur clothing research is available at tier 1 after the first winter without
 requiring tools. Existing technologies use configured tiers and costs. Every
-researched building appears in the build menu, including tiers 3–5. Better tools,
-hearth comfort and reinforced palisades apply their effects.
+researched building appears in the build menu, including tiers 3–5. Hearth
+comfort and reinforced palisades apply their effects. Timber Guard Tower is tier
+2 and costs two stars; Moat is known from the beginning.
+
+### TowerCombatSystem and moats
+
+Timber Guard Tower replaces the old passive watchtower using the same ID and
+1 × 1 footprint. It provides shelter for three residents, 360 HP, detection at
+8 tiles and ranged defense. Garrison tower sends a different available resident
+inside on each click, reserves incoming places, and works during global shelter.
+Only living residents inside can fire: each contributes 18 damage every 1.25
+seconds against the nearest monster within seven tiles. An empty tower does not
+shoot. Brief animated arrows show attacks; tower occupants are hidden and counted
+as sheltered, so they warm up and avoid hypothermia. Old towers receive the new
+maximum HP while retaining their health fraction. All combat values live in JSON.
+
+Moats are walkable 1 × 1 terrain projects, each requiring six build units and no
+resources. Consecutive placement clicks dig connected sections; Cancel/ESC leaves
+the mode. Finished moat tiles multiply monster movement speed by 1/6 (six times
+slower); unfinished sections have no effect. Residents cross normally. Monsters
+do not attack trenches. The JSON `indestructible` flag also rejects damage in
+`BuildingSystem`, for both unfinished and finished sections; winter maintenance
+does not damage them. The player may still cancel or manually demolish them. Moats can
+surround a house without making its entrances impassable. Terrain state is
+reconstructed from saved construction state on load.
 
 ### HordeSystem
 
@@ -277,9 +329,9 @@ comfort, growth/starvation accumulators, sheltered jobs, camera zoom and complet
 horde wave state/timers. Loading winter resumes its horde. Older version-1 saves
 with an enemy array remain readable; the camera recenters for old top-down saves.
 `SaveMigration` applies `retiredBuildings` data before restoring the map. It
-removes hunter huts, clears their footprint and refunds resources within storage
+removes hunter huts and tool workshops, clears their footprint and refunds resources within storage
 capacity, merges retired fire variants into forest camp fires, refunds obsolete
-research and releases redundant jobs. Migration is idempotent. The full retained
+research (including Better Tools) and releases redundant jobs. Migration is idempotent. The full retained
 catalogue and migration policy are described in [BUILDING_ROLES.md](BUILDING_ROLES.md).
 
 ### TutorialSystem and UIManager
@@ -298,10 +350,10 @@ same typed icon collection. No platform emoji are used. Icons are decorative;
 button labels and accessible names remain present, including on icon-only controls.
 Selecting a resident also hides the tutorial. Job buttons are at least 44 px
 high. Available jobs use two columns with readable labels and start immediately.
-The redundant game heading below the HUD is removed. The HUD always shows pelts,
-finished coats (worn plus spare) and protective herbs. Tools appear only after
-workshop research or when tools already exist; zero tool construction costs are
-omitted. Coats and herbs include explanatory tooltips. Research availability refreshes
+The redundant game heading below the HUD is removed. The HUD always shows pelts and finished coats (worn plus spare). Protective
+herbs and their order appear after the ward fire is completed. Tools have no
+resource counter or research. Zero tool construction costs are omitted. Coats
+and herbs include explanatory tooltips. Research availability refreshes
 when opening the panel and when resource/level state changes, without replacing
 unchanged controls.
 
@@ -323,8 +375,11 @@ update. Tooltips are kept inside the viewport and close on pointer exit/Escape.
 The collapsible Winter plan panel estimates consumption until winter and during
 winter, a 20% safety reserve, harvest readiness and spring food balance. It warns
 when crops cannot ripen before frost and requires harvest labor before counting
-a yield. It also shows stored/carried herbs, remaining fuel coverage, worn/spare
-coats and tools, residents at risk from cold, and the next winter's star reward.
+a yield. It shows worn/spare coats, residents at risk from cold, and the next
+winter's star reward. Stored/carried herbs and remaining fuel coverage appear
+only once the ward fire is built; before that even the collapsed summary omits
+herbs. The fire itself always displays stored herbs out of the configured four
+needed per winter, including when unlit.
 The estimate uses current population and assigned crops; future hunts, arrivals,
 weather and storage interruptions can change the result. It is an estimate, not
 a guarantee. The panel stays below the actual top bar on narrow screens.
@@ -340,10 +395,25 @@ of gameplay; regression checks block third-party requests and never send email.
 Persistent actionable warnings show a food deficit until spring, crops that
 cannot mature before frost, missing coats before winter, inadequate ward fuel
 and residents freezing outdoors. Cold warnings take priority, show estimated
-remaining exposure time, and recommend Shelter. Warm clothing, shelter, food
+remaining exposure time, and recommend Shelter. They appear in red at the
+centre of the screen in a persistent alert. Notice text does not intercept
+world input; accessible 44 px close controls remain interactive. Warm clothing, shelter, food
 or herbs resolve their respective warnings; ordinary counter updates do not
 cause repeated notification toasts. Warnings and forecasts adapt to the measured
 HUD height and remain available on narrow screens.
+
+`Notifications` owns transient messages, settlement warnings and the central cold
+alert. Each has a close button usable with touch and keyboard. Dismissing a warning
+hides it for that continuous danger episode, even as counters and countdowns
+change. Resolving the condition permits a later new warning; an ordinary warning
+also reappears if it escalates to urgent. A dismissed toast's timer is cancelled,
+and subsequent messages can appear normally. Starting or loading a game resets
+dismissals. Hidden warnings release their reserved layout height immediately.
+
+On mobile the bottom toolbar uses two balanced grid rows with identical left and
+right edges. Visibility changes for Herbs and Release one recompute button spans;
+all visible buttons stretch to their row height and remain at least 44 px tall.
+A resize observer measures toolbar height to keep nearby controls above it.
 
 ## Controls and hosting
 
@@ -353,7 +423,10 @@ selection and open menus. Click/tap buildings without a resident selected for ge
 actions. Drag to pan, scroll/pinch or use +/−
 to zoom, and use the home button to center the village. Space pauses; Escape or
 right-click cancels placement. Orders remain available while paused.
-Shelter calls everybody home; the same button becomes Resume and releases them.
+Clear sends a resident to the nearest trees immediately. Shelter calls everybody
+home; the same button becomes Resume and releases them. Release one keeps
+everyone else sheltered. Click a completed tower and choose Garrison tower to
+send a resident into it. Moat allows repeated single-cell placement.
 
 `npm run build` type-checks and builds `dist/` for GitHub Pages. `npm run build:itch`
 also verifies an itch.io package using relative paths. No backend is required for

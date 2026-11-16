@@ -8,6 +8,7 @@ import { GroundArt } from './GroundArt';
 import { VillagerArt, actionPhase, isWorking } from './VillagerArt';
 import { villagerActivity } from '../game/VillagerOrders';
 import { cropStageName } from './CropArt';
+import { TowerShot } from '../systems/TowerCombatSystem';
 import { protectionZones } from '../systems/ProtectionSystem';
 
 interface SceneItem { depth: number; draw: () => void }
@@ -42,7 +43,7 @@ export class Renderer {
     const points = [[-150, -150], [w + 150, -150], [w + 150, h + 240], [-150, h + 240]].map(([x, y]) => this.camera.screenToWorld(x, y));
     return { x0: Math.max(0, Math.floor(Math.min(...points.map(p => p.x / ts)))), y0: Math.max(0, Math.floor(Math.min(...points.map(p => p.y / ts)))), x1: Math.min(map.width - 1, Math.ceil(Math.max(...points.map(p => p.x / ts)))), y1: Math.min(map.height - 1, Math.ceil(Math.max(...points.map(p => p.y / ts)))) };
   }
-  renderWorld(map: TileMap, season: Season, buildings: BuildingInstance[], configs: Record<string, BuildingConfig>, villagers: VillagerData[], enemies: EnemyData[], selected: string | null, hover: { mouseX: number; mouseY: number; tileX: number; tileY: number }, weather: WeatherEvent | null, paused: boolean): void {
+  renderWorld(map: TileMap, season: Season, buildings: BuildingInstance[], configs: Record<string, BuildingConfig>, villagers: VillagerData[], enemies: EnemyData[], selected: string | null, hover: { mouseX: number; mouseY: number; tileX: number; tileY: number }, weather: WeatherEvent | null, paused: boolean, herbs=0, shots:TowerShot[]=[]): void {
     const ctx = this.ctx, w = this.camera.viewportWidth, h = this.camera.viewportHeight;
     const now = performance.now();
     if (!paused) this.time += Math.min(.1, (now - this.lastFrameTime) / 1000);
@@ -70,7 +71,7 @@ export class Renderer {
     const scene: SceneItem[] = [];
     const active = villagers.filter(v => v.health !== HealthState.Dead);
     const choppers = new Map(active.filter(v => v.currentTask === 'clearing' && isWorking(v)).map(v => [`${v.targetX},${v.targetY}`, v]));
-    const shelterIds = new Set(buildings.filter(b => b.built && ['hut', 'house', 'largeHouse', 'campFire'].includes(b.configId)).map(b => b.id));
+    const shelterIds = new Set(buildings.filter(b => b.built && ['hut', 'house', 'largeHouse', 'campFire', 'watchtower'].includes(b.configId)).map(b => b.id));
     for (let y = bounds.y0; y <= bounds.y1; y++) for (let x = bounds.x0; x <= bounds.x1; x++) {
       const tile = map.getTile(x, y)!; if (tile.type !== 'forest') continue;
       const p = this.point(x + .5, y + .5); if (!this.visible(p.x, p.y)) continue;
@@ -90,13 +91,14 @@ export class Renderer {
       const cfg = configs[b.configId]; if (!cfg) continue;
       const box = this.art.buildingBounds(b, cfg); if (!this.visible(box.centerX, box.baseline, box.height)) continue;
       const occupied = active.filter(v => map.getTile(Math.floor(v.x), Math.floor(v.y))?.buildingId === b.id).length;
-      scene.push({ depth: box.baseline - this.camera.tileHeight * .4, draw: () => {
+      scene.push({ depth: box.baseline - this.camera.tileHeight * (b.configId==='moat'?2:.4), draw: () => {
         if (hovered?.id === b.id) polygon(ctx, box.pts, 'rgba(237,211,151,.16)', '#edcf8e');
         this.art.building(ctx, b, cfg, season, this.time, buildings, occupied);
         if (!b.built) { this.bar(box.centerX, box.baseline + 7, 66, b.buildProgress, '#e8c781'); this.label(box.centerX, box.y - 3, `${cfg.name} · ${Math.round(b.buildProgress * 100)}%`); }
         else if (b.configId==='garden' && b.cropState==='ripe') this.label(box.centerX,box.y+8,`Harvest ready · ${Math.ceil(b.harvestRemaining??getConfig().farming.harvestFood)} food`);
         else if (hovered?.id === b.id) this.label(box.centerX, box.y + 8, `${cfg.name}${b.configId === 'garden' ? ` · ${b.cropState==='growing'?cropStageName(b.farmingProgress ?? 0):'Ready to sow'}` : cfg.maxWorkers ? ` · ${b.assignedWorkers.length}/${cfg.maxWorkers}` : cfg.protectionRadius ? ` · ${cfg.protectionRadius} tile ward` : ''}`);
         if (b.built && cfg.maxWorkers && b.configId !== 'garden' && hovered?.id !== b.id) this.label(box.centerX, box.baseline - 8, `${cfg.name} · ${b.assignedWorkers.length}/${cfg.maxWorkers}`, true);
+        if(b.built && b.configId==='herbalFire')this.label(box.centerX,box.baseline+18,`Herbs ${herbs}/${getConfig().herbs.perWinter} for winter`,true);
         if (occupied && shelterIds.has(b.id)) this.label(box.centerX, box.baseline - 8, `${occupied} sheltered`, true);
         if (b.built && b.configId === 'garden' && b.farmingProgress !== undefined) this.bar(box.centerX, box.baseline + 3, 64, b.farmingProgress, '#a8bc74');
         if (b.hp < b.maxHp) this.bar(box.centerX, box.y + 2, 54, b.hp / b.maxHp, '#da8a6b');
@@ -113,6 +115,14 @@ export class Renderer {
       scene.push({ depth: p.y, draw: () => this.enemy(e) });
     }
     scene.sort((a, b) => a.depth - b.depth).forEach(item => item.draw());
+    for(const shot of shots) {
+      const t=shot.age/getConfig().rendering.towerShotSeconds;
+      const a=this.point(shot.x+.5,shot.y+.5),b=this.point(shot.targetX+.5,shot.targetY+.5);
+      a.y-=95*this.camera.zoom;b.y-=16*this.camera.zoom;
+      const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
+      const length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+      ctx.strokeStyle='#e7d3a0';ctx.lineWidth=2*this.camera.zoom;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-(b.x-a.x)/length*14*this.camera.zoom,y-(b.y-a.y)/length*14*this.camera.zoom);ctx.stroke();
+    }
     if (season === Season.Winter) this.winterLight(buildings, configs);
     this.renderWeather(weather);
     const vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .25, w / 2, h / 2, Math.max(w, h) * .72);

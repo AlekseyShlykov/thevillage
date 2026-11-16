@@ -1,7 +1,6 @@
 const BUILDING_SPRITE_MAP: Record<string, string> = {
   hut: 'buildings/hut.png',
   garden: 'buildings/garden.png',
-  workshop: 'buildings/workshop.png',
   lumberCamp: 'buildings/lumber_camp.png',
   storage: 'buildings/storage.png',
   palisadeWall: 'buildings/palisade_wall.png',
@@ -51,7 +50,7 @@ export class AssetLoader {
 
   async loadAll(): Promise<void> {
     const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png',
-      'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png'];
+      'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png','cargo/herbs.png','cargo/hunt.png','isometric/guard-tower.png'];
 
     for (const p of Object.values(BUILDING_SPRITE_MAP)) allPaths.push(p);
     for (const arr of Object.values(TILE_SPRITE_MAP)) allPaths.push(...arr);
@@ -79,6 +78,9 @@ export class AssetLoader {
   }
 
   getAtlas(season?: string): HTMLImageElement | null { return (season === 'winter' ? this.images.get('isometric/village-winter-atlas.png') : null) ?? this.images.get('isometric/village-atlas.png') ?? null; }
+
+  getCargo(kind: 'herbs'|'hunt'): HTMLImageElement | null {return this.images.get(`cargo/${kind}.png`)??null;}
+  getTower(): HTMLImageElement | null {return this.images.get('isometric/guard-tower.png')??null;}
 
   getGardenAtlas(): HTMLImageElement | null { return this.images.get('isometric/garden-growth-atlas.png') ?? null; }
   getWardAtlas(): HTMLImageElement | null { return this.images.get('isometric/herbal-fire-atlas.png') ?? null; }

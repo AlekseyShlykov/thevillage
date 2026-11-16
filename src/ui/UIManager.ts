@@ -5,8 +5,9 @@ import { IconName, iconMarkup, setButtonContent } from './icons';
 import { TooltipController } from './TooltipController';
 import { getConfig } from '../data/ConfigLoader';
 import { EconomyForecast } from '../systems/ForecastSystem';
-import { hasCoat, hasTool } from '../systems/EquipmentSystem';
+import { hasCoat } from '../systems/EquipmentSystem';
 import { VillagerJob } from '../game/VillagerJobs';
+import { Notifications } from './Notifications';
 import { SettlementWarning } from '../systems/WarningSystem';
 
 export interface UIAction { label: string; icon?: IconName; callback: () => void }
@@ -25,6 +26,7 @@ export interface UICallbacks {
   onGoHunting: () => void;
   onGatherHerbs: () => void;
   onSendAllToChop: () => void;
+  onReleaseOne?: () => void;
   onToggleShelter: () => void;
   onRepairAll: () => void;
   onRestart: () => void;
@@ -51,10 +53,10 @@ export class UIManager {
   private buildPanel!: HTMLElement;
   private techPanel!: HTMLElement;
   private infoPanel!: HTMLElement;
-  private notificationEl!: HTMLElement;
+  private notifications!: Notifications;
+  private toolbarKey = "";
   private tutorialPanel!: HTMLElement;
   private statusEl!: HTMLElement;
-  private notificationTimer = 0;
   private tutorialContentKey = '';
   private callbacks: UICallbacks;
   private buildPanelOpen = false;
@@ -152,10 +154,13 @@ export class UIManager {
     this.shelterBtn = this.btn('Shelter', () => this.callbacks.onToggleShelter(), 'home');
     this.shelterBtn.dataset.shelterToggle = 'true';
     bottomBar.appendChild(this.shelterBtn);
+    const release=this.btn('Release one',()=>this.callbacks.onReleaseOne?.(),'release');release.dataset.releaseOne='true';release.title='Release one resident while everyone else stays sheltered';release.hidden=true;bottomBar.appendChild(release);
 
     const repairBtn = this.btn('Repair', () => this.callbacks.onRepairAll(), 'repair');
     repairBtn.setAttribute('data-repair-btn', 'true');
     bottomBar.appendChild(repairBtn);
+    this.layoutBottomBar();
+    new ResizeObserver(()=>this.overlay.style.setProperty('--toolbar-height',`${bottomBar.getBoundingClientRect().height}px`)).observe(bottomBar);
 
     this.buildPanel = this.el('div', {
       position: 'absolute', left: '8px', top: '56px',
@@ -194,14 +199,7 @@ export class UIManager {
     this.infoPanel.setAttribute('data-info-panel', 'true');
     this.overlay.appendChild(this.infoPanel);
 
-    this.notificationEl = this.el('div', {
-      position: 'absolute', bottom: '52px', left: '50%', transform: 'translateX(-50%)',
-      background: 'rgba(40,40,60,0.95)', padding: '8px 20px', borderRadius: '6px',
-      fontSize: '14px', display: 'none', zIndex: '20', textAlign: 'center',
-      border: '1px solid rgba(255,200,100,0.3)', color: '#ffe0a0',
-    });
-    this.notificationEl.setAttribute('data-notification-el', 'true');
-    this.overlay.appendChild(this.notificationEl);
+    this.notifications = new Notifications(this.overlay);
 
     this.tutorialPanel = this.el('div', {
       position: 'absolute', left: '8px', top: '56px', width: '300px',
@@ -331,7 +329,7 @@ export class UIManager {
     foodLow?: boolean;
     foodSeconds: number;
     foodConsumption: number;
-    toolsAvailable: boolean;
+    hasWard: boolean;
     coatsWorn: number;
   }): void {
     const seasonColors: Record<string, string> = {
@@ -343,7 +341,7 @@ export class UIManager {
     if (!this.topBarStatsDiv.childElementCount) {
       const resource = (icon: IconName, label: string) =>
         `<span class="resource" data-stat="${icon}" tabindex="0"><span class="resource-icon">${iconMarkup(icon)}</span><span><small>${label}</small><strong data-value></strong></span></span>`;
-      this.topBarStatsDiv.innerHTML = resource('wood','Wood') + resource('food','Food') + resource('fur','Pelts') + resource('clothing','Coats') + resource('herbs','Herbs') + resource('tools','Tools') +
+      this.topBarStatsDiv.innerHTML = resource('wood','Wood') + resource('food','Food') + resource('fur','Pelts') + resource('clothing','Coats') + resource('herbs','Herbs') +
         `<span class="season-stat" data-stat="season" tabindex="0"><span data-season-name></span><span class="season-track"><i></i></span></span>` +
         `<span class="village-stat" data-stat="villagers" tabindex="0">${iconMarkup('villagers')} <b data-value></b><small>VILLAGERS</small></span>` +
         `<span class="village-stat" data-stat="comfort" tabindex="0">${iconMarkup('comfort')} <b data-value></b><small>COMFORT</small></span>` +
@@ -354,14 +352,15 @@ export class UIManager {
       el.querySelector('[data-value]')!.textContent = value;
       el.dataset.tooltipTitle = title; el.dataset.tooltip = detail; el.setAttribute('aria-label', `${title}: ${value}`);
     };
-    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', 'Gathered by chopping trees and working at lumber camps. Used for construction, repairs and tools.');
+    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', 'Gathered by chopping trees and working at lumber camps. Used for construction and repairs.');
     stat('food', String(Math.floor(data.resources.food)), 'Food', `Feeds every resident. Current use: ${data.foodConsumption.toFixed(2)} per second; supplies last ${data.foodSeconds} seconds. Consumption rises in winter. Hunting and gardens replenish food.`);
     stat('fur', String(Math.floor(data.resources.fur)), 'Fur', 'Hunters deliver raw pelts after returning home. Pelts must be crafted into individual fur coats; raw pelts do not protect from cold.');
-    stat('tools', String(Math.floor(data.resources.tools)), 'Tools', 'Stored spare tools. Each working resident needs their own tool. Equipped tools wear out with work; some construction uses spares.');
-    this.topBarStatsDiv.querySelector<HTMLElement>('[data-stat="tools"]')!.hidden = !data.toolsAvailable;
     stat('clothing',String(data.coatsWorn+data.resources.clothing),'Warm clothing',`${data.coatsWorn} residents wearing a fur coat; ${data.resources.clothing} spare coats. A fur workshop turns pelts into coats. Only worn coats protect from cold.`);
     stat('herbs',String(data.resources.herbs),'Protective herbs',`Maximum ${getConfig().herbs.capacity}, including expeditions. ${getConfig().herbs.perWinter} fuel the ward for one winter. Gatherers travel deep into the forest and risk death.`);
     stat('villagers', `${data.population}/${data.housing}`, 'Villagers / housing', 'The first number is living residents; the second is housing capacity. Spare housing, food and comfort attract newcomers outside winter.');
+    this.topBarStatsDiv.querySelector<HTMLElement>('[data-stat="herbs"]')!.hidden=!data.hasWard;
+    this.overlay.querySelector<HTMLElement>('[data-gather-herbs]')!.hidden=!data.hasWard;
+    this.layoutBottomBar();
     stat('comfort', `${Math.round(data.comfort*100)}%`, 'Comfort', 'Food, warmth, shelter, health and defenses raise comfort. Comfortable villagers work faster and the village attracts newcomers.');
     const nextLevel = Object.entries(getConfig().levels).find(([level]) => Number(level) > data.level);
     stat('research', String(Math.floor(data.resources.techPoints)), `Research · village level ${data.level}`, `Research points unlock technologies in Tech. Earn them only by surviving winter: 1 star in winters 1–5, then 2 per winter.${nextLevel ? ` Next level: ${nextLevel[1].populationThreshold} residents.` : ' All technology tiers are available.'}`);
@@ -527,7 +526,7 @@ export class UIManager {
   }
 
   /** Update text without replacing focused job buttons on every simulation tick. */
-  showVillager(v: VillagerData, order: TargetedVillagerOrder | null, workplace: string, progress: number | null, jobs: VillagerJob[], toolsAvailable: boolean): void {
+  showVillager(v: VillagerData, order: TargetedVillagerOrder | null, workplace: string, progress: number | null, jobs: VillagerJob[]): void {
     if (this.buildPanelOpen || this.techPanelOpen) { this.infoPanel.style.display = 'none'; return; }
     if (this.infoPanel.dataset.villager !== v.id) {
       this.infoPanel.innerHTML = '';
@@ -558,7 +557,7 @@ export class UIManager {
     this.infoPanel.dataset.targetOrder = order ?? '';
     this.infoPanel.querySelector<HTMLElement>('[data-order-cancel]')!.hidden = !order;
     this.infoPanel.querySelector<HTMLElement>('[data-villager-status]')!.textContent = `${villagerActivity(v)}${workplace ? ` · ${workplace}` : ''}`;
-    this.infoPanel.querySelector<HTMLElement>('[data-villager-health]')!.textContent = `Health ${Math.round(v.hp)}/${v.maxHp}${v.health === 'injured' ? ' · Recovering' : ''} · ${hasCoat(v) ? 'Fur coat worn' : 'No warm coat'}${toolsAvailable ? ` · ${hasTool(v) ? 'Tool equipped' : 'No tool'}` : ''}${(v.coldExposure ?? 0)>0 ? ' · Cold '+Math.round(v.coldExposure!)+'/'+getConfig().cold.unclothedSurvivalSeconds : ''}${v.cargo && Object.values(v.cargo).some(n=>n>0) ? ' · Carrying '+v.cargo.food+' food, '+v.cargo.fur+' pelts, '+v.cargo.herbs+' herbs' : ''}`;
+    this.infoPanel.querySelector<HTMLElement>('[data-villager-health]')!.textContent = `Health ${Math.round(v.hp)}/${v.maxHp}${v.health === 'injured' ? ' · Recovering' : ''} · ${hasCoat(v) ? 'Fur coat worn' : 'No warm coat'}${(v.coldExposure ?? 0)>0 ? ' · Cold '+Math.round(v.coldExposure!)+'/'+getConfig().cold.unclothedSurvivalSeconds : ''}${v.cargo && Object.values(v.cargo).some(n=>n>0) ? ' · Carrying '+v.cargo.food+' food, '+v.cargo.fur+' pelts, '+v.cargo.herbs+' herbs' : ''}`;
     const meter = this.infoPanel.querySelector('progress')!; meter.hidden = progress === null; meter.value = progress ?? 0;
     this.infoPanel.querySelector<HTMLElement>('[data-order-hint]')!.textContent = order ? `${villagerOrders[order].hint} Right-click or Esc to cancel.` : 'Choose an available job to start immediately. It replaces this resident’s previous task.';
     for (const button of this.infoPanel.querySelectorAll<HTMLElement>('[data-villager-order]')) {
@@ -567,11 +566,17 @@ export class UIManager {
     }
   }
 
-  notify(message: string, duration = 3000): void {
-    this.notificationEl.textContent = message;
-    this.notificationEl.style.display = 'block';
-    clearTimeout(this.notificationTimer);
-    this.notificationTimer = window.setTimeout(() => { this.notificationEl.style.display = 'none'; }, duration);
+  notify(message: string, duration = 3000): void { this.notifications.notify(message, duration); }
+  resetNotifications(): void { this.notifications.reset(); }
+
+  /** Different button counts still produce two complete, equally wide mobile rows. */
+  private layoutBottomBar(): void {
+    const bar=this.overlay.querySelector<HTMLElement>('#game-bottom-bar')!;
+    const buttons=[...bar.querySelectorAll<HTMLElement>('button')].filter(b=>!b.hidden);
+    const key=buttons.map(b=>b.textContent).join('|');if(key===this.toolbarKey)return;this.toolbarKey=key;
+    const top=Math.ceil(buttons.length/2),bottom=buttons.length-top;
+    bar.style.setProperty('--toolbar-columns',String(top*bottom));
+    buttons.forEach((b,i)=>{b.style.gridColumn=`span ${i<top?bottom:top}`;});
   }
 
   private toggleBuildPanel(): void {
@@ -633,17 +638,16 @@ export class UIManager {
     }
     panel.style.top = `${Math.ceil(this.topBar.getBoundingClientRect().bottom + 8)}px`;
     this.overlay.style.setProperty('--hud-bottom',panel.style.top);
-    panel.querySelector('summary')!.innerHTML = `${iconMarkup('herbs')} Winter plan · ${data.herbs}/${data.herbCapacity} herbs · ${data.coats}/${data.population} coats`;
+    panel.querySelector('summary')!.innerHTML = `${iconMarkup('home')} Winter plan${data.hasWard?` · ${data.herbs}/${data.herbCapacity} herbs`:''} · ${data.coats}/${data.population} coats`;
     const seconds = data.nextHarvestSeconds === null ? 'No growing crops' : Number.isFinite(data.nextHarvestSeconds) ? `${Math.ceil(data.nextHarvestSeconds)}s to ripen` : 'Too late: crops will die in winter';
     panel.querySelector('[data-forecast-body]')!.innerHTML = `
       <div><b>Food for winter</b><span>${Math.ceil(data.winterFood - 1e-8)} · reserve goal ${Math.ceil(data.reserve - 1e-8)}</span></div>
       <div><b>Food before winter</b><span>${Math.ceil(data.beforeFood - 1e-8)} consumed</span></div>
       <div><b>Standing harvests</b><span>+${Math.round(data.expectedHarvest)} expected · ${seconds}</span></div>
       <div><b>Balance by spring</b><span class="${data.springBalance < 0 ? 'forecast-danger' : ''}">${data.springBalance >= 0 ? '+' : ''}${Math.floor(data.springBalance + 1e-8)} food</span></div>
-      <div><b>Protective herbs</b><span>${data.herbs}/${data.herbCapacity} stored · ${data.herbsInTransit} carried · ${data.herbsNeeded} needed</span></div>
-      <div><b>Ward fuel</b><span>${data.hasWard ? `${Math.floor(data.wardSeconds)}s of winter protection` : 'Build the single protective fire'}</span></div>
+      ${data.hasWard?`<div><b>Protective herbs</b><span>${data.herbs}/${data.herbCapacity} stored · ${data.herbsInTransit} carried · ${data.herbsNeeded} needed</span></div>
+      <div><b>Ward fuel</b><span>${Math.floor(data.wardSeconds)}s of winter protection</span></div>`:''}
       <div><b>Fur clothing</b><span>${data.coats}/${data.population} wearing · ${data.coatsStored} spare</span></div>
-      ${data.toolsAvailable ? `<div><b>Tools</b><span>${data.tools}/${data.population} equipped · ${data.toolsStored} spare</span></div>` : ''}
       <div><b>Cold danger</b><span class="${data.exposed ? 'forecast-danger' : ''}">${data.exposed} residents freezing · uncoated limit ${getConfig().cold.unclothedSurvivalSeconds}s outdoors</span></div>
       <div><b>Next winter reward</b><span>${data.nextStars} research star(s)</span></div>
       <p>Current population and assigned crops; future expeditions are excluded. Harvests require farmers and storage space.</p>`;
@@ -651,20 +655,7 @@ export class UIManager {
 
   closeForecast(): void { const panel=this.overlay.querySelector<HTMLDetailsElement>('#game-forecast');if(panel)panel.open=false; }
 
-  updateWarnings(warnings: SettlementWarning[]): void {
-    let panel=this.overlay.querySelector<HTMLElement>('#settlement-warnings');
-    if(!panel) { panel=this.el('div');panel.id='settlement-warnings';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');this.overlay.append(panel); }
-    const key=warnings.map(w=>w.id+w.text).join('|');
-    if(panel.dataset.content!==key) {
-      panel.replaceChildren();panel.dataset.content=key;
-      for(const warning of warnings) {
-        const item=this.el('div');item.dataset.warning=warning.id;if(warning.urgent)item.className='warning-urgent';
-        item.innerHTML=iconMarkup('warning',true);const text=this.el('span');text.textContent=warning.text;item.append(text);panel.append(item);
-      }
-    }
-    panel.hidden=!warnings.length;
-    this.overlay.style.setProperty('--warnings-height',`${panel.hidden?0:panel.getBoundingClientRect().height}px`);
-  }
+  updateWarnings(warnings: SettlementWarning[]): void { this.notifications.updateWarnings(warnings); }
 
   updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean }): void {
     const title = data.paused ? 'Time to make a plan' : data.shelter ? 'Safe by the hearth' : data.mode === 'clear' ? 'Make room for your village' : data.mode === 'build' ? 'Find a place to call home' : 'A little care goes a long way';
@@ -679,6 +670,8 @@ export class UIManager {
     }
     this.shelterBtn.classList.toggle('active-action', data.shelter);
     this.shelterBtn.setAttribute('aria-pressed', shelterState);
+    this.overlay.querySelector<HTMLElement>('[data-release-one]')!.hidden=!data.shelter;
+    this.layoutBottomBar();
     this.shelterBtn.title = data.shelter ? 'Release everyone and resume their jobs' : 'Call everyone to shelter';
     for (const button of this.overlay.querySelectorAll<HTMLElement>('#game-bottom-bar button')) {
       if (button.textContent?.includes('Clear')) button.classList.toggle('active-action', data.mode === 'clear');

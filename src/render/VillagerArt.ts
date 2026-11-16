@@ -70,7 +70,11 @@ export class VillagerArt {
     } else if (sprite) ctx.drawImage(sprite, -24, -40, 48, 48);
     else { ctx.fillStyle = '#c99962'; ctx.fillRect(-6, -26, 12, 21); ctx.fillStyle = '#ecd0a1'; ctx.beginPath(); ctx.arc(0, -30, 6, 0, Math.PI * 2); ctx.fill(); }
     if (working) this.tool(ctx, tool, phase);
-    if (Object.values(v.cargo ?? {}).some(n => n > 0)) { ctx.fillStyle = '#b39664'; ctx.strokeStyle = '#5a4c35'; ctx.fillRect(-13,-21,7,10); ctx.strokeRect(-13,-21,7,10); }
+    if (Object.values(v.cargo ?? {}).some(n => n > 0)) {
+      const cargo=this.assets.getCargo?.(v.cargo?.herbs?'herbs':'hunt');
+      if(cargo) {ctx.imageSmoothingEnabled=true;ctx.drawImage(cargo,-22,-27,24,24);}
+      else {ctx.fillStyle='#b39664';ctx.beginPath();ctx.ellipse(-11,-15,7,6,0,0,Math.PI*2);ctx.fill();}
+    }
     ctx.restore();
     if (working && tool !== 'bow') this.particles(ctx, phase, facing, tool === 'axe' ? '#dbc18a' : tool === 'rake' ? '#ab9972' : '#e4cba0');
     ctx.restore();

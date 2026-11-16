@@ -2,6 +2,7 @@ import { VillagerData, VillagerState, HealthState, Position, BuildingInstance, T
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
 import { findPath } from '../utils/Pathfinding';
+import { assignSettlementShelters } from './ShelterSystem';
 import { HuntingGrounds } from '../world/HuntingGrounds';
 
 let nextVillagerId = 1;
@@ -68,7 +69,8 @@ export class VillagerSystem {
     const v = this.getVillagerById(id), tile = this.tileMap.getTile(x, y);
     if (!v || !tile || v.health === HealthState.Dead || tile.type !== TileType.Forest || this.isTileAlreadyBeingClearedByOther(id, x, y)) return false;
     if (!this.assignPath(v, x, y)) return false;
-    tile.markedForClearing = true; v.currentTask = 'clearing'; return true;
+    tile.markedForClearing = true; v.currentTask = 'clearing'; v.repeatClearing=true;
+    v.annualJob={task:'clearing',target:{x,y}};return true;
   }
   sendVillagerToHunt(id: string, target?: Position): boolean {
     const v = this.getVillagerById(id);
@@ -99,6 +101,7 @@ export class VillagerSystem {
       for (const old of buildings) old.assignedWorkers = old.assignedWorkers.filter(i => i !== id);
       b.assignedWorkers.push(id); v.assignedBuildingId = buildingId;
       v.currentTask = b.configId === 'garden' ? 'farming' : 'working'; v.taskProgress = 0;
+      v.repeatClearing=false;v.annualJob={task:v.currentTask,buildingId:b.id};
       return true;
     }
     return false;
@@ -107,16 +110,8 @@ export class VillagerSystem {
     const v = this.getVillagerById(id); if (!v || v.health === HealthState.Dead || !this.assignPath(v, x, y)) return false;
     v.currentTask = 'returnHome'; v.assignedBuildingId = null; return true;
   }
-  assignAllReturnHome(tiles: Position[]): number {
-    this.setShelters(tiles); if (!tiles.length) return 0;
-    const available = [...tiles]; let assigned = 0;
-    for (const v of this.getAliveVillagers()) {
-      const choices = (available.length ? available : tiles).slice().sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
-      for (const p of choices) if (this.sendVillagerToHousing(v.id, p.x, p.y)) {
-        const index = available.indexOf(p); if (index >= 0) available.splice(index, 1); assigned++; break;
-      }
-    }
-    return assigned;
+  assignAllReturnHome(tiles: Position[], buildings: BuildingInstance[] = []): number {
+    return assignSettlementShelters(this, tiles, buildings);
   }
   update(dt: number, buildings: BuildingInstance[], isWinter: boolean, housingTiles: Position[], stayInShelterMode = false): void {
     this.setShelters(housingTiles);
@@ -162,8 +157,8 @@ export class VillagerSystem {
         else if (v.currentTask) v.state = VillagerState.Working;
         else v.state = VillagerState.Idle;
       }
-      if (stayInShelterMode && inside) { v.path = []; v.currentTask = null; v.state = VillagerState.Idle; }
-      if (v.health === HealthState.Injured) {
+      if (stayInShelterMode && !v.shelterExempt && inside && (v.currentTask !== 'returnHome' || !v.path.length)) { v.path = []; v.currentTask = null; v.state = VillagerState.Idle; }
+      if (v.hp < v.maxHp) {
         v.hp = Math.min(v.maxHp, v.hp + cfg.healRate * dt);
         if (v.hp >= v.maxHp / 2) { v.health = HealthState.Healthy; if (v.state === VillagerState.Injured) v.state = VillagerState.Idle; }
       }
@@ -175,9 +170,9 @@ export class VillagerSystem {
     if (v.hp <= 0) { v.health = HealthState.Dead; v.state = VillagerState.Dead; v.path = []; this.onVillagerDeath?.(); }
     else v.health = HealthState.Injured;
   }
-  serialize(): VillagerData[] { return this.villagers.map(v => ({ ...v, path: v.path.map(p => ({ ...p })), cargo: v.cargo ? { ...v.cargo } : undefined })); }
+  serialize(): VillagerData[] { return this.villagers.map(v => ({ ...v, path: v.path.map(p => ({ ...p })), annualJob:v.annualJob?{...v.annualJob,target:v.annualJob.target?{...v.annualJob.target}:undefined}:undefined, cargo: v.cargo ? { ...v.cargo } : undefined })); }
   deserialize(data: VillagerData[]): void {
-    this.villagers = data.map(v => ({ ...v, path: (v.path ?? []).map(p => ({ ...p })), cargo: v.cargo ? { ...v.cargo } : undefined }));
+    this.villagers = data.map(v => ({ ...v, path: (v.path ?? []).map(p => ({ ...p })), annualJob:v.annualJob?{...v.annualJob,target:v.annualJob.target?{...v.annualJob.target}:undefined}:undefined, cargo: v.cargo ? { ...v.cargo } : undefined }));
     nextVillagerId = Math.max(0, ...data.map(v => Number(v.id.replace('v_', '')) || 0)) + 1;
   }
 }

@@ -19,6 +19,7 @@ import { ProductionSystem } from '../systems/ProductionSystem';
 import { ProtectionSystem } from '../systems/ProtectionSystem';
 import { EquipmentSystem, hasTool, hasCoat, workerProductivity } from '../systems/EquipmentSystem';
 import { ColdSystem } from '../systems/ColdSystem';
+import { TowerCombatSystem } from '../systems/TowerCombatSystem';
 import { CropSystem } from '../systems/CropSystem';
 import { ForagingSystem } from '../systems/ForagingSystem';
 import { makeForecast } from '../systems/ForecastSystem';
@@ -72,6 +73,7 @@ export class Game {
   private equipmentSystem = new EquipmentSystem();
   private coldSystem = new ColdSystem();
   private cropSystem = new CropSystem();
+  private towerCombatSystem = new TowerCombatSystem();
   private foragingSystem: ForagingSystem;
   private lastRewardedWinter = 0;
 
@@ -124,6 +126,7 @@ export class Game {
       onGoHunting: () => this.goHunting(),
       onGatherHerbs: () => this.gatherHerbs(),
       onSendAllToChop: () => this.sendAllToChop(),
+      onReleaseOne: () => this.releaseOneResident(),
       onToggleShelter: () => { if (this.stayInShelterMode) this.leaveShelter(); else this.returnHome(); this.updateUI(); },
       onRepairAll: () => this.repairAll(),
       onRestart: () => this.restart(),
@@ -221,7 +224,7 @@ export class Game {
         for (const b of this.buildingSystem.buildings) { b.wardActive = false; b.wardFuelSeconds = 0; }
         this.hordeSystem.endWinter();
         this.soundManager.stopHordeLoop();
-        if (this.stayInShelterMode) this.leaveShelter();
+        this.leaveShelter();
         this.saveSystem.autosave(this.serializeState());
         this.ui.notify('Spring! Autosaved.');
         this.checkLevelUp();
@@ -289,6 +292,7 @@ export class Game {
 
     this.villagerSystem.update(dt, this.buildingSystem.buildings, isWinter, housingTiles, this.stayInShelterMode);
     this.updateHunting(dt);
+    this.updateQueuedOrders();
     this.updateRepair(dt);
     this.updateResourceProduction(effectiveDt);
     this.cropSystem.update(dt, this.seasonSystem.season, this.seasonSystem.getCurrentDuration(), this.buildingSystem, this.villagerSystem, this.resourceSystem, this.techSystem, amount => this.ui.notify(`Harvest stored: +${Math.round(amount)} food`));
@@ -350,6 +354,7 @@ export class Game {
     } else {
       this.soundManager.stopHordeLoop();
     }
+    this.towerCombatSystem.update(dt,this.buildingSystem,this.villagerSystem,this.hordeSystem);
     this.updateCombat(dt);
 
     const storageBonuses = this.buildingSystem.getStorageBonuses();
@@ -369,7 +374,7 @@ export class Game {
   private render(): void {
     this.renderer.renderWorld(this.tileMap, this.seasonSystem.season, this.buildingSystem.buildings,
       this.buildingSystem.getAllBuildingConfigs(), this.villagerSystem.villagers, this.hordeSystem.enemies,
-      this.selectedVillagerId, this.input.state, this.weatherSystem.currentEvent, this.gameLoop.gameSpeed === 0);
+      this.selectedVillagerId, this.input.state, this.weatherSystem.currentEvent, this.gameLoop.gameSpeed === 0,this.resourceSystem.resources.herbs,this.towerCombatSystem.shots);
 
     if (this.mode === 'build' && this.selectedBuildingId) {
       const state = this.input.state;
@@ -470,16 +475,21 @@ export class Game {
           if (building.assignedWorkers.length) actions.push({ label: 'Release workers', icon: 'release', callback: () => {
             for (const id of [...building.assignedWorkers]) {
               const v = this.villagerSystem.getVillagerById(id); if (!v) continue;
-              this.detachVillagerFromPreviousWork(id); v.currentTask = null; v.path = []; v.state = VillagerState.Idle;
+              this.detachVillagerFromPreviousWork(id); v.annualJob=undefined;v.repeatClearing=false;v.currentTask = null; v.path = []; v.state = VillagerState.Idle;
             }
           } });
+        }
+        if(cfg.category==='housing' || building.configId==='campFire') {
+          const occupants=this.villagerSystem.getAliveVillagers().filter(v=>this.tileMap.getTile(Math.floor(v.x),Math.floor(v.y))?.buildingId===building.id);
+          for(const v of occupants)actions.push({label:`Release resident ${v.id.replace('v_','')}`,icon:'release',callback:()=>this.releaseOneResident(v.id)});
+          if(building.configId==='watchtower' && occupants.length<cfg.capacity)actions.push({label:'Garrison tower',icon:'bow',callback:()=>this.garrisonTower(building.id)});
         }
         actions.push({ label: 'Demolish', icon: 'demolish', callback: () => this.startDemolish(building.id) });
       }
 
       this.ui.showInfo([
         cfg?.name || building.configId,
-        `HP: ${Math.floor(building.hp)}/${building.maxHp}`,
+        cfg.indestructible ? 'Cannot be destroyed by monsters' : `HP: ${Math.floor(building.hp)}/${building.maxHp}`,
         building.built ? 'Built' : `Building: ${Math.round(building.buildProgress * 100)}%`,
         building.configId === 'garden' && building.built ? this.gardenStatus(building) : '',
         building.configId === 'furWorkshop' && building.built ? `1 pelt → 1 fur coat. ${this.resourceSystem.resources.fur >= getConfig().resources.furPerClothing ? 'Assign a worker to sew coats.' : 'Needs pelts: send a resident hunting.'}` : '',
@@ -507,7 +517,7 @@ export class Game {
 
   private jobsFor(id: string) {
     const v = this.villagerSystem.getVillagerById(id);
-    return v ? availableJobs(v,this.tileMap,this.buildingSystem,this.villagerSystem,this.resourceSystem,this.foragingSystem,this.seasonSystem.season,this.stayInShelterMode) : [];
+    return v ? availableJobs(v,this.tileMap,this.buildingSystem,this.villagerSystem,this.resourceSystem,this.foragingSystem,this.seasonSystem.season,this.stayInShelterMode && !v.shelterExempt) : [];
   }
 
   private executeVillagerJob(key: string): void {
@@ -547,10 +557,11 @@ export class Game {
       this.detachVillagerFromPreviousWork(v.id);
       v.currentTask = null; v.path = []; v.targetX = null; v.targetY = null;
       v.taskProgress = 0; v.state = VillagerState.Idle; v.holdPosition = true;
+      v.annualJob=undefined;v.repeatClearing=false;v.queuedExpedition=undefined;v.resumeAnnualAfterDelivery=false;
       this.pendingOrder = null; this.mode = 'normal';
       this.ui.notify(`Villager ${v.id.replace('v_', '')} is waiting for orders.`);
     } else {
-      if (this.stayInShelterMode) { this.ui.notify('Press Resume before giving a work order.'); return; }
+      if (this.isHeldInShelter(v.id)) { this.ui.notify('Release this resident before giving a work order.'); return; }
       this.pendingOrder = this.pendingOrder === order ? null : order;
       this.mode = this.pendingOrder ? 'order' : 'normal';
     }
@@ -589,7 +600,7 @@ export class Game {
   }
 
   private villagerActionHunt(villagerId: string, target?: Position): boolean {
-    if (this.stayInShelterMode) {
+    if (this.isHeldInShelter(villagerId)) {
       this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
       return false;
     }
@@ -606,7 +617,7 @@ export class Game {
   }
 
   private villagerActionChop(villagerId: string, tx: number, ty: number): boolean {
-    if (this.stayInShelterMode) {
+    if (this.isHeldInShelter(villagerId)) {
       this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
       return false;
     }
@@ -621,7 +632,7 @@ export class Game {
   }
 
   private villagerActionGo(villagerId: string, tx: number, ty: number): boolean {
-    if (this.stayInShelterMode) {
+    if (this.isHeldInShelter(villagerId)) {
       const housingSet = new Set(this.buildingSystem.getHousingTiles().map(p => `${p.x},${p.y}`));
       if (!housingSet.has(`${tx},${ty}`)) {
         this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
@@ -640,7 +651,7 @@ export class Game {
 
   /** Send villager to unbuilt building's arrival tile; only one builder per building. */
   private villagerActionSendToBuild(villagerId: string, buildingId: string): boolean {
-    if (this.stayInShelterMode) {
+    if (this.isHeldInShelter(villagerId)) {
       this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
       return false;
     }
@@ -682,6 +693,7 @@ export class Game {
       building.assignedWorkers.push(villager.id);
       villager.assignedBuildingId = building.id;
       villager.currentTask = 'building';
+      villager.repeatClearing=false;villager.annualJob={task:'building',buildingId:building.id};
       villager.taskAttempts = 0;
       return true;
     }
@@ -692,7 +704,7 @@ export class Game {
     if (this.seasonSystem.isWinter() && this.buildingSystem.buildings.find(b => b.id === buildingId)?.configId === 'garden') {
       this.ui.notify('Sowing is closed in winter. Crops cannot survive the frost.'); return false;
     }
-    if (this.stayInShelterMode) { this.ui.notify('Press Resume to resume work.'); return false; }
+    if (this.isHeldInShelter(villagerId)) { this.ui.notify('Press Resume to resume work.'); return false; }
     if (this.villagerSystem.assignVillagerToBuilding(villagerId, buildingId, this.buildingSystem.buildings)) {
       const cfg = this.buildingSystem.getBuildingConfig(
         this.buildingSystem.buildings.find(b => b.id === buildingId)!.configId
@@ -727,6 +739,7 @@ export class Game {
       if (previous) previous.assignedWorkers = previous.assignedWorkers.filter(id => id !== villagerId);
     }
     if (villager && villager.assignedBuildingId === previousId) villager.assignedBuildingId = null;
+    if(villager && villager.currentTask!=='clearing')villager.repeatClearing=false;
   }
 
   private tryAssignWorker(buildingId: string): void {
@@ -771,9 +784,13 @@ export class Game {
       if (b.configId === 'palisadeGate') {
         b.rotation = this.detectPalisadeOrientation(tx, ty) ? 90 : 0;
       }
+      if(!this.stayInShelterMode)for(const v of this.orderedCandidates('building')) {
+        if(Object.values(v.cargo??{}).some(n=>n>0))continue;
+        if(this.dispatchBuilder(v.id,b.id))break;
+      }
       this.tutorialSystem.onBuildingPlaced(b.id, b.configId);
       this.ui.notify(`Placed ${cfg.name}`);
-      this.cancelBuild();
+      if(b.configId!=='moat')this.cancelBuild();
     }
   }
 
@@ -867,11 +884,12 @@ export class Game {
   private updateForestClearing(dt: number): void {
     const cfg = getConfig(), villagers = this.villagerSystem;
     this.clearingAssignTimer += dt;
-    if (!this.stayInShelterMode && this.clearingAssignTimer >= cfg.villagers.clearingDispatchInterval) {
+    if (this.clearingAssignTimer >= cfg.villagers.clearingDispatchInterval) {
       this.clearingAssignTimer = 0;
       const marked = this.tileMap.getMarkedClearingTiles();
       for (const v of villagers.getAliveVillagers()) {
-        if (v.state !== VillagerState.Idle || v.currentTask || v.assignedBuildingId || v.holdPosition) continue;
+        if (this.isHeldInShelter(v.id) || v.state !== VillagerState.Idle || v.currentTask || v.assignedBuildingId || v.holdPosition) continue;
+        if(v.repeatClearing) { this.startNearestClearing(v.id);continue; }
         const targets = marked.filter(t => !villagers.isTileAlreadyBeingClearedByOther(v.id, t.x, t.y))
           .sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
         for (const t of targets) if (villagers.sendVillagerToChop(v.id, t.x, t.y)) break;
@@ -1017,7 +1035,7 @@ export class Game {
   private isHouseBuilding(buildingId: string): boolean {
     const b = this.buildingSystem.buildings.find(x => x.id === buildingId);
     if (!b) return false;
-    return ['hut', 'house', 'largeHouse'].includes(b.configId);
+    return ['hut', 'house', 'largeHouse', 'watchtower'].includes(b.configId);
   }
 
   /** Called when an enemy from the horde reaches a villager who is outside (not in hut/house/largeHouse). */
@@ -1135,6 +1153,7 @@ export class Game {
           if (b.configId === 'garden' || b.configId === 'furWorkshop') {
             v.state = VillagerState.Working;
             v.currentTask = b.configId === 'garden' ? 'farming' : 'working';
+            v.annualJob={task:v.currentTask,buildingId:b.id};
             v.taskProgress = 0;
             if (b.configId === 'garden') this.tutorialSystem.onGardenWorkerAssigned();
             continue;
@@ -1259,7 +1278,7 @@ export class Game {
   }
 
   private sendRepairToBuilding(buildingId: string, villagerId?: string): boolean {
-    if (this.stayInShelterMode) { this.ui.notify('Press Resume to resume work.'); return false; }
+    if (villagerId && this.isHeldInShelter(villagerId)) { this.ui.notify('Release this resident first.'); return false; }
     const building = this.buildingSystem.buildings.find(b => b.id === buildingId);
     if (!building?.built || (building.hp >= building.maxHp && !building.needsRepair)) {
       this.ui.notify('Nothing to repair.'); return false;
@@ -1289,82 +1308,105 @@ export class Game {
     this.ui.notify('No path to building.'); return false;
   }
 
+  private isHeldInShelter(id: string): boolean {
+    return this.stayInShelterMode && !this.villagerSystem.getVillagerById(id)?.shelterExempt;
+  }
+
+  /** Player orders may interrupt any job. Deliveries finish first so supplies are not lost. */
+  private orderedCandidates(task: string) {
+    return this.villagerSystem.getAliveVillagers().filter(v=>v.currentTask!==task)
+      .sort((a,b)=>Number(b.id===this.selectedVillagerId)-Number(a.id===this.selectedVillagerId) ||
+        Number(!!a.currentTask)-Number(!!b.currentTask) ||
+        Number(['hunting','gatheringHerbs'].includes(a.currentTask??''))-Number(['hunting','gatheringHerbs'].includes(b.currentTask??'')));
+  }
+
+  private startNearestClearing(id: string): boolean {
+    const v=this.villagerSystem.getVillagerById(id);if(!v)return false;
+    const trees:Position[]=[];
+    for(let y=0;y<this.tileMap.height;y++)for(let x=0;x<this.tileMap.width;x++)
+      if(this.tileMap.getTile(x,y)?.type===TileType.Forest && !this.villagerSystem.isTileAlreadyBeingClearedByOther(id,x,y))trees.push({x,y});
+    trees.sort((a,b)=>Math.hypot(a.x-v.x,a.y-v.y)-Math.hypot(b.x-v.x,b.y-v.y));
+    for(const t of trees)if(this.villagerSystem.sendVillagerToChop(id,t.x,t.y)) {
+      this.detachVillagerFromPreviousWork(id);return true;
+    }
+    return false;
+  }
+
+  private dispatchOrder(kind:'hunt'|'herbs'|'chop'): boolean {
+    if(kind==='herbs' && this.resourceSystem.resources.herbs+this.foragingSystem.reservedHerbs(this.villagerSystem)>=getConfig().herbs.capacity) {
+      this.ui.notify('Protective herb storage and expeditions are full.');return false;
+    }
+    const task=kind==='hunt'?'hunting':kind==='herbs'?'gatheringHerbs':'clearing';
+    const candidates=this.orderedCandidates(task);
+    for(const v of candidates) {
+      if(Object.values(v.cargo??{}).some(n=>n>0))continue;
+      const wasExempt=v.shelterExempt;v.shelterExempt=true;v.holdPosition=false;
+      const ok=kind==='chop'?this.startNearestClearing(v.id):kind==='hunt'?this.villagerActionHunt(v.id):this.gatherHerbs(v.id);
+      if(ok) {v.queuedExpedition=undefined;this.updateUI();return true;}
+      v.shelterExempt=wasExempt;
+    }
+    const carrier=candidates.find(v=>Object.values(v.cargo??{}).some(n=>n>0));
+    if(carrier) {carrier.queuedExpedition=kind;this.ui.notify('Order accepted. The resident will deliver supplies home first.');return true;}
+    this.ui.notify('No reachable worker available; residents may already be carrying out this order.');return false;
+  }
+
+  private updateQueuedOrders(): void {
+    for(const v of this.villagerSystem.getAliveVillagers()) {
+      if(Object.values(v.cargo??{}).some(n=>n>0))continue;
+      if(v.resumeAnnualAfterDelivery && !['hunting','gatheringHerbs'].includes(v.currentTask??'') && !this.isHeldInShelter(v.id)) {
+        v.resumeAnnualAfterDelivery=false;
+        const plan=v.annualJob,b=this.buildingSystem.buildings.find(b=>b.id===plan?.buildingId);
+        if(plan?.task==='clearing')this.startNearestClearing(v.id);
+        else if(plan?.task==='building') {const site=b&&!b.built?b:this.buildingSystem.buildings.find(b=>!b.built&&!b.assignedWorkers.length);if(site)this.dispatchBuilder(v.id,site.id);}
+        else if(b?.built)this.villagerSystem.assignVillagerToBuilding(v.id,b.id,this.buildingSystem.buildings);
+      }
+      const kind=v.queuedExpedition;if(!kind)continue;
+      v.shelterExempt=true;
+      const ok=kind==='hunt'?this.villagerActionHunt(v.id):kind==='herbs'?this.gatherHerbs(v.id):this.startNearestClearing(v.id);
+      if(ok)v.queuedExpedition=undefined;
+      else if(kind==='herbs' && this.resourceSystem.resources.herbs>=getConfig().herbs.capacity)v.queuedExpedition=undefined;
+    }
+  }
+
   private toggleClearMode(): void {
-    this.deselectVillager();
-    this.mode = this.mode === 'clear' ? 'normal' : 'clear';
-    if (this.mode === 'clear') {
-      this.clearModeHintCount++;
-      if (this.clearModeHintCount === 1 || (this.clearModeHintCount - 1) % 5 === 0) {
-        this.ui.notify('Mark forest tiles. Free villagers will clear them automatically.');
-      }
-    }
+    this.mode='normal';this.pendingOrder=null;
+    if(this.dispatchOrder('chop')) {this.tutorialSystem.onClearStarted();this.ui.notify('A resident is chopping the nearest trees.');}
   }
 
-  private goHunting(): void {
-    if (this.stayInShelterMode) {
-      this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
-      return;
-    }
-    const forestTiles = this.tileMap.getForestEdgeTiles();
-    if (forestTiles.length === 0) {
-      this.ui.notify('No forest nearby to hunt.');
-      return;
-    }
-    const center = this.tileMap.getClearingCenter();
-    const villagerId = this.selectedVillagerId ?? this.villagerSystem.findClosestIdleVillager(center.x, center.y)?.id ?? null;
-    if (!villagerId) {
-      this.ui.notify('Select a villager or have an idle one.');
-      return;
-    }
-    if (this.villagerSystem.sendVillagerToHunt(villagerId)) {
-      this.detachVillagerFromPreviousWork(villagerId);
-      this.soundManager.playHunt();
-      this.tutorialSystem.onHuntStarted(villagerId);
-      this.ui.notify('One villager went hunting. Risk in the forest!');
-    } else {
-      this.ui.notify('This villager cannot hunt (already hunting or busy).');
-    }
+  private goHunting(): void {this.dispatchOrder('hunt');}
+
+  private gatherHerbs(id?: string,target?:Position): boolean {
+    if(!id)return this.dispatchOrder('herbs');
+    if(this.isHeldInShelter(id))return false;
+    if(!this.foragingSystem.gather(id,this.villagerSystem,this.resourceSystem,target))return false;
+    this.detachVillagerFromPreviousWork(id);this.ui.notify('Gatherer sent deep into the forest. Supplies count when delivered home.');return true;
   }
 
-  private gatherHerbs(id?: string, target?: Position): boolean {
-    if (this.stayInShelterMode) { this.ui.notify('Press Resume before gathering herbs.'); return false; }
-    const c = this.tileMap.getClearingCenter();
-    const villagerId = id ?? this.selectedVillagerId ?? this.villagerSystem.findClosestIdleVillager(c.x, c.y)?.id;
-    if (!villagerId || !this.foragingSystem.gather(villagerId, this.villagerSystem, this.resourceSystem, target)) {
-      this.ui.notify(`Cannot gather: select an available resident. Herb capacity, including expeditions: ${getConfig().herbs.capacity}.`); return false;
-    }
-    this.detachVillagerFromPreviousWork(villagerId); this.ui.notify('Gatherer sent for protective herbs. Supplies count when delivered home.'); return true;
+  private sendAllToChop(): void {this.toggleClearMode();}
+
+  private garrisonTower(id:string): void {
+    const tower=this.buildingSystem.buildings.find(b=>b.id===id && b.built && b.configId==='watchtower');if(!tower)return;
+    const inside=(v:typeof this.villagerSystem.villagers[number])=>this.tileMap.getTile(Math.floor(v.x),Math.floor(v.y))?.buildingId===tower.id;
+    const inbound=(v:typeof this.villagerSystem.villagers[number])=>v.currentTask==='returnHome' && v.targetX===tower.tileX && v.targetY===tower.tileY;
+    const people=this.villagerSystem.getAliveVillagers();
+    if(people.filter(v=>inside(v)||inbound(v)).length>=getConfig().buildings.watchtower.capacity) {this.ui.notify('Tower garrison is full.');return;}
+    const v=this.orderedCandidates('').find(v=>!inside(v) && !inbound(v) && !Object.values(v.cargo??{}).some(n=>n>0));
+    if(!v) {this.ui.notify('No resident available.');return;}
+    v.shelterExempt=true;v.holdPosition=false;this.villagerActionShelter(v.id,tower);
   }
 
-  private sendAllToChop(): void {
-    if (this.stayInShelterMode) {
-      this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
-      return;
+  /** A single exemption leaves the settlement-wide shelter order in place. */
+  private releaseOneResident(id?:string): void {
+    const v=id?this.villagerSystem.getVillagerById(id):this.villagerSystem.getAliveVillagers().find(v=>this.isVillagerInShelter(v.id)&&!v.shelterExempt);
+    if(!v || !this.isVillagerInShelter(v.id)) {this.ui.notify('No sheltered resident to release.');return;}
+    const houseId=this.tileMap.getTile(Math.floor(v.x),Math.floor(v.y))?.buildingId;
+    const house=this.buildingSystem.buildings.find(b=>b.id===houseId);if(!house)return;
+    const exits=this.buildingSystem.getArrivalTiles(house).sort((a,b)=>Math.hypot(a.x-v.x,a.y-v.y)-Math.hypot(b.x-v.x,b.y-v.y));
+    for(const p of exits)if(this.villagerSystem.assignPath(v,p.x,p.y)) {
+      this.detachVillagerFromPreviousWork(v.id);v.shelterExempt=true;v.holdPosition=true;v.currentTask=null;
+      this.selectedVillagerId=v.id;this.ui.hideActionMenu();this.updateUI();this.ui.notify('One resident released. Choose their next job.');return;
     }
-    const marked = this.tileMap.getMarkedClearingTiles();
-    if (marked.length === 0) {
-      this.clearModeHintCount++;
-      if (this.clearModeHintCount === 1 || (this.clearModeHintCount - 1) % 5 === 0) {
-        this.ui.notify('First mark forest tiles for clearing (Clear mode).');
-      }
-      return;
-    }
-    let villagerId: string | null = this.selectedVillagerId;
-    if (!villagerId) {
-      const idle = this.villagerSystem.findClosestIdleVillager(marked[0].x, marked[0].y);
-      villagerId = idle?.id ?? null;
-    }
-    if (!villagerId) {
-      this.ui.notify('Select a villager or have an idle one.');
-      return;
-    }
-    const v = this.villagerSystem.getVillagerById(villagerId);
-    const tile = v ? this.getClosestMarkedTile(v.x, v.y, marked) : marked[0];
-    if (this.villagerSystem.sendVillagerToChop(villagerId, tile.x, tile.y)) {
-      this.ui.notify('One villager sent to chop.');
-    } else {
-      this.ui.notify('Cannot send this villager to chop.');
-    }
+    this.ui.notify('The shelter exit is blocked.');
   }
 
   private getClosestMarkedTile(vx: number, vy: number, marked: { x: number; y: number }[]): { x: number; y: number } {
@@ -1389,7 +1431,7 @@ export class Game {
     }
     this.soundManager.playShelter();
     if (!this.stayInShelterMode) this.shelteredJobs = this.villagerSystem.getAliveVillagers()
-      .filter(v => v.currentTask && v.currentTask!=='returnHome')
+      .filter(v => v.currentTask && !['returnHome','hunting','gatheringHerbs'].includes(v.currentTask))
       .map(v => ({ villagerId:v.id,buildingId:v.assignedBuildingId??undefined,task:v.currentTask!,
         target:v.targetX!==null&&v.targetY!==null?{x:v.targetX,y:v.targetY}:undefined,progress:v.taskProgress }));
     this.stayInShelterMode = true;
@@ -1399,6 +1441,7 @@ export class Game {
     }
     for (const v of this.villagerSystem.getAliveVillagers()) {
       v.assignedBuildingId = null;
+      v.shelterExempt=false;v.repeatClearing=false;v.queuedExpedition=undefined;
       v.currentTask = null;
       v.path = [];
       v.state = VillagerState.Idle;
@@ -1406,28 +1449,33 @@ export class Game {
       v.targetY = null;
     }
 
-    const n = this.villagerSystem.assignAllReturnHome(housingTiles);
+    const n = this.villagerSystem.assignAllReturnHome(housingTiles,this.buildingSystem.buildings);
     this.tutorialSystem.onShelterCalled();
-    this.ui.notify(n > 0 ? `Everyone going to shelter (${n}). Stay in shelter mode on.` : 'Stay in shelter mode on.');
+    this.ui.notify(n===this.villagerSystem.getAliveCount()?`Everyone going to shelter (${n}). Towers first; a group stays at home.`:`Only ${n} residents have a reachable shelter. Build more housing or clear a route.`);
   }
 
   private leaveShelter(): void {
     this.soundManager.playLeaveShelter();
     this.stayInShelterMode = false;
+    for(const v of this.villagerSystem.getAliveVillagers())v.shelterExempt=false;
     let resumed = 0;
-    for (const job of this.shelteredJobs) {
+    const plans=new Map<string,typeof this.shelteredJobs[number]>(this.villagerSystem.getAliveVillagers().filter(v=>v.annualJob).map(v=>[v.id,{villagerId:v.id,...v.annualJob!}]));
+    for(const job of this.shelteredJobs)plans.set(job.villagerId,job);
+    for (const job of plans.values()) {
       const v=this.villagerSystem.getVillagerById(job.villagerId);
-      if(!v || v.health===HealthState.Dead || Object.values(v.cargo??{}).some(n=>n>0)) continue;
+      if(!v || v.health===HealthState.Dead)continue;
+      if(Object.values(v.cargo??{}).some(n=>n>0) || v.currentTask==='hunting'||v.currentTask==='gatheringHerbs') {v.resumeAnnualAfterDelivery=true;continue;}
       let restored=false;
       const building=this.buildingSystem.buildings.find(b=>b.id===job.buildingId);
-      if(job.task==='building' && building && !building.built) restored=this.dispatchBuilder(v.id,building.id);
+      if(job.task==='building') {
+        const site=building&&!building.built?building:this.buildingSystem.buildings.find(b=>!b.built&&!b.assignedWorkers.length);
+        if(site)restored=this.dispatchBuilder(v.id,site.id);
+      }
       else if(job.task==='repairing' && building && (building.hp<building.maxHp||building.needsRepair)) {
         for(const p of this.buildingSystem.getArrivalTiles(building)) if(this.villagerSystem.assignPath(v,p.x,p.y)) {
           v.currentTask='repairing';v.assignedBuildingId=building.id;restored=true;break;
         }
-      } else if(job.task==='clearing' && job.target) restored=this.villagerSystem.sendVillagerToChop(v.id,job.target.x,job.target.y);
-      else if(job.task==='hunting') restored=this.villagerSystem.sendVillagerToHunt(v.id,job.target);
-      else if(job.task==='gatheringHerbs') restored=this.foragingSystem.gather(v.id,this.villagerSystem,this.resourceSystem,job.target);
+      } else if(job.task==='clearing') restored=this.startNearestClearing(v.id);
       else if(building?.built) restored=this.villagerSystem.assignVillagerToBuilding(v.id,building.id,this.buildingSystem.buildings);
       if(restored) { v.taskProgress=job.progress??0;resumed++; }
     }
@@ -1553,7 +1601,7 @@ export class Game {
   }
 
   private sendVillagerToToggleGate(villagerId: string, buildingId: string): void {
-    if (this.stayInShelterMode && this.isVillagerInShelter(villagerId)) {
+    if (this.isHeldInShelter(villagerId) && this.isVillagerInShelter(villagerId)) {
       this.ui.notify('Villagers are staying in shelter. Press "Resume" first.');
       return;
     }
@@ -1586,6 +1634,8 @@ export class Game {
 
   /** Restart game from scratch (new map, villagers, resources). */
   private restart(): void {
+    this.towerCombatSystem.reset();
+    this.ui.resetNotifications();
     this.tileMap.reset();
     this.buildingSystem.reset();
     this.villagerSystem.reset();
@@ -1706,10 +1756,10 @@ export class Game {
       foodLow,
       foodSeconds: foodConsumptionPerSecond > 0 ? Math.floor(this.resourceSystem.resources.food / foodConsumptionPerSecond) : 0,
       foodConsumption: foodConsumptionPerSecond,
-      toolsAvailable: this.techSystem.isBuildingUnlocked('workshop') || this.resourceSystem.resources.tools>0 || this.villagerSystem.getAliveVillagers().some(hasTool),
+      hasWard: this.buildingSystem.getBuildingsOfType('herbalFire').length>0,
       coatsWorn: this.villagerSystem.getAliveVillagers().filter(hasCoat).length,
     });
-    const plan=makeForecast(this.seasonSystem,this.resourceSystem,this.buildingSystem,this.villagerSystem,this.techSystem.isBuildingUnlocked('workshop'));
+    const plan=makeForecast(this.seasonSystem,this.resourceSystem,this.buildingSystem,this.villagerSystem);
     this.ui.updateForecast(plan);
     this.ui.updateWarnings(settlementWarnings(plan,this.villagerSystem.getAliveVillagers(),this.seasonSystem.season,
       id=>this.isVillagerInShelter(id),this.weatherSystem.currentEvent?.type==='snowstorm'));
@@ -1732,9 +1782,9 @@ export class Game {
           else if (v.currentTask === 'repairing') progress = v.taskProgress / getConfig().repair.repairTime;
           else if (v.currentTask === 'building') progress = b?.buildProgress ?? 0;
           else if (v.currentTask === 'farming') { progress = b?.cropState==='ripe'?(b.harvestProgress??0)/getConfig().farming.harvestWorkSeconds:b?.farmingProgress??0; }
-          else if (b?.configId==='furWorkshop' || b?.configId==='workshop') progress=(b.productionProgress??0)/(b.configId==='furWorkshop'?getConfig().resources.furWorkshopProcessTime:getConfig().resources.workshopToolProductionTime);
+          else if (b?.configId==='furWorkshop') progress=(b.productionProgress??0)/getConfig().resources.furWorkshopProcessTime;
         }
-        this.ui.showVillager(v, this.pendingOrder, name, progress, this.jobsFor(v.id), plan.toolsAvailable);
+        this.ui.showVillager(v, this.pendingOrder, name, progress, this.jobsFor(v.id));
       }
     }
     if (this.ui.isBuildPanelOpen()) this.ui.updateBuildAffordability(
@@ -1828,6 +1878,8 @@ export class Game {
   }
 
   private deserializeState(data: Record<string, unknown>): void {
+    this.towerCombatSystem.reset();
+    this.ui.resetNotifications();
     data = migrateRetiredBuildings(data);
     if (typeof data.level === 'number') this.level = data.level;
     if (data.tileMap) {
@@ -1844,6 +1896,9 @@ export class Game {
     if (data.buildings) {
       this.buildingSystem.buildings = [];
       this.buildingSystem.deserialize(data.buildings as any);
+      for(const b of this.buildingSystem.getBuildingsOfType('watchtower')) {
+        const hp=getConfig().buildings.watchtower.hp;if(b.maxHp!==hp){b.hp=hp*b.hp/b.maxHp;b.maxHp=hp;}
+      }
     }
     const extraWards = this.buildingSystem.buildings.filter(b => b.configId === 'herbalFire').slice(getConfig().buildings.herbalFire.maxCount);
     for (const b of extraWards) this.buildingSystem.demolishBuilding(b.id);
@@ -1898,6 +1953,7 @@ export class Game {
       const b = this.buildingSystem.buildings.find(b => b.id === v.assignedBuildingId);
       if (!b?.built || !this.buildingSystem.getBuildingConfig(b.configId)?.maxWorkers || v.currentTask === 'repairing') continue;
       v.currentTask = b.configId === 'garden' ? 'farming' : 'working';
+      v.annualJob??={task:v.currentTask,buildingId:b.id};
       if (!b.assignedWorkers.includes(v.id)) b.assignedWorkers.push(v.id);
       if (b.configId === 'garden' && b.productionProgress === undefined) b.productionProgress = v.taskProgress;
     }

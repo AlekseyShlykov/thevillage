@@ -110,6 +110,7 @@ export class TileMap {
         if (tile) {
           tile.type = TileType.Clear;
           tile.buildingId = null;
+          delete tile.moatDug;
         }
       }
     }
