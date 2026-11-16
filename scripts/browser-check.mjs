@@ -298,13 +298,14 @@ try {
   await check('all winter weather types can occur and cooldown saves correctly',async()=>{
     const r=await ev(`(()=>{const random=Math.random;const types=[];let restored;try{for(const sequence of [[0,.5,.5],[1,0,.5,.5],[1,1,0,.5,.5]]){Math.random=()=>sequence.shift()??.5;const weather=new g.weatherSystem.constructor();weather.update(10,'winter');types.push(weather.currentEvent?.type);weather.update(100,'winter');const state=weather.serialize();weather.reset();weather.deserialize(state);restored=weather.serialize().eventCooldown;}}finally{Math.random=random;}return{types,cooldown:restored};})()`);assert.deepEqual(r.types,['snowstorm','fog','strongWind']);assert.equal(r.cooldown,20);return r;
   });
-  await (await import('./economy-checks.mjs')).runEconomyChecks({check,ev,shot,clickSelector,button,tile,until});
+  await (await import('./economy-checks.mjs')).runEconomyChecks({check,ev,shot,clickSelector,button,tile,until,call});
   await (await import('./ux-checks.mjs')).runUXChecks({check,ev,shot,clickSelector,button,tile,until,mouse,call});
   await (await import('./defense-checks.mjs')).runDefenseChecks({check,ev,shot,button,until,call});
   await (await import('./mobile-shelter-checks.mjs')).runMobileShelterChecks({check,ev,shot,call,until});
   await (await import('./moat-art-checks.mjs')).runMoatArtChecks({check,ev,shot,call});
   await (await import('./season-heating-checks.mjs')).runSeasonHeatingChecks({check,ev,shot,call,clickSelector});
   await (await import('./forest-clearing-checks.mjs')).runForestClearingChecks({check,ev,shot,call,clickSelector,tile,until});
+  await (await import('./presentation-checks.mjs')).runPresentationChecks({check,ev,shot,call,clickSelector});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

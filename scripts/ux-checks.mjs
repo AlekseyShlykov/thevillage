@@ -73,7 +73,7 @@ export async function runUXChecks({check,ev,shot,clickSelector,button,tile,until
     for(const width of [390,768,900,1024,1280]) {
       await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:width===390?2:1,mobile:width===390});
       await ev('g.renderer.resize();econReset();g.buildingSystem.placeStartingBuilding("herbalFire",42,27);g.updateUI();g.render()');
-      const r=await ev(`(()=>{const bar=document.getElementById('game-top-bar'),forecast=document.getElementById('game-forecast');return{width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth||bar.scrollWidth>bar.clientWidth+2,below:forecast.getBoundingClientRect().top>=bar.getBoundingClientRect().bottom,buttons:[...document.querySelectorAll('#game-bottom-bar button')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})};})()`);
+      const r=await ev(`(()=>{const bar=document.getElementById('game-top-bar'),forecast=document.getElementById('game-forecast');return{width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth||bar.scrollWidth>bar.clientWidth+2,below:getComputedStyle(forecast).display==='none'||forecast.getBoundingClientRect().top>=bar.getBoundingClientRect().bottom,buttons:[...document.querySelectorAll('#game-bottom-bar button')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})};})()`);
       assert(!r.overflow&&r.below&&r.buttons,JSON.stringify(r));layouts.push(r);
       if(width===390||width===1280) { await ev('g.selectedVillagerId=g.villagerSystem.villagers[0].id;g.updateUI()');await shot('ux-jobs-'+width); }
     }

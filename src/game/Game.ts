@@ -213,11 +213,9 @@ export class Game {
       });
 
       this.soundManager.playSeason(season);
-      this.ui.notify(`${season.charAt(0).toUpperCase() + season.slice(1)} of Year ${year}`);
 
       if (season === Season.Winter) {
         this.cropSystem.winter(this.buildingSystem.buildings);
-        this.ui.notify('Winter has killed all unharvested crops. Unclothed residents must shelter.');
         this.hordeSystem.startWinter(year, this.level);
         this.buildingSystem.advanceWinterRepairCounters();
         this.ageFurs();
@@ -229,14 +227,13 @@ export class Game {
           const rewards = getConfig().technology;
           const stars = year - 1 <= rewards.firstWinterRewardCount ? rewards.earlyWinterStars : rewards.laterWinterStars;
           this.resourceSystem.addTechPoints(stars); this.lastRewardedWinter = year - 1;
-          this.ui.notify(`Winter survived: +${stars} research star(s).`);
+          this.ui.notifyResearchStars(stars);
         }
         for (const b of this.buildingSystem.buildings) { b.wardActive = false; b.wardFuelSeconds = 0; }
         this.hordeSystem.endWinter();
         this.soundManager.stopHordeLoop();
         this.leaveShelter();
         this.saveSystem.autosave(this.serializeState());
-        this.ui.notify('Spring! Autosaved.');
         this.checkLevelUp();
         if (year > getConfig().gameplay.demoWinters) {
           this.analytics.trackDemoEnd({

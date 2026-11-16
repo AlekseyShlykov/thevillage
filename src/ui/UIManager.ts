@@ -201,7 +201,7 @@ export class UIManager {
     this.infoPanel.setAttribute('data-info-panel', 'true');
     this.overlay.appendChild(this.infoPanel);
 
-    this.notifications = new Notifications(this.overlay);
+    this.notifications = new Notifications(this.overlay,()=>{if(!this.techPanelOpen)this.toggleTechPanel();});
 
     this.seasonTutorial=new SeasonTutorial(this.overlay,()=>this.callbacks.onTutorialAcknowledge(),()=>this.callbacks.onTutorialSkip());
     this.statusEl = this.el('div'); this.statusEl.id = 'status-ribbon'; this.statusEl.setAttribute('role', 'status');
@@ -325,7 +325,7 @@ export class UIManager {
       el.querySelector('[data-value]')!.textContent = value;
       el.dataset.tooltipTitle = title; el.dataset.tooltip = detail; el.setAttribute('aria-label', `${title}: ${value}`);
     };
-    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', `Gathered by chopping trees and working at lumber camps. Used for construction, repairs and winter heating. Each home or guard tower needs ${getConfig().heating.woodPerShelterPerWinter} wood per full winter. Check Winter plan before spending your reserve.`);
+    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', `Gathered by chopping trees and working at lumber camps. Used for construction, repairs and winter heating. Each home or guard tower needs ${getConfig().heating.woodPerShelterPerWinter} wood per full winter. Keep enough firewood before spending your reserve.`);
     stat('food', String(Math.floor(data.resources.food)), 'Food', `Feeds every resident. Current use: ${data.foodConsumption.toFixed(2)} per second; supplies last ${data.foodSeconds} seconds. Consumption rises in winter. Hunting and gardens replenish food.`);
     stat('fur', String(Math.floor(data.resources.fur)), 'Fur', 'Hunters deliver raw pelts after returning home. Pelts must be crafted into individual fur coats; raw pelts do not protect from cold.');
     stat('clothing',String(data.coatsWorn+data.resources.clothing),'Warm clothing',`${data.coatsWorn} residents wearing a fur coat; ${data.resources.clothing} spare coats. A fur workshop turns pelts into coats. Only worn coats protect from cold.`);
@@ -540,6 +540,7 @@ export class UIManager {
   }
 
   notify(message: string, duration = 3000): void { this.notifications.notify(message, duration); }
+  notifyResearchStars(stars:number):void {this.notifications.notifyResearchStars(stars);}
   resetNotifications(): void { this.notifications.reset(); }
 
   /** Different button counts still produce two complete, equally wide mobile rows. */
@@ -568,6 +569,7 @@ export class UIManager {
     this.techPanelOpen = !this.techPanelOpen;
     this.techPanel.style.display = this.techPanelOpen ? 'block' : 'none';
     if (this.techPanelOpen) {
+      this.notifications.acknowledgeResearch();
       this.buildPanelOpen = false;
       this.buildPanel.style.display = 'none';
       this.hideActionMenu();

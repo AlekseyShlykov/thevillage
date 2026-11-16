@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 
 /** Economy scenarios run in the same silent browser as the main playthrough. */
-export async function runEconomyChecks({ check, ev, shot, clickSelector, until }) {
+export async function runEconomyChecks({ check, ev, shot, clickSelector, until,call }) {
+  await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});await ev('g.renderer.resize()');
   await ev(`(async()=>{
     const source=part=>performance.getEntriesByType('resource').filter(r=>r.name.includes(part)).at(-1).name;
     window.balance=(await import(source('/src/data/ConfigLoader.ts'))).getConfig();

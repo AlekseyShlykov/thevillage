@@ -14,7 +14,7 @@ export async function runSeasonHeatingChecks({check,ev,shot,call,clickSelector})
     assert(await ev('!g.tutorialSystem.isAwaitingAcknowledgement()&&document.getElementById("season-tutorial").hidden'));
     const seconds=await ev('g.update(.1);g.seasonSystem.seasonTimer');assert(seconds>0);return r;
   });
-  await check('season changes require acknowledgement and show the matching controls',async()=>{
+  await check('only first-year season changes require acknowledgement and matching controls',async()=>{
     await ev('restartWithBriefings();g.gameLoop.stop();g.acknowledgeTutorial()');
     const details=[];
     for(const [season,targets,words]of [['summer',['clear','herbs'],['4 wood','herbs']],['autumn',['tech'],['Tech','Fur Workshop']],['winter',['shelter'],['cold','monsters','firewood']]]) {
@@ -26,15 +26,20 @@ export async function runSeasonHeatingChecks({check,ev,shot,call,clickSelector})
       assert(await ev('document.querySelector("[data-gather-herbs]").hidden'));details.push(r);
     }
     await ev('g.seasonSystem.seasonTimer=g.seasonSystem.getCurrentDuration()-.01;g.update(.02);g.updateUI()');
-    assert.equal(await ev('g.tutorialSystem.getBriefing().key'),'2:spring');return details;
+    assert(await ev('g.seasonSystem.year===2&&!g.tutorialSystem.isAwaitingAcknowledgement()&&g.tutorialSystem.getBriefing()===null'));
+    assert(await ev('(()=>{const before=g.seasonSystem.seasonTimer;g.update(.1);return g.seasonSystem.seasonTimer>before;})()'));return details;
   });
   await check('season acknowledgement, pending modal and Skip tutorial survive save loading',async()=>{
-    await ev('g.tutorialSystem.enterSeason("spring",2)');
+    await ev('restartWithBriefings();g.gameLoop.stop();g.updateUI()');
     const r=await ev(`(()=>{const pending=JSON.parse(JSON.stringify(g.serializeState()));g.deserializeState(pending);const restored=g.tutorialSystem.getBriefing()?.key;g.acknowledgeTutorial();const ack=JSON.parse(JSON.stringify(g.serializeState()));g.deserializeState(ack);const repeated=g.tutorialSystem.isAwaitingAcknowledgement();return{restored,repeated};})()`);
-    assert.equal(r.restored,'2:spring');assert(!r.repeated);
-    await ev('g.tutorialSystem.enterSeason("summer",2);g.updateUI()');await clickSelector('[data-tutorial-skip]');
+    assert.equal(r.restored,'1:spring');assert(!r.repeated);
+    await ev('g.tutorialSystem.enterSeason("summer",1);g.updateUI()');await clickSelector('[data-tutorial-skip]');
     const skipped=await ev(`(()=>{const saved=JSON.parse(JSON.stringify(g.serializeState()));g.deserializeState(saved);for(const s of ['spring','summer','autumn','winter'])g.tutorialSystem.enterSeason(s,3);g.updateUI();return{pending:g.tutorialSystem.isAwaitingAcknowledgement(),hidden:document.getElementById('season-tutorial').hidden,enabled:g.tutorialSystem.serialize().enabled,targets:document.querySelectorAll('.tutorial-highlight').length};})()`);
     assert.deepEqual(skipped,{pending:false,hidden:true,enabled:false,targets:0});return{...r,skipped};
+  });
+  await check('old second-year tutorial saves load without a modal or simulation gate',async()=>{
+    const r=await ev(`(()=>{econReset();const saved=JSON.parse(JSON.stringify(g.serializeState()));saved.season.year=2;saved.tutorial={version:2,enabled:true,acknowledged:[],pending:{season:'spring',year:2},protectedHunterId:null,firstHuntUsed:false};g.deserializeState(saved);for(const year of [2,3,10])for(const season of ['spring','summer','autumn','winter']){g.tutorialSystem.enterSeason(season,year);if(g.tutorialSystem.isAwaitingAcknowledgement())throw Error('Repeated tutorial');}g.updateUI();return{pending:g.tutorialSystem.getBriefing(),hidden:document.getElementById('season-tutorial').hidden,enabled:g.tutorialSystem.serialize().enabled};})()`);
+    assert.deepEqual(r,{pending:null,hidden:true,enabled:false});return r;
   });
   await check('mobile season modal keeps Got it and Skip reachable in portrait and landscape',async()=>{
     const layouts=[];

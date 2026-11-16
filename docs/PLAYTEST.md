@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 96 browser checks passed, without sound.
+Recorded 2026-11-16. All 101 browser checks passed, without sound.
 
 ## Browser coverage
 
@@ -94,8 +94,9 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | moat joins refresh after construction, demolition and save loading | PASS |
 | moat artwork renders bends, junctions, winter and missing-asset fallback | PASS |
 | Spring briefing highlights Hunt and Build and gates simulation until Got it | PASS |
-| season changes require acknowledgement and show the matching controls | PASS |
+| only first-year season changes require acknowledgement and matching controls | PASS |
 | season acknowledgement, pending modal and Skip tutorial survive save loading | PASS |
+| old second-year tutorial saves load without a modal or simulation gate | PASS |
 | mobile season modal keeps Got it and Skip reachable in portrait and landscape | PASS |
 | heating consumes exactly four wood per completed shelter per winter | PASS |
 | unheated shelters slow hypothermia while fuel restores warming | PASS |
@@ -107,6 +108,10 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | unreachable queued trees do not block reachable work and older marks still work | PASS |
 | Clear, Escape, right-click and background exit selection without deleting queued work | PASS |
 | mobile Clear starts chopping, taps queue trees and camera drags do not add work | PASS |
+| season changes avoid calendar toasts and preserve the new Tech star announcement | PASS |
+| later winter rewards announce two stars and loading cannot announce or award them twice | PASS |
+| Winter plan is hidden on touch phones and tablets and remains available on desktop | PASS |
+| mobile Tech star notice opens Tech or closes with a touch-sized dismiss button | PASS |
 | no unhandled browser exceptions | PASS |
 
 ## Gameplay and UX observations
@@ -230,7 +235,7 @@ label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
 its previous time and biological crop growth is another 25% shorter. Workshop
 removal refunded wood and obsolete research exactly once on repeated loading.
 
-The final compiled build `index-B-5_UBht.js` passed silent checks on
+The final compiled build `index-C3Zq5n6v.js` passed silent checks on
 `http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
 removed tool counter, background dismissal, shelter toggle, square controls,
 tooltips and loaded interface art. All four local PT Sans faces loaded, and
@@ -275,11 +280,10 @@ loading a save; unfinished neighbours also connected. The 34-section village sce
 was reviewed in spring and winter. Shape fallbacks rendered every mask. Captures:
 `moat-connected-spring.png`, `moat-connected-winter.png`.
 
-Spring, summer, autumn and winter each required Got it before time or residents
-advanced. The actual Hunt/Build, Clear/Herbs, Tech and Shelter controls received
+First-year spring, summer, autumn and winter each required Got it before time
+or residents advanced. The actual Hunt/Build, Clear/Herbs, Tech and Shelter controls received
 highlights. Summer previewed the locked herb order without revealing herb stocks.
-Acknowledgements, a pending briefing and Skip tutorial survived save/load; a new
-year displayed its spring message. Escape and Space did not bypass the lesson.
+Acknowledgements, a pending briefing and Skip tutorial survived save/load; year two continued without a lesson. Escape and Space did not bypass the lesson.
 Touch acknowledgement worked at 390 × 844 and 844 × 390; both action buttons were
 at least 44 px tall, and landscape text retained a readable scrolling area.
 Captures: `season-briefing-spring.png`, `season-briefing-summer.png`,
@@ -294,7 +298,7 @@ A midwinter save charged only the remaining fuel after loading.
 
 The compiled localhost build passed startup acknowledgement plus the existing
 jobs, mobile dismissal, toolbar alignment, typography and layout checks with no
-browser exceptions. The local preview uses `index-B-5_UBht.js`; both distribution
+browser exceptions. The local preview uses `index-C3Zq5n6v.js`; both distribution
 folders contain the moat atlas and heating configuration. Tests remained muted.
 
 
@@ -322,3 +326,30 @@ The production build on localhost:4173 also accepted three actual canvas tree
 clicks and toggled selection off while keeping its queue. It passed the existing
 font, menu, touch-dismissal and layout checks without browser exceptions.
 `npm run build:itch` passed and the local itch archive was refreshed.
+
+
+## First-year learning, mobile space and Tech rewards
+
+All 101 silent browser scenarios passed. Lessons appeared for all four seasons of
+year one. On entering year two, simulation continued without acknowledgement;
+older saves carrying a pending second-year lesson loaded without a modal. Skip,
+first-year pending lessons and acknowledgements still survived loading.
+
+Winter plan was invisible and occupied zero height on 390 × 844 portrait phones,
+844 × 390 landscape phones and 1024 × 768 touch tablets. Desktop retained it.
+Mobile settlement warnings began eight pixels below the HUD, reclaiming the
+forecast's former space. Screenshot: `mobile-without-winter-plan.png`.
+
+A full calendar transition emitted no generic season/year or spring-autosave
+toast, while the actual research award displayed +1 new Tech star and explained
+choosing a building in Tech. An older toast timer and subsequent action feedback
+could not hide or replace it. Open Tech opened the research panel and acknowledged
+the notice; both that button and dismiss worked by touch with 44 px targets.
+Later winters displayed +2 stars, and loading/repeating an already-rewarded
+transition neither duplicated the stars nor announced a second award. Screenshots:
+`tech-star-announcement.png`, `tech-star-announcement-mobile.png`.
+
+The production localhost build passed its existing startup, clearing queue,
+typography, menu and touch-dismissal checks, plus hidden Winter plan on mobile,
+with no browser exceptions. `npm run build:itch` passed; the current production
+bundle is `index-C3Zq5n6v.js`.

@@ -11,12 +11,17 @@ export class Notifications {
   private dismissed = new Map<string, boolean>();
   private current: SettlementWarning[] = [];
   private timer = 0;
+  private researchOpen = document.createElement('button');
+  private researchPending = false;
 
-  constructor(private overlay: HTMLElement) {
+  constructor(private overlay: HTMLElement,onOpenTech:()=>void) {
     this.toast.dataset.notificationEl = 'true'; this.toast.hidden = true;
     this.toast.setAttribute('role', 'status'); this.toast.setAttribute('aria-live', 'polite');
     this.toastMessage.dataset.noticeMessage = 'true';
-    this.toast.append(this.toastMessage, this.closeButton('notification', () => this.hideToast()));
+    this.researchOpen.type='button';this.researchOpen.hidden=true;this.researchOpen.dataset.researchOpen='true';this.researchOpen.dataset.ui='true';
+    setButtonContent(this.researchOpen,'Open Tech','book');
+    this.researchOpen.addEventListener('click',()=>{this.hideToast();onOpenTech();});
+    this.toast.append(this.toastMessage,this.researchOpen,this.closeButton('notification', () => this.hideToast()));
     this.cold.id = 'cold-warning'; this.cold.hidden = true;
     this.cold.setAttribute('role', 'alert'); this.cold.setAttribute('aria-live', 'assertive');
     this.coldMessage.dataset.noticeMessage = 'true';
@@ -35,11 +40,23 @@ export class Notifications {
     return button;
   }
 
-  private hideToast(): void { window.clearTimeout(this.timer); this.toast.hidden = true; }
+  private hideToast(): void {
+    window.clearTimeout(this.timer);this.toast.hidden=true;
+    this.researchPending=false;this.researchOpen.hidden=true;delete this.toast.dataset.researchAward;
+  }
   notify(message: string, duration: number): void {
+    if(this.researchPending)return;
     window.clearTimeout(this.timer); this.toastMessage.textContent = message; this.toast.hidden = false;
     this.timer = window.setTimeout(() => { this.toast.hidden = true; }, duration);
   }
+
+  /** Winter rewards stay visible until dismissed or Tech opens; routine toasts cannot replace them. */
+  notifyResearchStars(stars:number):void {
+    window.clearTimeout(this.timer);this.researchPending=true;this.researchOpen.hidden=false;
+    this.toast.dataset.researchAward='true';this.toast.hidden=false;
+    this.toastMessage.textContent=`+${stars} new Tech star${stars===1?'':'s'}! Open Tech to choose a new building.`;
+  }
+  acknowledgeResearch():void {if(this.researchPending)this.hideToast();}
 
   private dismissWarning(id: string): void {
     this.dismissed.set(id, !!this.current.find(w => w.id === id)?.urgent);

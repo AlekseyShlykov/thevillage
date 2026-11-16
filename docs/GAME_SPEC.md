@@ -366,7 +366,10 @@ catalogue and migration policy are described in [BUILDING_ROLES.md](BUILDING_ROL
 
 ### TutorialSystem and UIManager
 
-A short English modal appears at the start of each season, including a new game.
+A short English modal appears at the start of each season in year one only,
+including a new game. `tutorial.lastYear` configures this limit. Starting year two
+disables further lessons without pausing simulation; older saves with a pending
+second-year message also discard it.
 Spring explains food and highlights Hunt/Build. Summer highlights Clear/Herbs and
 explains four wood per shelter for winter plus ward herbs. Autumn highlights Tech
 and explains fur clothing. Winter highlights Shelter and explains hypothermia,
@@ -421,7 +424,10 @@ herbs. The fire itself always displays stored herbs out of the configured four
 needed per winter, including when unlit.
 The estimate uses current population and assigned crops; future hunts, arrivals,
 weather and storage interruptions can change the result. It is an estimate, not
-a guarantee. The panel stays below the actual top bar on narrow screens.
+a guarantee. Winter plan is hidden on viewports at most 900 px wide and on devices
+with a coarse primary pointer, including landscape phones and touch tablets.
+Desktop keeps the panel below its HUD. Resource tooltips and actionable warnings
+remain available on mobile, with no reserved space for the hidden plan.
 
 ### SoundManager and AnalyticsSystem
 
@@ -438,8 +444,8 @@ remaining exposure time, and recommend Shelter. They appear in red at the
 centre of the screen in a persistent alert. Notice text does not intercept
 world input; accessible 44 px close controls remain interactive. Warm clothing, shelter, food
 or herbs resolve their respective warnings; ordinary counter updates do not
-cause repeated notification toasts. Warnings and forecasts adapt to the measured
-HUD height and remain available on narrow screens.
+cause repeated notification toasts. Warnings adapt to the measured HUD height
+and remain available on narrow screens.
 
 `Notifications` owns transient messages, settlement warnings and the central cold
 alert. Each has a close button usable with touch and keyboard. Dismissing a warning
@@ -448,6 +454,15 @@ change. Resolving the condition permits a later new warning; an ordinary warning
 also reappears if it escalates to urgent. A dismissed toast's timer is cancelled,
 and subsequent messages can appear normally. Starting or loading a game resets
 dismissals. Hidden warnings release their reserved layout height immediately.
+
+Calendar-only season/year and spring-autosave toasts are omitted; the HUD still
+shows the current season and year, and spring autosaves still run. Awarding winter
+research displays the actual new star count and explains that Tech can unlock a
+new building. This message remains until dismissed or Tech opens; ordinary toasts
+and old timers cannot overwrite it. An Open Tech button leads directly to research,
+with the same 44 px touch target as its close control. The one-star/two-star
+schedule and saved duplicate-reward protection remain unchanged. Cold and other
+settlement warnings remain separate from this announcement.
 
 On mobile the bottom toolbar uses two balanced grid rows with identical left and
 right edges. Visibility changes for Herbs and Release one recompute button spans;

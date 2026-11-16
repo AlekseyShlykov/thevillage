@@ -10,7 +10,7 @@ export interface TutorialState {
 }
 interface LegacyTutorialState {enabled?:boolean;stage?:string;protectedHunterId?:string|null}
 
-/** Acknowledgement gates simulation; skipping disables all later season briefings in this save. */
+/** First-year lessons gate simulation; skipping disables the remaining briefings in this save. */
 export class TutorialSystem {
   private enabled=true;
   private acknowledged=new Set<string>();
@@ -20,6 +20,7 @@ export class TutorialSystem {
 
   reset():void {this.enabled=true;this.acknowledged.clear();this.pending=null;this.protectedHunterId=null;this.firstHuntUsed=false;}
   enterSeason(season:Season,year:number):void {
+    if(year>getConfig().tutorial.lastYear){this.enabled=false;this.pending=null;return;}
     if(this.enabled && !this.acknowledged.has(`${year}:${season}`))this.pending={season,year};
   }
   acknowledge():void {
@@ -55,5 +56,6 @@ export class TutorialSystem {
       this.enabled=!!legacy.enabled&&legacy.stage!=='done';this.protectedHunterId=legacy.protectedHunterId??null;
       this.firstHuntUsed=!!this.protectedHunterId;
     }
+    if(this.pending && this.pending.year>getConfig().tutorial.lastYear){this.enabled=false;this.pending=null;}
   }
 }

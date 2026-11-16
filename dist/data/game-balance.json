@@ -625,6 +625,7 @@
     "towerShotSeconds": 0.35
   },
   "tutorial": {
+    "lastYear": 1,
     "minimumFoodReserve": 20,
     "winterReserveMultiplier": 1.15
   },
