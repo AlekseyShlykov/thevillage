@@ -24,12 +24,8 @@
     "startingFood": 10,
     "startingFur": 0,
     "startingTools": 0,
-    "startingTechPoints": 1,
+    "startingTechPoints": 0,
     "woodPerForestTile": 2,
-    "gardenFoodPerSecond": 0.15,
-    "hunterFoodPerSecond": 0.25,
-    "hunterFurPerSecond": 0.05,
-    "huntingDeathChance": 0.02,
     "lumberCampWoodBonus": 1.5,
     "workshopToolCostWood": 10,
     "workshopToolProductionTime": 15,
@@ -39,8 +35,9 @@
     "toolDefenseBonus": 1.2,
     "lumberCampWoodPerSecond": 0.35,
     "furPerClothing": 1,
-    "huntingInjuryDamage": 40,
-    "winterProductionMultiplier": 0.5
+    "winterProductionMultiplier": 0.5,
+    "startingHerbs": 0,
+    "startingClothing": 0
   },
   "villagers": {
     "startingCount": 2,
@@ -53,19 +50,18 @@
     "hungerDamageInterval": 10,
     "healRate": 0.4,
     "injuredWorkPenalty": 0.5,
-    "winterOutsideDeathSeconds": 20,
     "freeHuntDuration": 30,
     "freeHuntFoodAmount": 15,
     "freeHuntDeathChance": 0.08,
-    "farmingDuration": 50,
-    "farmingHarvestFood": 45,
     "stuckRepathSeconds": 2,
     "starvationDelay": 12,
     "starvationInterval": 20,
-    "huntMinDistance": 4,
-    "huntMaxDistance": 9,
     "maxHP": 100,
-    "clearingDispatchInterval": 0.4
+    "clearingDispatchInterval": 0.4,
+    "huntForestDepth": 10,
+    "huntTargetSearchRadius": 20,
+    "huntMaxForestDepth": 20,
+    "freeHuntFurAmount": 2
   },
   "buildings": {
     "hut": {
@@ -96,39 +92,7 @@
       "tier": 1,
       "maxWorkers": 2,
       "hp": 60,
-      "description": "Safe food production"
-    },
-    "hunterHut": {
-      "id": "hunterHut",
-      "name": "Hunter Hut",
-      "width": 2,
-      "height": 2,
-      "costWood": 20,
-      "costTools": 0,
-      "buildTime": 25,
-      "capacity": 0,
-      "category": "food",
-      "tier": 1,
-      "maxWorkers": 2,
-      "hp": 80,
-      "description": "Hunting for food and fur. Scouts may be injured."
-    },
-    "bonfire": {
-      "id": "bonfire",
-      "name": "Bonfire",
-      "width": 1,
-      "height": 1,
-      "costWood": 5,
-      "costTools": 0,
-      "buildTime": 20,
-      "capacity": 0,
-      "category": "comfort",
-      "tier": 1,
-      "maxWorkers": 0,
-      "hp": 40,
-      "comfortBonus": 5,
-      "lightRadius": 3,
-      "description": "Provides warmth and light"
+      "description": "Sow outside winter. Crops mature in 1.5 seasons, then a farmer harvests food. Winter kills unharvested crops."
     },
     "workshop": {
       "id": "workshop",
@@ -159,7 +123,7 @@
       "maxWorkers": 3,
       "hp": 80,
       "boostRadius": 5,
-      "description": "Boosts nearby wood production"
+      "description": "Assign lumberjacks near forest for steady wood and 50% better nearby tree yields."
     },
     "storage": {
       "id": "storage",
@@ -214,7 +178,7 @@
     },
     "campFire": {
       "id": "campFire",
-      "name": "Camp Fire",
+      "name": "Forest Camp Fire",
       "width": 1,
       "height": 1,
       "costWood": 8,
@@ -226,24 +190,10 @@
       "maxWorkers": 0,
       "hp": 30,
       "detectionRadius": 5,
-      "description": "Increases horde detection radius. 1 villager can shelter here in winter"
-    },
-    "scoutFire": {
-      "id": "scoutFire",
-      "name": "Scout Fire",
-      "width": 1,
-      "height": 1,
-      "costWood": 8,
-      "costTools": 0,
-      "buildTime": 22,
-      "capacity": 0,
-      "category": "detection",
-      "tier": 3,
-      "maxWorkers": 1,
-      "hp": 30,
-      "detectionRadius": 5,
+      "description": "Forest outpost: reveals monsters within 5 tiles, adds 5 comfort and shelters one resident. No worker needed.",
       "canPlaceInForest": true,
-      "description": "Early warning in forest. Scout may die."
+      "comfortBonus": 5,
+      "lightRadius": 3
     },
     "furWorkshop": {
       "id": "furWorkshop",
@@ -251,14 +201,14 @@
       "width": 2,
       "height": 2,
       "costWood": 25,
-      "costTools": 1,
+      "costTools": 0,
       "buildTime": 28,
       "capacity": 0,
       "category": "production",
-      "tier": 3,
+      "tier": 1,
       "maxWorkers": 2,
       "hp": 80,
-      "description": "Turns fur into winter clothing"
+      "description": "Workers turn pelts into personal fur coats. Each coat protects one resident and lasts 3 winters."
     },
     "smokehouse": {
       "id": "smokehouse",
@@ -271,9 +221,9 @@
       "capacity": 0,
       "category": "food",
       "tier": 3,
-      "maxWorkers": 1,
+      "maxWorkers": 0,
       "hp": 70,
-      "description": "Improves food efficiency"
+      "description": "Preserves food: reduces village food use by 23%. No worker needed."
     },
     "watchtower": {
       "id": "watchtower",
@@ -286,11 +236,11 @@
       "capacity": 0,
       "category": "detection",
       "tier": 4,
-      "maxWorkers": 1,
+      "maxWorkers": 0,
       "hp": 120,
       "detectionRadius": 8,
       "lightRadius": 4,
-      "description": "Long range detection and winter light"
+      "description": "Reveals monsters within 8 tiles and lights the perimeter. No worker needed."
     },
     "house": {
       "id": "house",
@@ -323,6 +273,24 @@
       "hp": 150,
       "comfortBonus": 4,
       "description": "Spacious housing for 8 villagers"
+    },
+    "herbalFire": {
+      "id": "herbalFire",
+      "name": "Herbal Ward Fire",
+      "width": 1,
+      "height": 1,
+      "costWood": 18,
+      "costTools": 0,
+      "buildTime": 20,
+      "capacity": 0,
+      "category": "detection",
+      "tier": 2,
+      "maxWorkers": 0,
+      "hp": 70,
+      "protectionRadius": 5,
+      "lightRadius": 3,
+      "description": "One per settlement. Burns 4 protective herbs per winter; protects 5 tiles in every direction while fueled.",
+      "maxCount": 1
     }
   },
   "storage": {
@@ -334,8 +302,26 @@
   "horde": {
     "delayAfterWinterStart": 8,
     "firstWaveYear": 1,
-    "baseEnemyCount": 5,
-    "enemyCountPerLevel": 3,
+    "enemiesPerWinter": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      14,
+      15,
+      16,
+      17,
+      20,
+      21,
+      22,
+      25
+    ],
     "enemyHP": 30,
     "enemyDamage": 10,
     "enemySpeed": 0.8,
@@ -357,12 +343,17 @@
     "patrolDuration": 20,
     "minSurvivors": 3,
     "palisadeDamageReduction": 0.5,
-    "buildingDamagePerAttack": 4,
+    "buildingDamagePerAttack": 2,
     "villagerDamagePerAttack": 25,
     "villagerBaseDamage": 5,
     "villagerToolDamage": 12,
     "firstWinterBuildingDamageMultiplier": 0.15,
-    "firstWinterEnemyCount": 2
+    "targetRepathSeconds": 1.5,
+    "pathMaxIterations": 4800,
+    "buildingAttackReach": 1.05,
+    "villagerAttackReach": 1.2,
+    "enemySeparation": 0.45,
+    "buildingAttackInterval": 3
   },
   "comfort": {
     "baseFoodWeight": 0.25,
@@ -396,35 +387,22 @@
     "eventMaxIntensity": 1
   },
   "technology": {
-    "techPointsPerBuildingBuilt": 1,
-    "techPointsPerWinterSurvived": 2,
-    "techPointsPerLevelReached": 2,
     "techs": {
       "garden": {
         "id": "garden",
         "name": "Garden",
         "tier": 1,
-        "cost": 2,
+        "cost": 1,
         "unlocks": [
           "garden"
         ],
         "description": "Grow food in a garden plot"
       },
-      "hunterHut": {
-        "id": "hunterHut",
-        "name": "Hunter Hut",
-        "tier": 2,
-        "cost": 2,
-        "unlocks": [
-          "hunterHut"
-        ],
-        "description": "Send hunters for food and fur"
-      },
       "storage": {
         "id": "storage",
         "name": "Storage",
         "tier": 2,
-        "cost": 2,
+        "cost": 1,
         "unlocks": [
           "storage"
         ],
@@ -434,7 +412,7 @@
         "id": "workshop",
         "name": "Workshop",
         "tier": 2,
-        "cost": 3,
+        "cost": 1,
         "unlocks": [
           "workshop"
         ],
@@ -444,7 +422,7 @@
         "id": "lumberCamp",
         "name": "Lumber Camp",
         "tier": 1,
-        "cost": 2,
+        "cost": 1,
         "unlocks": [
           "lumberCamp"
         ],
@@ -454,7 +432,7 @@
         "id": "palisade",
         "name": "Palisade",
         "tier": 2,
-        "cost": 4,
+        "cost": 1,
         "unlocks": [
           "palisadeWall",
           "palisadeGate"
@@ -463,19 +441,19 @@
       },
       "campFire": {
         "id": "campFire",
-        "name": "Camp Fire",
+        "name": "Forest Camp Fire",
         "tier": 2,
-        "cost": 2,
+        "cost": 1,
         "unlocks": [
           "campFire"
         ],
-        "description": "Detection radius and shelter for 1 villager in winter"
+        "description": "A forest outpost with early warning, warmth and shelter for one resident."
       },
       "furWorkshop": {
         "id": "furWorkshop",
         "name": "Fur Workshop",
-        "tier": 3,
-        "cost": 5,
+        "tier": 1,
+        "cost": 1,
         "unlocks": [
           "furWorkshop"
         ],
@@ -485,27 +463,17 @@
         "id": "smokehouse",
         "name": "Smokehouse",
         "tier": 3,
-        "cost": 4,
+        "cost": 1,
         "unlocks": [
           "smokehouse"
         ],
         "description": "Improves food efficiency"
       },
-      "scoutFire": {
-        "id": "scoutFire",
-        "name": "Scout Fire",
-        "tier": 3,
-        "cost": 5,
-        "unlocks": [
-          "scoutFire"
-        ],
-        "description": "Forest early warning system"
-      },
       "watchtower": {
         "id": "watchtower",
         "name": "Watchtower",
         "tier": 4,
-        "cost": 7,
+        "cost": 2,
         "unlocks": [
           "watchtower"
         ],
@@ -515,7 +483,7 @@
         "id": "betterTools",
         "name": "Better Tools",
         "tier": 4,
-        "cost": 6,
+        "cost": 2,
         "unlocks": [],
         "description": "Improved tool effectiveness",
         "effect": {
@@ -527,7 +495,7 @@
         "id": "house",
         "name": "House",
         "tier": 4,
-        "cost": 5,
+        "cost": 1,
         "unlocks": [
           "house"
         ],
@@ -537,7 +505,7 @@
         "id": "largeHouse",
         "name": "Large House",
         "tier": 5,
-        "cost": 8,
+        "cost": 2,
         "unlocks": [
           "largeHouse"
         ],
@@ -547,7 +515,7 @@
         "id": "reinforcedPalisade",
         "name": "Reinforced Palisade",
         "tier": 5,
-        "cost": 7,
+        "cost": 2,
         "unlocks": [],
         "description": "Stronger defensive walls",
         "effect": {
@@ -558,14 +526,34 @@
         "id": "hearth",
         "name": "Hearth",
         "tier": 5,
-        "cost": 6,
+        "cost": 2,
         "unlocks": [],
         "description": "Improved building warmth",
         "effect": {
           "comfortBonus": 8
         }
+      },
+      "herbalFire": {
+        "id": "herbalFire",
+        "name": "Protective Herbs",
+        "tier": 2,
+        "cost": 2,
+        "unlocks": [
+          "herbalFire"
+        ],
+        "description": "Unlock a ritual fire that repels monsters from a protective square."
       }
-    }
+    },
+    "firstWinterRewardCount": 5,
+    "earlyWinterStars": 1,
+    "laterWinterStars": 2,
+    "initialTechs": [
+      "garden"
+    ],
+    "initialBuildings": [
+      "hut",
+      "garden"
+    ]
   },
   "levels": {
     "1": {
@@ -644,17 +632,73 @@
     "tileHeight": 40,
     "zoom": 1,
     "minZoom": 0.55,
-    "maxZoom": 1.65
+    "maxZoom": 1.65,
+    "cropStageThresholds": [
+      0.025,
+      0.15,
+      0.32,
+      0.52,
+      0.72,
+      0.9
+    ]
   },
   "tutorial": {
     "minimumFoodReserve": 20,
     "winterReserveMultiplier": 1.15
   },
   "gameplay": {
-    "demoWinters": 8,
+    "demoWinters": 18,
     "foodWarningSeconds": 40,
     "foodComfortPerVillager": 10,
     "defenseComfortHP": 200,
     "refundFraction": 0.5
+  },
+  "retiredBuildings": {
+    "hunterHut": {
+      "refundWood": 20,
+      "refundTools": 0,
+      "refundResearch": 2
+    },
+    "bonfire": {
+      "refundWood": 5,
+      "refundTools": 0,
+      "refundResearch": 0,
+      "replacement": "campFire"
+    },
+    "scoutFire": {
+      "refundWood": 8,
+      "refundTools": 0,
+      "refundResearch": 5,
+      "replacement": "campFire"
+    }
+  },
+  "herbs": {
+    "capacity": 5,
+    "perWinter": 4,
+    "gatherSeconds": 20,
+    "searchRadius": 30,
+    "minimumForestDepth": 10,
+    "maximumForestDepth": 30,
+    "deathChance": 0.08
+  },
+  "equipment": {
+    "toolWorkSeconds": 240,
+    "clothingLifetimeWinters": 3
+  },
+  "cold": {
+    "unclothedSurvivalSeconds": 30,
+    "clothedExposureMultiplier": 0.1,
+    "snowstormExposureMultiplier": 1.5,
+    "warmupMultiplier": 3,
+    "warningFraction": 0.5
+  },
+  "farming": {
+    "growthSeasons": 1.5,
+    "sowingWorkSeconds": 4,
+    "harvestWorkSeconds": 3,
+    "harvestFood": 45
+  },
+  "forecast": {
+    "foodReserveBuffer": 0.2
   }
 }

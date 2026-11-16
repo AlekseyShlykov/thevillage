@@ -53,6 +53,7 @@ export class BuildingSystem {
   canPlace(configId: string, tx: number, ty: number): boolean {
     const cfg = this.getBuildingConfig(configId);
     if (!cfg) return false;
+    if (cfg.maxCount && this.buildings.filter(b => b.configId === configId).length >= cfg.maxCount) return false;
     if (!this.tileMap.canPlaceBuilding(tx, ty, cfg.width, cfg.height, cfg.canPlaceInForest)) return false;
 
     const isPalisade = cfg.category === 'defense';
@@ -255,13 +256,11 @@ export class BuildingSystem {
     return out;
   }
 
-  /** Tiles of buildings that can be attacked by horde (not hut, house, largeHouse, campFire). */
+  /** Built structures, including housing; HordeSystem gives defenses strict priority. */
   getAttackableBuildingTiles(): { x: number; y: number; buildingId: string }[] {
     const out: { x: number; y: number; buildingId: string }[] = [];
-    const housingIds = new Set(['hut', 'house', 'largeHouse', 'campFire']);
     for (const b of this.buildings) {
       if (!b.built) continue;
-      if (housingIds.has(b.configId)) continue;
       const cfg = this.getBuildingConfig(b.configId);
       if (!cfg) continue;
       for (let dy = 0; dy < cfg.height; dy++) {

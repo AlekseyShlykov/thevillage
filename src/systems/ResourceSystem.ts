@@ -15,6 +15,8 @@ export class ResourceSystem {
       fur: cfg.startingFur,
       tools: cfg.startingTools,
       techPoints: cfg.startingTechPoints,
+      herbs: cfg.startingHerbs,
+      clothing: cfg.startingClothing,
     };
     this.capacity = {
       wood: storageCfg.baseWoodCapacity,
@@ -34,6 +36,8 @@ export class ResourceSystem {
       fur: cfg.startingFur,
       tools: cfg.startingTools,
       techPoints: cfg.startingTechPoints,
+      herbs: cfg.startingHerbs,
+      clothing: cfg.startingClothing,
     };
     this.capacity = {
       wood: storageCfg.baseWoodCapacity,
@@ -74,6 +78,8 @@ export class ResourceSystem {
   addTechPoints(amount: number): void {
     this.resources.techPoints += amount;
   }
+  addHerbs(amount: number): void { this.resources.herbs = Math.min(getConfig().herbs.capacity, this.resources.herbs + amount); }
+  addClothing(amount: number): void { this.resources.clothing += amount; }
 
   consumeFood(amount: number): boolean {
     if (this.resources.food >= amount) {
@@ -121,6 +127,6 @@ export class ResourceSystem {
   }
 
   deserialize(data: ResourceState): void {
-    this.resources = { ...data };
+    this.resources = { ...data, herbs: Math.max(0, Math.min(data.herbs ?? 0, getConfig().herbs.capacity)), clothing: data.clothing ?? 0 };
   }
 }

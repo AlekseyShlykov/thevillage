@@ -1,9 +1,9 @@
 /** Original, transparent vector assets. Decorative images never replace text labels. */
 export const iconNames = [
-  'wood', 'food', 'fur', 'tools', 'villagers', 'comfort', 'research', 'book',
+  'wood', 'food', 'fur', 'clothing', 'tools', 'villagers', 'comfort', 'research', 'book',
   'save', 'load', 'sound', 'muted', 'pause', 'axe', 'bow', 'wheat', 'hammer',
   'home', 'build', 'repair', 'work', 'move', 'resume', 'stop', 'restart',
-  'release', 'gateOpen', 'gateClosed', 'demolish', 'warning', 'check', 'close', 'plus', 'minus',
+  'ward', 'herbs', 'release', 'gateOpen', 'gateClosed', 'demolish', 'warning', 'check', 'close', 'plus', 'minus',
 ] as const;
 export type IconName = typeof iconNames[number];
 const iconUrl = (name: IconName) => `${import.meta.env.BASE_URL}assets/ui/icons/${name}.svg`;

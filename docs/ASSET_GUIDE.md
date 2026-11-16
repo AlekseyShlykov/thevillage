@@ -2,6 +2,11 @@
 
 ## Overview
 
+The current isometric renderer and generated atlases are documented in
+[ART_ASSETS.md](ART_ASSETS.md) and [PROP_ART_PROMPTS.md](PROP_ART_PROMPTS.md).
+The original sprite catalogue below is retained as a historical reference;
+hunter huts and scout/ordinary bonfire variants are no longer separate buildings.
+
 Winter Village uses HTML5 Canvas rendering with sprite-based assets.
 If sprite files are missing, the game falls back to placeholder graphics (colored shapes, circles, rectangles).
 

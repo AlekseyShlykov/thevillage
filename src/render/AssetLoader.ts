@@ -1,8 +1,6 @@
 const BUILDING_SPRITE_MAP: Record<string, string> = {
   hut: 'buildings/hut.png',
   garden: 'buildings/garden.png',
-  hunterHut: 'buildings/hunter_hut.png',
-  bonfire: 'buildings/bonfire.png',
   workshop: 'buildings/workshop.png',
   lumberCamp: 'buildings/lumber_camp.png',
   storage: 'buildings/storage.png',
@@ -10,7 +8,6 @@ const BUILDING_SPRITE_MAP: Record<string, string> = {
   palisadeGate: 'buildings/palisade_gate.png',
   palisadeCorner: 'buildings/palisade_90.png',
   campFire: 'buildings/bonfire.png',
-  scoutFire: 'buildings/scout_fire.png',
   furWorkshop: 'buildings/fur_workshop.png',
   smokehouse: 'buildings/smokehouse.png',
   watchtower: 'buildings/watchtower.png',
@@ -53,7 +50,8 @@ export class AssetLoader {
   private loaded = false;
 
   async loadAll(): Promise<void> {
-    const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png'];
+    const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png',
+      'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png'];
 
     for (const p of Object.values(BUILDING_SPRITE_MAP)) allPaths.push(p);
     for (const arr of Object.values(TILE_SPRITE_MAP)) allPaths.push(...arr);
@@ -81,6 +79,10 @@ export class AssetLoader {
   }
 
   getAtlas(season?: string): HTMLImageElement | null { return (season === 'winter' ? this.images.get('isometric/village-winter-atlas.png') : null) ?? this.images.get('isometric/village-atlas.png') ?? null; }
+
+  getGardenAtlas(): HTMLImageElement | null { return this.images.get('isometric/garden-growth-atlas.png') ?? null; }
+  getWardAtlas(): HTMLImageElement | null { return this.images.get('isometric/herbal-fire-atlas.png') ?? null; }
+  getTool(name: string): HTMLImageElement | null { return this.images.get(`tools/${name}.png`) ?? null; }
 
   isLoaded(): boolean {
     return this.loaded;

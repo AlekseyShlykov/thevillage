@@ -50,6 +50,8 @@ export interface ResourceState {
   fur: number;
   tools: number;
   techPoints: number;
+  herbs: number;
+  clothing: number;
 }
 
 export interface BuildingConfig {
@@ -71,7 +73,10 @@ export interface BuildingConfig {
   detectionRadius?: number;
   boostRadius?: number;
   canPlaceInForest?: boolean;
+  /** Chebyshev radius: protects this tile and N tiles in each cardinal direction. */
+  protectionRadius?: number;
   storageBonus?: { wood: number; food: number; fur: number; tools: number };
+  maxCount?: number;
 }
 
 export interface BuildingInstance {
@@ -93,6 +98,12 @@ export interface BuildingInstance {
   /** Gate open/closed state (only for palisadeGate) */
   gateOpen?: boolean;
   productionProgress?: number;
+  cropState?: 'empty' | 'growing' | 'ripe' | 'withered';
+  sowingProgress?: number;
+  harvestProgress?: number;
+  harvestRemaining?: number;
+  wardFuelSeconds?: number;
+  wardActive?: boolean;
 }
 
 export interface VillagerData {
@@ -119,6 +130,10 @@ export interface VillagerData {
   stuckTimer?: number;
   lastStuckTileX?: number;
   lastStuckTileY?: number;
+  toolDurability?: number;
+  clothingWintersLeft?: number;
+  coldExposure?: number;
+  cargo?: { food: number; fur: number; herbs: number };
 }
 
 export interface EnemyData {
@@ -139,6 +154,8 @@ export interface EnemyData {
   targetBuildingId: string | null;
   patrolTarget: { x: number; y: number } | null;
   patrolTimer: number;
+  repathTimer?: number;
+  blockedTimer?: number;
 }
 
 export interface TechConfig {
@@ -191,21 +208,29 @@ export interface GameBalanceConfig {
     viewportTilesY: number;
     startClearingSize: number;
   };
-  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number };
+  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[] };
   tutorial: { minimumFoodReserve: number; winterReserveMultiplier: number };
   gameplay: { demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number };
   resources: Record<string, number>;
   villagers: Record<string, number>;
   buildings: Record<string, BuildingConfig>;
+  retiredBuildings: Record<string, { refundWood: number; refundTools: number; refundResearch: number; replacement?: string }>;
+  herbs: { capacity: number; perWinter: number; gatherSeconds: number; searchRadius: number; minimumForestDepth: number; maximumForestDepth: number; deathChance: number };
+  equipment: { toolWorkSeconds: number; clothingLifetimeWinters: number };
+  cold: { unclothedSurvivalSeconds: number; clothedExposureMultiplier: number; snowstormExposureMultiplier: number; warmupMultiplier: number; warningFraction: number };
+  farming: { growthSeasons: number; sowingWorkSeconds: number; harvestWorkSeconds: number; harvestFood: number };
+  forecast: { foodReserveBuffer: number };
   storage: Record<string, number>;
   horde: Record<string, unknown>;
   comfort: Record<string, number>;
   fur: Record<string, number>;
   weather: Record<string, number>;
   technology: {
-    techPointsPerBuildingBuilt: number;
-    techPointsPerWinterSurvived: number;
-    techPointsPerLevelReached: number;
+    firstWinterRewardCount: number;
+    earlyWinterStars: number;
+    laterWinterStars: number;
+    initialTechs: string[];
+    initialBuildings: string[];
     techs: Record<string, TechConfig>;
   };
   levels: Record<string, { populationThreshold: number; availableTiers: number[] }>;

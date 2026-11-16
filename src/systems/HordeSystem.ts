@@ -1,534 +1,137 @@
-import { EnemyData } from '../types';
-import { TileType } from '../types';
+import { EnemyData, TileType } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
-import { findPath } from '../utils/Pathfinding';
+import { ProtectionSystem } from './ProtectionSystem';
+import { AttackTile, HordeNavigation } from './HordeNavigation';
 
 let nextEnemyId = 1;
 
+/** Finite winter waves. Intact defenses are always destroyed before buildings. */
 export class HordeSystem {
   public enemies: EnemyData[] = [];
   public isActive = false;
   public visibilityMultiplier = 1;
+  public openGateIds = new Set<string>();
+  public unbuiltPalisadeIds = new Set<string>();
   private waveTimer = 0;
   private currentWave = 0;
   private wavesThisWinter = 0;
   private waveSpawned = false;
   private winterYear = 1;
   private winterLevel = 1;
-  /** Gate IDs that are open — enemies can walk through */
-  public openGateIds: Set<string> = new Set();
-  /** Palisade IDs that are not yet built — enemies can walk through */
-  public unbuiltPalisadeIds: Set<string> = new Set();
-
-  private tileMap: TileMap;
-
-  constructor(tileMap: TileMap) {
-    this.tileMap = tileMap;
+  private enemiesSpawnedThisWinter = 0;
+  private worldKey = '';
+  private retreating = false;
+  private navigation: HordeNavigation;
+  constructor(private tileMap: TileMap, public protection = new ProtectionSystem()) {
+    this.navigation = new HordeNavigation(tileMap, protection);
   }
-
   startWinter(year: number, level: number): void {
-    const cfg = getConfig().horde;
-    const wavesArr = cfg.wavesPerWinter as number[];
-    this.wavesThisWinter = wavesArr[Math.min(level - 1, wavesArr.length - 1)];
-    this.currentWave = 0;
-    this.waveTimer = (cfg.delayAfterWinterStart as number) ?? 2;
-    this.waveSpawned = false;
-    this.isActive = true;
-    this.winterYear = year;
-    this.winterLevel = level;
+    const cfg = getConfig().horde, waves = cfg.wavesPerWinter as number[];
+    this.winterYear = year; this.winterLevel = level;
+    this.wavesThisWinter = Math.min(waves[Math.min(level - 1, waves.length - 1)], this.winterEnemyLimit());
+    this.currentWave = 0; this.waveTimer = cfg.delayAfterWinterStart as number;
+    this.waveSpawned = false; this.isActive = true;
+    this.enemies = []; this.enemiesSpawnedThisWinter = 0;
+    this.retreating = false;
   }
-
-  endWinter(): void {
-    this.isActive = false;
-    for (const e of this.enemies) {
-      e.state = 'dead';
-    }
-    this.enemies = [];
+  /** The last configured winter count also caps every subsequent year. */
+  private winterEnemyLimit(): number {
+    const counts = getConfig().horde.enemiesPerWinter as number[];
+    return counts[Math.min(Math.max(0, this.winterYear - 1), counts.length - 1)];
   }
-
-  update(
-    dt: number,
-    villageCenterX: number,
-    villageCenterY: number,
-    detectionBuildings: { x: number; y: number; radius: number }[],
-    housingTiles: { x: number; y: number }[],
-    outsideVillagers: { id: string; x: number; y: number }[],
-    attackableBuildingTiles: { x: number; y: number; buildingId: string }[],
-    isHouseBuilding: (buildingId: string) => boolean,
-    onAttackBuilding: (buildingId: string, damage: number) => void,
-    onVillagerKilledByHorde: (villagerId: string) => void,
-    winterRetreatPhase: boolean,
-  ): void {
+  endWinter(): void { this.isActive = false; this.enemies = []; }
+  update(dt: number, cx: number, cy: number,
+    detection: { x: number; y: number; radius: number }[], _housing: { x: number; y: number }[],
+    outside: { id: string; x: number; y: number }[], tiles: AttackTile[], _isHouse: (id: string) => boolean,
+    onBuilding: (id: string, damage: number) => void, onVillager: (id: string) => void, retreat: boolean): void {
     if (!this.isActive) return;
-
     const cfg = getConfig().horde;
-
     this.waveTimer -= dt;
-    if (this.waveTimer <= 0 && !this.waveSpawned && this.currentWave < this.wavesThisWinter) {
-      this.spawnWave(villageCenterX, villageCenterY);
-      this.waveSpawned = true;
+    if (this.waveSpawned && (this.waveTimer <= 0 || this.enemies.every(e => e.state === 'dead'))) {
+      this.currentWave++; this.waveSpawned = false;
+      this.enemies = this.enemies.filter(e => e.state !== 'dead');
     }
-
-    const allDead = this.enemies.length === 0 || this.enemies.every(e => e.state === 'dead');
-    if (allDead && this.waveSpawned) {
-      this.currentWave++;
-      this.waveSpawned = false;
-      this.waveTimer = (cfg.timeBetweenWaves as number) || 30;
-      this.enemies = [];
+    if (!retreat && this.waveTimer <= 0 && !this.waveSpawned && this.currentWave < this.wavesThisWinter) {
+      this.spawnWave(cx, cy); this.waveSpawned = true;
+      this.waveTimer = cfg.timeBetweenWaves as number;
     }
-
-    const housingSet = new Set(housingTiles.map(p => `${p.x},${p.y}`));
-
+    this.navigation.openGateIds = this.openGateIds; this.navigation.unbuiltPalisadeIds = this.unbuiltPalisadeIds;
+    const key = `${this.tileMap.revision}:${this.protection.revision}`;
+    if (key !== this.worldKey || (retreat && !this.retreating)) {
+      this.worldKey = key; for (const e of this.enemies) { e.path = []; e.repathTimer = 0; }
+    }
+    this.retreating = retreat;
+    const defenses = tiles.filter(t => this.tileMap.getTile(t.x, t.y)?.type === TileType.Palisade && !this.protection.blocksTile(t.x, t.y));
+    const targets = (defenses.length ? defenses : tiles).filter(t => !this.protection.blocksTile(t.x, t.y));
+    const people = outside.filter(v => !this.protection.blocksPoint(v.x, v.y));
     for (const e of this.enemies) {
       if (e.state === 'dead') continue;
-
-      this.updateVisibility(e, villageCenterX, villageCenterY, detectionBuildings);
-
+      this.updateVisibility(e, cx, cy, detection);
+      e.attackCooldown = Math.max(0, e.attackCooldown - dt);
       e.villagerAttackCooldown = Math.max(0, (e.villagerAttackCooldown ?? 0) - dt);
-      if (!winterRetreatPhase && e.villagerAttackCooldown <= 0) {
-        const killRadius = 1.2;
-        for (const v of outsideVillagers) {
-          const dist = Math.sqrt((e.x - v.x) ** 2 + (e.y - v.y) ** 2);
-          if (dist < killRadius) {
-            onVillagerKilledByHorde(v.id);
-            e.villagerAttackCooldown = cfg.enemyAttackRate as number;
-            break;
-          }
-        }
-      }
-
-      if (winterRetreatPhase) {
-        this.updateEnemyRetreat(e, dt, housingTiles, cfg);
+      e.repathTimer = Math.max(0, (e.repathTimer ?? 0) - dt);
+      if (this.protection.blocksPoint(e.x, e.y)) {
+        const exit = this.protection.nearestOutside(e.x, e.y, (x, y) => this.navigation.walkable(x, y));
+        if (exit) { e.x = exit.x; e.y = exit.y; }
+        else { e.state = 'dead'; e.path = []; continue; }
+        e.path = []; e.targetBuildingId = null; e.repathTimer = 0; e.state = 'approaching';
         continue;
       }
-
-      switch (e.state) {
-        case 'patrolling':
-          this.updatePatrol(e, dt, cfg, outsideVillagers, attackableBuildingTiles, housingSet);
-          break;
-        case 'approaching':
-          this.updateApproaching(e, dt, cfg, outsideVillagers, attackableBuildingTiles, housingSet, isHouseBuilding, villageCenterX, villageCenterY);
-          break;
-        case 'attacking':
-          this.updateAttacking(e, dt, cfg, isHouseBuilding, onAttackBuilding, attackableBuildingTiles);
-          break;
+      if (retreat) { this.retreat(e, dt); continue; }
+      if (defenses.length && e.targetBuildingId && !defenses.some(t => t.buildingId === e.targetBuildingId)) {
+        e.targetBuildingId = null; e.path = []; e.repathTimer = 0;
       }
-    }
-  }
-
-  // ---- State handlers ----
-
-  private updatePatrol(
-    e: EnemyData, dt: number, cfg: Record<string, unknown>,
-    outsideVillagers: { id: string; x: number; y: number }[],
-    attackableBuildingTiles: { x: number; y: number; buildingId: string }[],
-    housingSet: Set<string>,
-  ): void {
-    const chaseDistance = (cfg.villagerChaseDistance as number) ?? 25;
-    const nearestOutside = this.findNearestOutsideVillager(e.x, e.y, outsideVillagers, chaseDistance);
-
-    if (nearestOutside) {
-      let goalX = Math.floor(nearestOutside.x);
-      let goalY = Math.floor(nearestOutside.y);
-      if (housingSet.has(`${goalX},${goalY}`)) {
-        const walkable = (x: number, y: number) => this.isEnemyWalkable(x, y, housingSet);
-        const fallback = this.findNearestWalkableToCenter(goalX, goalY, housingSet, walkable);
-        goalX = fallback.x;
-        goalY = fallback.y;
+      // Attacks are checked against current live tiles, not a stale path or saved target.
+      const target = targets.find(t => t.buildingId === e.targetBuildingId && Math.hypot(t.x - e.x, t.y - e.y) <= (cfg.buildingAttackReach as number));
+      if (target) {
+        e.state = 'attacking'; e.path = [];
+        if (e.attackCooldown <= 0) {
+          const multiplier = this.winterYear === 1 ? cfg.firstWinterBuildingDamageMultiplier as number : 1;
+          onBuilding(target.buildingId, (cfg.buildingDamagePerAttack as number) * multiplier);
+          e.attackCooldown = cfg.buildingAttackInterval as number;
+        }
+        continue;
       }
-      this.pathAndMove(e, dt, goalX, goalY, housingSet, cfg);
-      e.patrolTimer = 0;
-      return;
-    }
-
-    e.patrolTimer = (e.patrolTimer ?? 0) + dt;
-    const patrolDuration = (cfg.patrolDuration as number) ?? 20;
-
-    if (e.patrolTimer >= patrolDuration && attackableBuildingTiles.length > 0) {
-      e.state = 'approaching';
-      e.patrolTimer = 0;
-      e.path = [];
-      e.patrolTarget = null;
-      return;
-    }
-
-    if (!e.patrolTarget || this.reachedTile(e, e.patrolTarget.x, e.patrolTarget.y)) {
-      const clearTiles = this.tileMap.getClearZoneTiles();
-      if (clearTiles.length > 0) {
-        e.patrolTarget = clearTiles[Math.floor(Math.random() * clearTiles.length)];
-        e.path = [];
+      if (!defenses.length) {
+        const victim = people.find(v => Math.hypot(v.x - e.x, v.y - e.y) <= (cfg.villagerAttackReach as number));
+        if (victim && e.villagerAttackCooldown <= 0) { onVillager(victim.id); e.villagerAttackCooldown = cfg.enemyAttackRate as number; }
       }
-    }
-
-    if (e.patrolTarget) {
-      this.pathAndMove(e, dt, e.patrolTarget.x, e.patrolTarget.y, housingSet, cfg);
-    }
-  }
-
-  private updateApproaching(
-    e: EnemyData, dt: number, cfg: Record<string, unknown>,
-    outsideVillagers: { id: string; x: number; y: number }[],
-    attackableBuildingTiles: { x: number; y: number; buildingId: string }[],
-    housingSet: Set<string>,
-    isHouseBuilding: (buildingId: string) => boolean,
-    villageCenterX: number, villageCenterY: number,
-  ): void {
-    const chaseDistance = (cfg.villagerChaseDistance as number) ?? 25;
-    const nearestOutside = this.findNearestOutsideVillager(e.x, e.y, outsideVillagers, chaseDistance);
-
-    let goalX: number;
-    let goalY: number;
-
-    if (nearestOutside) {
-      goalX = Math.floor(nearestOutside.x);
-      goalY = Math.floor(nearestOutside.y);
-      if (housingSet.has(`${goalX},${goalY}`)) {
-        const walkable = (x: number, y: number) => this.isEnemyWalkable(x, y, housingSet);
-        const fallback = this.findNearestWalkableToCenter(goalX, goalY, housingSet, walkable);
-        goalX = fallback.x;
-        goalY = fallback.y;
-      }
-    } else {
-      const nearestBuilding = this.findNearestAttackableBuilding(e.x, e.y, attackableBuildingTiles);
-      if (nearestBuilding) {
-        goalX = nearestBuilding.x;
-        goalY = nearestBuilding.y;
-      } else {
-        e.state = 'patrolling';
-        e.patrolTimer = 0;
-        e.path = [];
-        return;
-      }
-    }
-
-    this.pathAndMove(e, dt, goalX, goalY, housingSet, cfg);
-
-    const ex = Math.floor(e.x);
-    const ey = Math.floor(e.y);
-    const tile = this.tileMap.getTile(ex, ey);
-    if (tile && tile.buildingId && (tile.type === TileType.Palisade || tile.type === TileType.Building)) {
-      if (isHouseBuilding(tile.buildingId)) {
-        e.path = [];
-      } else {
-        e.state = 'attacking';
-        e.targetBuildingId = tile.buildingId;
-      }
-    }
-  }
-
-  private updateAttacking(
-    e: EnemyData, dt: number, cfg: Record<string, unknown>,
-    isHouseBuilding: (buildingId: string) => boolean,
-    onAttackBuilding: (buildingId: string, damage: number) => void,
-    attackableBuildingTiles: { x: number; y: number; buildingId: string }[],
-  ): void {
-    if (e.targetBuildingId && isHouseBuilding(e.targetBuildingId)) {
-      e.state = 'patrolling';
-      e.targetBuildingId = null;
-      e.path = [];
-      e.patrolTimer = 0;
-      return;
-    }
-
-    if (e.targetBuildingId) {
-      const exists = attackableBuildingTiles.some(t => t.buildingId === e.targetBuildingId);
-      if (!exists) {
-        e.state = 'patrolling';
-        e.targetBuildingId = null;
-        e.path = [];
-        e.patrolTimer = 0;
-        return;
-      }
-    }
-
-    e.attackCooldown -= dt;
-    if (e.attackCooldown <= 0) {
-      e.attackCooldown = (cfg.enemyAttackRate as number) || 2;
-      if (e.targetBuildingId) {
-        const dmg = (cfg.buildingDamagePerAttack as number) * (this.winterYear === 1 ? cfg.firstWinterBuildingDamageMultiplier as number : 1);
-        onAttackBuilding(e.targetBuildingId, dmg);
-      }
-    }
-  }
-
-  // ---- Movement helpers ----
-
-  private isEnemyWalkable(x: number, y: number, housingSet: Set<string>): boolean {
-    if (housingSet.has(`${x},${y}`)) return false;
-    const tile = this.tileMap.getTile(x, y);
-    if (!tile) return false;
-    if (tile.type === TileType.Building) return false;
-    if (tile.type === TileType.Palisade) {
-      if (tile.buildingId && this.openGateIds.has(tile.buildingId)) return true;
-      if (tile.buildingId && this.unbuiltPalisadeIds.has(tile.buildingId)) return true;
-      return false;
-    }
-    return true;
-  }
-
-  private reachedTile(e: EnemyData, tx: number, ty: number): boolean {
-    return Math.floor(e.x) === tx && Math.floor(e.y) === ty && e.path.length === 0;
-  }
-
-  private pathAndMove(
-    e: EnemyData, dt: number,
-    goalX: number, goalY: number,
-    housingSet: Set<string>,
-    cfg: Record<string, unknown>,
-  ): void {
-    if (e.path.length === 0 || this.pathGoalMismatch(e, goalX, goalY)) {
-      const walkable = (x: number, y: number) =>
-        this.isEnemyWalkable(x, y, housingSet) && !this.isTileOccupiedByOtherEnemy(e.id, x, y);
-      e.path = findPath(
-        Math.floor(e.x), Math.floor(e.y), goalX, goalY,
-        walkable, this.tileMap.width, this.tileMap.height, 500
-      );
-    }
-    this.stepEnemy(e, dt, cfg, housingSet);
-  }
-
-  private stepEnemy(
-    e: EnemyData, dt: number,
-    cfg: Record<string, unknown>,
-    housingSet: Set<string>,
-  ): void {
-    if (e.path.length === 0) return;
-
-    const next = e.path[0];
-    const dx = next.x - e.x;
-    const dy = next.y - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist < 0.15) {
-      const nextTx = Math.floor(next.x);
-      const nextTy = Math.floor(next.y);
-
-      if (housingSet.has(`${nextTx},${nextTy}`)) {
-        e.path.shift();
-        return;
-      }
-
-      const currentlyNearOther = this.isTileAdjacentToOtherEnemy(e.id, Math.floor(e.x), Math.floor(e.y));
-      const adjacencyBlocked = !currentlyNearOther && this.isTileAdjacentToOtherEnemy(e.id, nextTx, nextTy);
-
-      const blocked =
-        this.isTileOccupiedByOtherEnemy(e.id, nextTx, nextTy) ||
-        adjacencyBlocked ||
-        (this.isTileReservedByOtherEnemy(e.id, nextTx, nextTy) && !this.hasPriorityForTile(e.id, nextTx, nextTy));
-
-      if (blocked) {
-        e.path.shift();
-        return;
-      }
-
-      e.x = next.x;
-      e.y = next.y;
-      e.path.shift();
-    } else {
-      const speed = (cfg.enemySpeed as number) || 0.8;
-      const step = Math.min(dist, speed * dt);
-      e.x += (dx / dist) * step;
-      e.y += (dy / dist) * step;
-    }
-  }
-
-  private pathGoalMismatch(e: EnemyData, goalX: number, goalY: number): boolean {
-    if (e.path.length === 0) return true;
-    const last = e.path[e.path.length - 1];
-    return Math.floor(last.x) !== goalX || Math.floor(last.y) !== goalY;
-  }
-
-  /** Chebyshev distance < 2 to any other living enemy. */
-  private isTileAdjacentToOtherEnemy(excludeId: string, tx: number, ty: number): boolean {
-    for (const o of this.enemies) {
-      if (o.id === excludeId || o.state === 'dead') continue;
-      const dist = Math.max(Math.abs(Math.floor(o.x) - tx), Math.abs(Math.floor(o.y) - ty));
-      if (dist < 2) return true;
-    }
-    return false;
-  }
-
-  // ---- Retreat ----
-
-  private updateEnemyRetreat(
-    e: EnemyData,
-    dt: number,
-    housingTiles: { x: number; y: number }[],
-    cfg: Record<string, unknown>,
-  ): void {
-    if (e.state === 'attacking') {
-      e.state = 'patrolling';
-      e.targetBuildingId = null;
-      e.path = [];
-    }
-
-    const housingSet = new Set(housingTiles.map(p => `${p.x},${p.y}`));
-    const walkable = (x: number, y: number) =>
-      this.isEnemyWalkable(x, y, housingSet) && !this.isTileOccupiedByOtherEnemy(e.id, x, y);
-
-    const edgeTiles = this.tileMap.getForestEdgeTiles();
-    const target = this.findNearestForestEdgeTile(e.x, e.y, edgeTiles);
-    if (!target) return;
-
-    const goalX = target.x;
-    const goalY = target.y;
-
-    if (e.path.length === 0 || this.pathGoalMismatch(e, goalX, goalY)) {
-      e.path = findPath(
-        Math.floor(e.x), Math.floor(e.y),
-        goalX, goalY,
-        walkable,
-        this.tileMap.width, this.tileMap.height,
-        500
-      );
-    }
-
-    if (e.path.length > 0) {
-      const next = e.path[0];
-      const dx = next.x - e.x;
-      const dy = next.y - e.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 0.15) {
-        e.x = next.x;
-        e.y = next.y;
-        e.path.shift();
-      } else {
-        const speed = (cfg.enemySpeed as number) || 0.8;
-        const step = Math.min(dist, speed * dt);
-        e.x += (dx / dist) * step;
-        e.y += (dy / dist) * step;
-      }
-    }
-  }
-
-  private findNearestForestEdgeTile(ex: number, ey: number, edgeTiles: { x: number; y: number }[]): { x: number; y: number } | null {
-    if (edgeTiles.length === 0) return null;
-    let best = edgeTiles[0];
-    let bestDist = Math.sqrt((ex - best.x) ** 2 + (ey - best.y) ** 2);
-    for (const t of edgeTiles) {
-      const d = Math.sqrt((ex - t.x) ** 2 + (ey - t.y) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        best = t;
-      }
-    }
-    return best;
-  }
-
-  // ---- Tile helpers ----
-
-  private isTileOccupiedByOtherEnemy(excludeId: string, tx: number, ty: number): boolean {
-    const txi = Math.floor(tx);
-    const tyi = Math.floor(ty);
-    for (const o of this.enemies) {
-      if (o.id === excludeId || o.state === 'dead') continue;
-      if (Math.floor(o.x) === txi && Math.floor(o.y) === tyi) return true;
-    }
-    return false;
-  }
-
-  private isTileReservedByOtherEnemy(excludeId: string, tx: number, ty: number): boolean {
-    const txi = Math.floor(tx);
-    const tyi = Math.floor(ty);
-    for (const o of this.enemies) {
-      if (o.id === excludeId || o.state === 'dead') continue;
-      if (!o.path || o.path.length === 0) continue;
-      const next = o.path[0];
-      if (Math.floor(next.x) === txi && Math.floor(next.y) === tyi) return true;
-    }
-    return false;
-  }
-
-  private hasPriorityForTile(enemyId: string, tx: number, ty: number): boolean {
-    const txi = Math.floor(tx);
-    const tyi = Math.floor(ty);
-    let minId: string | null = null;
-    for (const o of this.enemies) {
-      if (o.state === 'dead' || !o.path || o.path.length === 0) continue;
-      const next = o.path[0];
-      if (Math.floor(next.x) !== txi || Math.floor(next.y) !== tyi) continue;
-      if (minId === null || o.id < minId) minId = o.id;
-    }
-    return minId === enemyId;
-  }
-
-  // ---- Search helpers ----
-
-  private findNearestOutsideVillager(
-    ex: number, ey: number,
-    outsideVillagers: { id: string; x: number; y: number }[],
-    maxDist: number,
-  ): { id: string; x: number; y: number } | null {
-    let best: { id: string; x: number; y: number } | null = null;
-    let bestDist = maxDist;
-    for (const v of outsideVillagers) {
-      const d = Math.sqrt((ex - v.x) ** 2 + (ey - v.y) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        best = v;
-      }
-    }
-    return best;
-  }
-
-  private findNearestAttackableBuilding(
-    ex: number, ey: number,
-    tiles: { x: number; y: number; buildingId: string }[],
-  ): { x: number; y: number; buildingId: string } | null {
-    if (tiles.length === 0) return null;
-    let best = tiles[0];
-    let bestDist = Math.sqrt((ex - best.x) ** 2 + (ey - best.y) ** 2);
-    for (const t of tiles) {
-      const d = Math.sqrt((ex - t.x) ** 2 + (ey - t.y) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        best = t;
-      }
-    }
-    return best;
-  }
-
-  private findNearestWalkableToCenter(
-    cx: number, cy: number,
-    housingSet: Set<string>,
-    walkable: (x: number, y: number) => boolean,
-  ): { x: number; y: number } {
-    const icx = Math.floor(cx);
-    const icy = Math.floor(cy);
-    if (walkable(icx, icy)) return { x: icx, y: icy };
-    const maxRadius = 15;
-    for (let r = 1; r <= maxRadius; r++) {
-      let best: { x: number; y: number } | null = null;
-      let bestDist = Infinity;
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-          const x = icx + dx;
-          const y = icy + dy;
-          if (x < 0 || x >= this.tileMap.width || y < 0 || y >= this.tileMap.height) continue;
-          if (!walkable(x, y)) continue;
-          const d = dx * dx + dy * dy;
-          if (d < bestDist) {
-            bestDist = d;
-            best = { x, y };
+      if (e.path.length && e.targetBuildingId && !targets.some(t => t.buildingId === e.targetBuildingId)) { e.path = []; e.repathTimer = 0; }
+      if (!e.path.length && e.repathTimer <= 0) {
+        e.state = 'approaching'; e.targetBuildingId = null;
+        const nearest = !defenses.length ? people.slice().sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))[0] : null;
+        if (nearest && Math.hypot(nearest.x - e.x, nearest.y - e.y) <= (cfg.villagerChaseDistance as number)) {
+          e.path = this.navigation.path(e, { x: Math.floor(nearest.x), y: Math.floor(nearest.y) });
+        }
+        if (!e.path.length) {
+          const approach = this.navigation.approach(e, targets, this.enemies);
+          if (approach) {
+            e.path = approach.path; e.targetBuildingId = approach.tile.buildingId;
+            e.targetX = approach.goal.x; e.targetY = approach.goal.y;
           }
         }
+        e.repathTimer = cfg.targetRepathSeconds as number;
       }
-      if (best) return best;
+      this.navigation.step(e, dt, this.enemies);
     }
-    return { x: icx, y: icy };
   }
-
-  // ---- Spawning ----
+  private retreat(e: EnemyData, dt: number): void {
+    e.state = 'patrolling'; e.targetBuildingId = null;
+    if (!e.path.length && e.repathTimer === 0) {
+      const edge = this.tileMap.getForestEdgeTiles().filter(p => this.navigation.walkable(p.x, p.y))
+        .sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y));
+      for (const p of edge) { e.path = this.navigation.path(e, p); if (e.path.length) break; }
+      e.repathTimer = getConfig().horde.targetRepathSeconds as number;
+    }
+    this.navigation.step(e, dt, this.enemies);
+  }
 
   private spawnWave(villageCenterX: number, villageCenterY: number): void {
     const cfg = getConfig().horde;
-    const base = (cfg.baseEnemyCount as number) || 5;
-    const perLevel = (cfg.enemyCountPerLevel as number) || 3;
-    const count = this.winterYear === 1 ? cfg.firstWinterEnemyCount as number : base + perLevel * (this.winterLevel - 1) + Math.floor(this.winterYear * 0.5) + this.currentWave;
-    const edgeTiles = this.tileMap.getForestEdgeTiles();
+    const remaining = Math.max(0, this.winterEnemyLimit() - this.enemiesSpawnedThisWinter);
+    const count = Math.ceil(remaining / (this.wavesThisWinter - this.currentWave));
+    const edgeTiles = this.tileMap.getForestEdgeTiles().filter(p => !this.protection.blocksTile(p.x, p.y));
     if (edgeTiles.length === 0) return;
 
     for (let i = 0; i < count; i++) {
@@ -552,6 +155,7 @@ export class HordeSystem {
         patrolTimer: 0,
       };
       this.enemies.push(enemy);
+      this.enemiesSpawnedThisWinter++;
     }
   }
 
@@ -604,18 +208,26 @@ export class HordeSystem {
     return { enemies: this.enemies.map(e => ({ ...e, path: e.path.map(p => ({ ...p })) })),
       isActive: this.isActive, waveTimer: this.waveTimer, currentWave: this.currentWave,
       wavesThisWinter: this.wavesThisWinter, waveSpawned: this.waveSpawned,
-      winterYear: this.winterYear, winterLevel: this.winterLevel };
+      winterYear: this.winterYear, winterLevel: this.winterLevel,
+      enemiesSpawnedThisWinter: this.enemiesSpawnedThisWinter };
   }
 
   deserialize(data: EnemyData[] | ReturnType<HordeSystem['serialize']>, winter = false, year = 1, level = 1): void {
     if (Array.isArray(data)) {
       if (winter) this.startWinter(year, level); else this.endWinter();
       this.enemies = data; this.waveSpawned = data.length > 0;
+      this.enemiesSpawnedThisWinter = data.length;
     } else {
       this.enemies = data.enemies ?? []; this.isActive = data.isActive;
       this.waveTimer = data.waveTimer; this.currentWave = data.currentWave;
       this.wavesThisWinter = data.wavesThisWinter; this.waveSpawned = data.waveSpawned;
       this.winterYear = data.winterYear; this.winterLevel = data.winterLevel;
+      // Older saves have no seasonal counter. Keep their existing enemies and
+      // conservatively account for completed waves instead of replenishing them.
+      const waves = Math.max(1, this.wavesThisWinter), limit = this.winterEnemyLimit();
+      const accountedWaves = Math.min(waves, this.currentWave + (this.waveSpawned ? 1 : 0));
+      const legacyCount = Math.floor(limit / waves) * accountedWaves + Math.min(accountedWaves, limit % waves);
+      this.enemiesSpawnedThisWinter = Math.max(this.enemies.length, data.enemiesSpawnedThisWinter ?? legacyCount);
     }
     nextEnemyId = Math.max(0, ...this.enemies.map(e => Number(e.id.replace('e_', '')) || 0)) + 1;
   }

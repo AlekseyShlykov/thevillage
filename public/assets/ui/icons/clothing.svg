@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><defs>
+<linearGradient id="wood" x2=".3" y2="1"><stop stop-color="#d5ad71"/><stop offset=".48" stop-color="#b58b55"/><stop offset="1" stop-color="#79583b"/></linearGradient>
+<linearGradient id="iron" x2=".4" y2="1"><stop stop-color="#d6d8c0"/><stop offset=".45" stop-color="#a4afa0"/><stop offset="1" stop-color="#667a70"/></linearGradient>
+<linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#f1dfb0"/><stop offset="1" stop-color="#c0a272"/></linearGradient>
+<linearGradient id="gold" x2=".3" y2="1"><stop stop-color="#efd399"/><stop offset=".5" stop-color="#c5a36a"/><stop offset="1" stop-color="#967343"/></linearGradient>
+<linearGradient id="leaf" x2=".2" y2="1"><stop stop-color="#a6b27a"/><stop offset="1" stop-color="#526f4e"/></linearGradient>
+<linearGradient id="red" x2=".3" y2="1"><stop stop-color="#d9a06c"/><stop offset=".5" stop-color="#b5714f"/><stop offset="1" stop-color="#824a36"/></linearGradient>
+<filter id="shadow" x="-.2" y="-.2" width="1.4" height="1.4"><feDropShadow dx="0" dy="1" stdDeviation=".5" flood-color="#10241b" flood-opacity=".5"/></filter>
+</defs><g stroke="#414431" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round" filter="url(#shadow)"><path d="M16 7 22 5 26 5 32 7 42 18 35 24 32 20 33 42 15 42 16 20 12 25 5 19Z" fill="url(#wood)" /><path d="M19 6 24 14 29 6 33 10 28 18 28 41 20 41 20 18 15 10Z" fill="url(#paper)" /><path d="M24 16 24 40M17 30 20 30M28 30 31 30" fill="none" stroke="#6f583e" stroke-width="1.5" /><ellipse cx="24" cy="23" rx="1.2" ry="1.2" fill="url(#iron)" /><ellipse cx="24" cy="30" rx="1.2" ry="1.2" fill="url(#iron)" /></g></svg>

@@ -7,6 +7,8 @@ import { IsometricArt, footprint, polygon, hash } from './IsometricArt';
 import { GroundArt } from './GroundArt';
 import { VillagerArt, actionPhase, isWorking } from './VillagerArt';
 import { villagerActivity } from '../game/VillagerOrders';
+import { cropStageName } from './CropArt';
+import { protectionZones } from '../systems/ProtectionSystem';
 
 interface SceneItem { depth: number; draw: () => void }
 /** Depth-sorted 2.5D Canvas renderer. All picking uses the same projection as drawing. */
@@ -49,6 +51,10 @@ export class Renderer {
     const bounds = this.bounds(map);
     this.renderGround(map, season, bounds);
     this.groundArt.breeze(ctx, map, season, bounds, this.time);
+    for (const field of protectionZones(buildings, configs)) {
+      const r = field.radius, pts = footprint(this.camera, field.x - r, field.y - r, r * 2 + 1, r * 2 + 1);
+      polygon(ctx, pts, 'rgba(183,204,135,.055)', 'rgba(202,217,158,.45)');
+    }
     const chosen = villagers.find(v => v.id === selected);
     if (chosen?.path.length) {
       ctx.strokeStyle = '#efcf8f'; ctx.lineWidth = 2; ctx.setLineDash([3, 6]); ctx.beginPath();
@@ -86,9 +92,10 @@ export class Renderer {
       const occupied = active.filter(v => map.getTile(Math.floor(v.x), Math.floor(v.y))?.buildingId === b.id).length;
       scene.push({ depth: box.baseline - this.camera.tileHeight * .4, draw: () => {
         if (hovered?.id === b.id) polygon(ctx, box.pts, 'rgba(237,211,151,.16)', '#edcf8e');
-        this.art.building(ctx, b, cfg, season, this.time);
+        this.art.building(ctx, b, cfg, season, this.time, buildings, occupied);
         if (!b.built) { this.bar(box.centerX, box.baseline + 7, 66, b.buildProgress, '#e8c781'); this.label(box.centerX, box.y - 3, `${cfg.name} · ${Math.round(b.buildProgress * 100)}%`); }
-        else if (hovered?.id === b.id) this.label(box.centerX, box.y + 8, `${cfg.name}${cfg.maxWorkers ? ` · ${b.assignedWorkers.length}/${cfg.maxWorkers}` : ''}`);
+        else if (b.configId==='garden' && b.cropState==='ripe') this.label(box.centerX,box.y+8,`Harvest ready · ${Math.ceil(b.harvestRemaining??getConfig().farming.harvestFood)} food`);
+        else if (hovered?.id === b.id) this.label(box.centerX, box.y + 8, `${cfg.name}${b.configId === 'garden' ? ` · ${b.cropState==='growing'?cropStageName(b.farmingProgress ?? 0):'Ready to sow'}` : cfg.maxWorkers ? ` · ${b.assignedWorkers.length}/${cfg.maxWorkers}` : cfg.protectionRadius ? ` · ${cfg.protectionRadius} tile ward` : ''}`);
         if (b.built && cfg.maxWorkers && b.configId !== 'garden' && hovered?.id !== b.id) this.label(box.centerX, box.baseline - 8, `${cfg.name} · ${b.assignedWorkers.length}/${cfg.maxWorkers}`, true);
         if (occupied && shelterIds.has(b.id)) this.label(box.centerX, box.baseline - 8, `${occupied} sheltered`, true);
         if (b.built && b.configId === 'garden' && b.farmingProgress !== undefined) this.bar(box.centerX, box.baseline + 3, 64, b.farmingProgress, '#a8bc74');
@@ -97,7 +104,7 @@ export class Renderer {
     }
     this.hiddenVillagers.clear();
     for (const v of active) {
-      if (shelterIds.has(map.getTile(Math.floor(v.x), Math.floor(v.y))?.buildingId ?? '')) { this.hiddenVillagers.add(v.id); continue; }
+      if (shelterIds.has(map.getTile(Math.floor(v.x), Math.floor(v.y))?.buildingId ?? '')) { this.hiddenVillagers.add(v.id); this.villagerArt.hide(v.id); continue; }
       const p = this.point(v.x + .5, v.y + .5); if (!this.visible(p.x, p.y)) continue;
       scene.push({ depth: p.y, draw: () => this.villager(v, v.id === selected, season, buildings.find(b => b.id === v.assignedBuildingId)) });
     }
@@ -139,8 +146,8 @@ export class Renderer {
     ctx.fillStyle = color; ctx.fillRect(x - width / 2, y, width * Math.max(0, Math.min(1, progress)), 3);
   }
   private label(x: number, y: number, text: string, small = false): void {
-    const ctx = this.ctx; ctx.font = `${small ? 10 : 11}px system-ui`; ctx.textAlign = 'center';
-    const width = ctx.measureText(text).width + 14; ctx.fillStyle = 'rgba(28,40,33,.9)'; ctx.beginPath(); ctx.roundRect(x - width / 2, y - 11, width, 18, 5); ctx.fill();
+    const ctx = this.ctx; ctx.font = `${small ? 10 : 11}px "PT Sans", sans-serif`; ctx.textAlign = 'center';
+    const width = ctx.measureText(text).width + 14; ctx.fillStyle = 'rgba(28,40,33,.9)'; ctx.fillRect(x - width / 2, y - 11, width, 18);
     ctx.fillStyle = '#ecdfc2'; ctx.fillText(text, x, y + 1);
   }
   private winterLight(buildings: BuildingInstance[], configs: Record<string, BuildingConfig>): void {
@@ -165,6 +172,10 @@ export class Renderer {
   }
   renderBuildPreview(tx: number, ty: number, w: number, h: number, valid: boolean): void {
     polygon(this.ctx, footprint(this.camera, tx, ty, w, h), valid ? 'rgba(177,209,145,.3)' : 'rgba(221,132,107,.3)', valid ? '#d6e9ad' : '#e9a486');
+  }
+  renderProtectionPreview(tx: number, ty: number, radius: number, valid: boolean): void {
+    polygon(this.ctx, footprint(this.camera, tx-radius, ty-radius, radius*2+1, radius*2+1),
+      valid ? 'rgba(183,204,135,.08)' : 'rgba(221,132,107,.06)', valid ? '#d3dda3' : '#cf9a7b');
   }
   renderPalisadePreview(tiles: Position[], map: TileMap): void { for (const p of tiles) this.renderBuildPreview(p.x, p.y, 1, 1, map.isBuildable(p.x, p.y)); }
   renderSelectionBox(x: number, y: number): void { if (x >= 0 && y >= 0) polygon(this.ctx, footprint(this.camera, x, y), 'rgba(245,223,167,.06)', 'rgba(245,223,167,.45)'); }

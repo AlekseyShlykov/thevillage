@@ -2,11 +2,11 @@ import { TechConfig } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 
 export class TechnologySystem {
-  public unlockedTechs: Set<string> = new Set();
+  public unlockedTechs: Set<string> = new Set(getConfig().technology.initialTechs);
   public unlockedBuildings: Set<string> = this.getInitialBuildings();
 
   private getInitialBuildings(): Set<string> {
-    return new Set(['hut']);
+    return new Set(getConfig().technology.initialBuildings);
   }
 
   getAllTechs(): Record<string, TechConfig> {
@@ -59,7 +59,7 @@ export class TechnologySystem {
 
   /** Reset tech to initial state (for new game). */
   reset(): void {
-    this.unlockedTechs = new Set();
+    this.unlockedTechs = new Set(getConfig().technology.initialTechs);
     this.unlockedBuildings = this.getInitialBuildings();
   }
 

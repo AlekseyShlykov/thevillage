@@ -2,6 +2,12 @@ import { ResourceState, Season, BuildingConfig, TechConfig, VillagerData } from 
 import { TutorialObjective } from '../systems/TutorialSystem';
 import { TargetedVillagerOrder, VillagerOrder, villagerActivity, villagerOrders } from '../game/VillagerOrders';
 import { IconName, iconMarkup, setButtonContent } from './icons';
+import { TooltipController } from './TooltipController';
+import { getConfig } from '../data/ConfigLoader';
+import { EconomyForecast } from '../systems/ForecastSystem';
+import { hasCoat, hasTool } from '../systems/EquipmentSystem';
+import { VillagerJob } from '../game/VillagerJobs';
+import { SettlementWarning } from '../systems/WarningSystem';
 
 export interface UIAction { label: string; icon?: IconName; callback: () => void }
 
@@ -17,9 +23,9 @@ export interface UICallbacks {
   onLoad: () => void;
   onToggleClearMode: () => void;
   onGoHunting: () => void;
+  onGatherHerbs: () => void;
   onSendAllToChop: () => void;
-  onReturnHome: () => void;
-  onLeaveShelter: () => void;
+  onToggleShelter: () => void;
   onRepairAll: () => void;
   onRestart: () => void;
   onTutorialSkip: () => void;
@@ -29,6 +35,7 @@ export interface UICallbacks {
   onCameraHome?: () => void;
   onVillagerOrder: (order: VillagerOrder) => void;
   onVillagerDeselect: () => void;
+  onVillagerJob: (key: string) => void;
 }
 
 export class UIManager {
@@ -38,6 +45,8 @@ export class UIManager {
   private topBarTechBtn!: HTMLElement;
   private topBarRightDiv!: HTMLElement;
   private soundBtn!: HTMLButtonElement;
+  private shelterBtn!: HTMLElement;
+  private tooltips!: TooltipController;
   private speedButtons: HTMLElement[] = [];
   private buildPanel!: HTMLElement;
   private techPanel!: HTMLElement;
@@ -58,6 +67,7 @@ export class UIManager {
     this.overlay = document.getElementById('ui-overlay')!;
     this.callbacks = callbacks;
     this.createUI();
+    this.tooltips = new TooltipController(this.topBar, this.overlay);
   }
 
   private createUI(): void {
@@ -133,16 +143,15 @@ export class UIManager {
 
     const huntBtn = this.btn('Hunt', () => this.callbacks.onGoHunting(), 'bow');
     bottomBar.appendChild(huntBtn);
+    const herbBtn = this.btn('Herbs', () => this.callbacks.onGatherHerbs(), 'herbs');
+    herbBtn.dataset.gatherHerbs = 'true'; bottomBar.appendChild(herbBtn);
 
     const buildBtn = this.btn('Build', () => this.toggleBuildPanel(), 'build');
     bottomBar.appendChild(buildBtn);
 
-    const returnHomeBtn = this.btn('Shelter', () => this.callbacks.onReturnHome(), 'home');
-    bottomBar.appendChild(returnHomeBtn);
-
-    const leaveShelterBtn = this.btn('Resume', () => this.callbacks.onLeaveShelter(), 'resume');
-    leaveShelterBtn.setAttribute('data-leave-shelter-btn', 'true');
-    bottomBar.appendChild(leaveShelterBtn);
+    this.shelterBtn = this.btn('Shelter', () => this.callbacks.onToggleShelter(), 'home');
+    this.shelterBtn.dataset.shelterToggle = 'true';
+    bottomBar.appendChild(this.shelterBtn);
 
     const repairBtn = this.btn('Repair', () => this.callbacks.onRepairAll(), 'repair');
     repairBtn.setAttribute('data-repair-btn', 'true');
@@ -203,9 +212,6 @@ export class UIManager {
     this.tutorialPanel.setAttribute('data-ui', 'true');
     this.tutorialPanel.setAttribute('data-tutorial-panel', 'true');
     this.overlay.appendChild(this.tutorialPanel);
-    const heading = this.el('div'); heading.className = 'game-heading';
-    heading.innerHTML = `<span class="eyebrow">A HOME AT THE EDGE OF THE WOODS</span><h1>Before Night Falls${iconMarkup('research')}</h1>`;
-    this.overlay.appendChild(heading);
     this.statusEl = this.el('div'); this.statusEl.id = 'status-ribbon'; this.statusEl.setAttribute('role', 'status');
     this.overlay.appendChild(this.statusEl);
     const controls = this.el('div'); controls.className = 'camera-controls'; controls.setAttribute('data-ui', 'true');
@@ -253,7 +259,7 @@ export class UIManager {
       background: 'transparent',
     });
     backdrop.setAttribute('data-ui', 'true');
-    backdrop.addEventListener('click', () => this.hideActionMenu());
+    backdrop.addEventListener('click', () => { this.callbacks.onVillagerDeselect();this.closePanels();this.closeForecast();this.hideActionMenu(); });
     this.overlay.appendChild(backdrop);
     this.actionMenuBackdrop = backdrop;
 
@@ -287,7 +293,7 @@ export class UIManager {
       menu.appendChild(btn);
     }
 
-    const cancel = this.btn('Cancel', () => this.hideActionMenu(), 'close');
+    const cancel = this.btn('Close', () => this.hideActionMenu(), 'close');
     cancel.style.width = '100%';
     cancel.style.marginTop = '4px';
     menu.appendChild(cancel);
@@ -323,6 +329,10 @@ export class UIManager {
     soundOn?: boolean;
     gameSpeed?: number;
     foodLow?: boolean;
+    foodSeconds: number;
+    foodConsumption: number;
+    toolsAvailable: boolean;
+    coatsWorn: number;
   }): void {
     const seasonColors: Record<string, string> = {
       spring: '#7ec87e', summer: '#d4c45a', autumn: '#c87a3e', winter: '#8ab4e8',
@@ -330,22 +340,56 @@ export class UIManager {
     const sc = seasonColors[data.season] || '#aaa';
     const pct = Math.round(data.seasonProgress * 100);
 
-    const resource = (icon: IconName, label: string, value: number, low = false) =>
-      `<span class="resource ${low ? 'resource-low' : ''}" title="${label}"><span class="resource-icon">${iconMarkup(icon)}</span><span><small>${label}</small><strong>${Math.floor(value)}</strong></span></span>`;
-    this.topBarStatsDiv.innerHTML =
-      resource('wood', 'Wood', data.resources.wood) + resource('food', 'Food', data.resources.food, data.foodLow) +
-      resource('fur', 'Fur', data.resources.fur) + resource('tools', 'Tools', data.resources.tools) +
-      `<span class="season-stat"><span style="color:${sc}">${data.season} <b>· Year ${data.year}</b></span><span class="season-track"><i style="width:${pct}%;background:${sc}"></i></span></span>` +
-      `<span class="village-stat" title="Population / housing">${iconMarkup('villagers')} <b>${data.population}/${data.housing}</b><small>VILLAGERS</small></span>` +
-      `<span class="village-stat" title="Comfort affects productivity and arrivals">${iconMarkup('comfort')} <b>${Math.round(data.comfort * 100)}%</b><small>COMFORT</small></span>` +
-      `<span class="village-stat" title="Village level and research points">${iconMarkup('research')} <b>${Math.floor(data.resources.techPoints)}</b><small>LEVEL ${data.level}</small></span>`;
+    if (!this.topBarStatsDiv.childElementCount) {
+      const resource = (icon: IconName, label: string) =>
+        `<span class="resource" data-stat="${icon}" tabindex="0"><span class="resource-icon">${iconMarkup(icon)}</span><span><small>${label}</small><strong data-value></strong></span></span>`;
+      this.topBarStatsDiv.innerHTML = resource('wood','Wood') + resource('food','Food') + resource('fur','Pelts') + resource('clothing','Coats') + resource('herbs','Herbs') + resource('tools','Tools') +
+        `<span class="season-stat" data-stat="season" tabindex="0"><span data-season-name></span><span class="season-track"><i></i></span></span>` +
+        `<span class="village-stat" data-stat="villagers" tabindex="0">${iconMarkup('villagers')} <b data-value></b><small>VILLAGERS</small></span>` +
+        `<span class="village-stat" data-stat="comfort" tabindex="0">${iconMarkup('comfort')} <b data-value></b><small>COMFORT</small></span>` +
+        `<span class="village-stat" data-stat="research" tabindex="0">${iconMarkup('research')} <b data-value></b><small data-level></small></span>`;
+    }
+    const stat = (key: string, value: string, title: string, detail: string) => {
+      const el = this.topBarStatsDiv.querySelector<HTMLElement>(`[data-stat="${key}"]`)!;
+      el.querySelector('[data-value]')!.textContent = value;
+      el.dataset.tooltipTitle = title; el.dataset.tooltip = detail; el.setAttribute('aria-label', `${title}: ${value}`);
+    };
+    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', 'Gathered by chopping trees and working at lumber camps. Used for construction, repairs and tools.');
+    stat('food', String(Math.floor(data.resources.food)), 'Food', `Feeds every resident. Current use: ${data.foodConsumption.toFixed(2)} per second; supplies last ${data.foodSeconds} seconds. Consumption rises in winter. Hunting and gardens replenish food.`);
+    stat('fur', String(Math.floor(data.resources.fur)), 'Fur', 'Hunters deliver raw pelts after returning home. Pelts must be crafted into individual fur coats; raw pelts do not protect from cold.');
+    stat('tools', String(Math.floor(data.resources.tools)), 'Tools', 'Stored spare tools. Each working resident needs their own tool. Equipped tools wear out with work; some construction uses spares.');
+    this.topBarStatsDiv.querySelector<HTMLElement>('[data-stat="tools"]')!.hidden = !data.toolsAvailable;
+    stat('clothing',String(data.coatsWorn+data.resources.clothing),'Warm clothing',`${data.coatsWorn} residents wearing a fur coat; ${data.resources.clothing} spare coats. A fur workshop turns pelts into coats. Only worn coats protect from cold.`);
+    stat('herbs',String(data.resources.herbs),'Protective herbs',`Maximum ${getConfig().herbs.capacity}, including expeditions. ${getConfig().herbs.perWinter} fuel the ward for one winter. Gatherers travel deep into the forest and risk death.`);
+    stat('villagers', `${data.population}/${data.housing}`, 'Villagers / housing', 'The first number is living residents; the second is housing capacity. Spare housing, food and comfort attract newcomers outside winter.');
+    stat('comfort', `${Math.round(data.comfort*100)}%`, 'Comfort', 'Food, warmth, shelter, health and defenses raise comfort. Comfortable villagers work faster and the village attracts newcomers.');
+    const nextLevel = Object.entries(getConfig().levels).find(([level]) => Number(level) > data.level);
+    stat('research', String(Math.floor(data.resources.techPoints)), `Research · village level ${data.level}`, `Research points unlock technologies in Tech. Earn them only by surviving winter: 1 star in winters 1–5, then 2 per winter.${nextLevel ? ` Next level: ${nextLevel[1].populationThreshold} residents.` : ' All technology tiers are available.'}`);
+    this.topBarStatsDiv.querySelector('[data-level]')!.textContent = `LEVEL ${data.level}`;
+    this.topBarStatsDiv.querySelector('[data-stat="food"]')!.classList.toggle('resource-low', !!data.foodLow);
+    const season = this.topBarStatsDiv.querySelector<HTMLElement>('[data-stat="season"]')!;
+    const duration = getConfig().seasons[`${data.season}Duration`];
+    season.dataset.tooltipTitle = `${data.season.charAt(0).toUpperCase()+data.season.slice(1)} · year ${data.year}`;
+    season.dataset.tooltip = `${Math.ceil(duration*(1-data.seasonProgress))} seconds remain. Prepare food and defenses before winter; winter brings monster attacks. Spring ends the horde and autosaves the village.`;
+    const seasonName = season.querySelector<HTMLElement>('[data-season-name]')!;
+    seasonName.textContent = `${data.season} · Year ${data.year}`; seasonName.style.color = sc;
+    const track = season.querySelector<HTMLElement>('.season-track i')!; track.style.width = `${pct}%`; track.style.background = sc;
+    for (const [selector,title,detail] of [
+      ['[data-tech-btn]', 'Technology', 'Spend research points to unlock buildings and improvements. New village levels make more technologies available.'],
+      ['[data-save-btn]', 'Save game', 'Save the current village in this browser. Spring also creates an automatic save.'],
+      ['[data-load-btn]', 'Load game', 'Restore a saved village in this browser, including jobs, resources and the season.'],
+      ['[data-sound-btn]', 'Sound', 'Turn music and game sounds on or off.'],
+    ]) {
+      const el = this.topBar.querySelector<HTMLElement>(selector)!; el.dataset.tooltipTitle = title; el.dataset.tooltip = detail;
+    }
+    this.tooltips?.refresh();
 
     const soundOn = data.soundOn !== false;
     if (this.soundBtn.dataset.soundState !== String(soundOn)) {
       setButtonContent(this.soundBtn, soundOn ? 'Mute sound' : 'Unmute sound', soundOn ? 'sound' : 'muted');
       this.soundBtn.dataset.soundState = String(soundOn);
       this.soundBtn.setAttribute('aria-pressed', String(soundOn));
-      this.soundBtn.title = soundOn ? 'Mute sound' : 'Unmute sound';
+      this.soundBtn.removeAttribute('title');
     }
 
     if (data.gameSpeed !== undefined) this.setSpeedHighlight(data.gameSpeed);
@@ -362,7 +406,7 @@ export class UIManager {
     }
   }
 
-  updateBuildPanel(buildings: Record<string, BuildingConfig>, unlockedIds: Set<string>, canAfford: (wood: number, tools: number) => boolean, maxBuildingTier = Number.MAX_SAFE_INTEGER): void {
+  updateBuildPanel(buildings: Record<string, BuildingConfig>, unlockedIds: Set<string>, canAfford: (wood: number, tools: number, id?: string) => boolean, maxBuildingTier = Number.MAX_SAFE_INTEGER): void {
     this.buildPanel.innerHTML = '<div style="font-size:14px;font-weight:bold;margin-bottom:8px;color:#ffe0a0">Build Menu</div>';
 
     const cancelBtn = this.btn('Cancel', () => this.callbacks.onBuildCancel(), 'close');
@@ -373,7 +417,7 @@ export class UIManager {
     for (const [id, cfg] of Object.entries(buildings)) {
       if (!unlockedIds.has(id)) continue;
       if (cfg.tier > maxBuildingTier) continue;
-      const affordable = canAfford(cfg.costWood, cfg.costTools);
+      const affordable = canAfford(cfg.costWood, cfg.costTools, cfg.id);
       const item = this.el('div', {
         padding: '6px', marginBottom: '4px', borderRadius: '4px',
         background: affordable ? 'rgba(60,60,80,0.8)' : 'rgba(40,40,50,0.5)',
@@ -383,24 +427,24 @@ export class UIManager {
       });
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', affordable ? '0' : '-1');
-      item.setAttribute('aria-label', `${cfg.name}: ${cfg.costWood} wood, ${cfg.costTools} tools`);
+      item.setAttribute('aria-label', `${cfg.name}: ${cfg.costWood} wood${cfg.costTools ? `, ${cfg.costTools} tools` : ''}`);
       item.addEventListener('keydown', e => { if ((e as KeyboardEvent).key === 'Enter' && item.getAttribute('data-affordable') === 'true') this.callbacks.onBuildSelect(id); });
       item.setAttribute('data-building-id', id);
       item.setAttribute('data-affordable', affordable ? 'true' : 'false');
       item.setAttribute('data-ui', 'true');
       item.innerHTML = `
-        <div style="font-weight:bold;font-size:12px">${cfg.name}</div>
-        <div style="font-size:10px;opacity:0.7">${cfg.description}</div>
-        <div class="resource-cost">${iconMarkup('wood', true)}<span>${cfg.costWood}</span>${iconMarkup('tools', true)}<span>${cfg.costTools}</span><span class="footprint-size">${cfg.width}×${cfg.height}</span></div>
+        <div style="font-weight:bold;font-size:12px">${cfg.protectionRadius ? iconMarkup('ward') : ''}${cfg.name}</div>
+        <div style="font-size:10px;opacity:0.7">${cfg.description}${cfg.protectionRadius ? ` Protects ${cfg.protectionRadius} tiles in every direction.` : ''}</div>
+        <div class="resource-cost">${iconMarkup('wood', true)}<span>${cfg.costWood}</span>${cfg.costTools ? `${iconMarkup('tools', true)}<span>${cfg.costTools}</span>` : ''}<span class="footprint-size">${cfg.width}×${cfg.height}</span></div>
       `;
       this.buildPanel.appendChild(item);
     }
   }
 
-  updateBuildAffordability(buildings: Record<string, BuildingConfig>, canAfford: (wood: number, tools: number) => boolean): void {
+  updateBuildAffordability(buildings: Record<string, BuildingConfig>, canAfford: (wood: number, tools: number, id?: string) => boolean): void {
     for (const item of this.buildPanel.querySelectorAll<HTMLElement>('[data-building-id]')) {
       const cfg = buildings[item.dataset.buildingId!]; if (!cfg) continue;
-      const affordable = canAfford(cfg.costWood, cfg.costTools);
+      const affordable = canAfford(cfg.costWood, cfg.costTools, cfg.id);
       item.dataset.affordable = String(affordable);
       item.style.opacity = affordable ? '1' : '.5';
       item.style.cursor = affordable ? 'pointer' : 'default';
@@ -451,7 +495,7 @@ export class UIManager {
         border: '1px solid rgba(255,255,255,0.05)',
       });
       item.innerHTML = `
-        <div style="font-weight:bold;font-size:12px">${tech.name} <span style="opacity:0.5">T${tech.tier}</span></div>
+        <div style="font-weight:bold;font-size:12px">${tech.id === 'herbalFire' ? iconMarkup('ward') : ''}${tech.name} <span style="opacity:0.5">T${tech.tier}</span></div>
         <div style="font-size:10px;opacity:0.7">${tech.description}</div>
         <div style="font-size:10px;margin-top:2px">Cost: ${iconMarkup('research', true)}${tech.cost}</div>
       `;
@@ -483,7 +527,7 @@ export class UIManager {
   }
 
   /** Update text without replacing focused job buttons on every simulation tick. */
-  showVillager(v: VillagerData, order: TargetedVillagerOrder | null, workplace: string, progress: number | null): void {
+  showVillager(v: VillagerData, order: TargetedVillagerOrder | null, workplace: string, progress: number | null, jobs: VillagerJob[], toolsAvailable: boolean): void {
     if (this.buildPanelOpen || this.techPanelOpen) { this.infoPanel.style.display = 'none'; return; }
     if (this.infoPanel.dataset.villager !== v.id) {
       this.infoPanel.innerHTML = '';
@@ -496,22 +540,27 @@ export class UIManager {
       const health = this.el('small'); health.dataset.villagerHealth = 'true';
       const meter = document.createElement('progress'); meter.max = 1; meter.setAttribute('aria-label', 'Job progress');
       const grid = this.el('div'); grid.className = 'villager-orders';
-      for (const [key, item] of Object.entries(villagerOrders)) {
-        const button = this.btn(item.label, () => this.callbacks.onVillagerOrder(key as VillagerOrder), item.icon);
-        button.dataset.villagerOrder = key; button.title = item.hint; grid.appendChild(button);
-      }
       const hint = this.el('div'); hint.dataset.orderHint = 'true'; hint.setAttribute('role', 'status');
       const cancel = this.btn('Cancel order', () => this.callbacks.onVillagerOrder(this.infoPanel.dataset.targetOrder as VillagerOrder), 'close');
       cancel.dataset.orderCancel = 'true';
       this.infoPanel.append(header, status, health, meter, grid, hint, cancel);
     }
     this.infoPanel.style.display = 'block'; this.tutorialPanel.style.display = 'none';
+    const grid=this.infoPanel.querySelector<HTMLElement>('.villager-orders')!;
+    const jobKey=jobs.map(j=>`${j.key}:${j.label}:${j.buildingId??''}`).join('|');
+    if(grid.dataset.jobs!==jobKey) {
+      grid.replaceChildren();grid.dataset.jobs=jobKey;
+      for(const job of jobs) {
+        const button=this.btn(job.label,()=>this.callbacks.onVillagerJob(job.key),job.icon);
+        button.dataset.villagerOrder=job.kind;button.dataset.villagerJob=job.key;grid.append(button);
+      }
+    }
     this.infoPanel.dataset.targetOrder = order ?? '';
     this.infoPanel.querySelector<HTMLElement>('[data-order-cancel]')!.hidden = !order;
     this.infoPanel.querySelector<HTMLElement>('[data-villager-status]')!.textContent = `${villagerActivity(v)}${workplace ? ` · ${workplace}` : ''}`;
-    this.infoPanel.querySelector<HTMLElement>('[data-villager-health]')!.textContent = `Health ${Math.round(v.hp)}/${v.maxHp}${v.health === 'injured' ? ' · Recovering' : ''}`;
+    this.infoPanel.querySelector<HTMLElement>('[data-villager-health]')!.textContent = `Health ${Math.round(v.hp)}/${v.maxHp}${v.health === 'injured' ? ' · Recovering' : ''} · ${hasCoat(v) ? 'Fur coat worn' : 'No warm coat'}${toolsAvailable ? ` · ${hasTool(v) ? 'Tool equipped' : 'No tool'}` : ''}${(v.coldExposure ?? 0)>0 ? ' · Cold '+Math.round(v.coldExposure!)+'/'+getConfig().cold.unclothedSurvivalSeconds : ''}${v.cargo && Object.values(v.cargo).some(n=>n>0) ? ' · Carrying '+v.cargo.food+' food, '+v.cargo.fur+' pelts, '+v.cargo.herbs+' herbs' : ''}`;
     const meter = this.infoPanel.querySelector('progress')!; meter.hidden = progress === null; meter.value = progress ?? 0;
-    this.infoPanel.querySelector<HTMLElement>('[data-order-hint]')!.textContent = order ? `${villagerOrders[order].hint} Right-click or Esc to cancel.` : 'Choose a job, then tap its destination. You can also tap a tree or building.';
+    this.infoPanel.querySelector<HTMLElement>('[data-order-hint]')!.textContent = order ? `${villagerOrders[order].hint} Right-click or Esc to cancel.` : 'Choose an available job to start immediately. It replaces this resident’s previous task.';
     for (const button of this.infoPanel.querySelectorAll<HTMLElement>('[data-villager-order]')) {
       const active = button.dataset.villagerOrder === order;
       button.classList.toggle('active-action', active); button.setAttribute('aria-pressed', String(active));
@@ -575,14 +624,62 @@ export class UIManager {
     return false;
   }
 
+  updateForecast(data: EconomyForecast): void {
+    let panel = this.overlay.querySelector<HTMLDetailsElement>('#game-forecast');
+    if (!panel) {
+      panel = document.createElement('details'); panel.id = 'game-forecast'; panel.dataset.ui = 'true';
+      panel.innerHTML = '<summary data-forecast-summary></summary><div data-forecast-body></div>';
+      this.overlay.appendChild(panel);
+    }
+    panel.style.top = `${Math.ceil(this.topBar.getBoundingClientRect().bottom + 8)}px`;
+    this.overlay.style.setProperty('--hud-bottom',panel.style.top);
+    panel.querySelector('summary')!.innerHTML = `${iconMarkup('herbs')} Winter plan · ${data.herbs}/${data.herbCapacity} herbs · ${data.coats}/${data.population} coats`;
+    const seconds = data.nextHarvestSeconds === null ? 'No growing crops' : Number.isFinite(data.nextHarvestSeconds) ? `${Math.ceil(data.nextHarvestSeconds)}s to ripen` : 'Too late: crops will die in winter';
+    panel.querySelector('[data-forecast-body]')!.innerHTML = `
+      <div><b>Food for winter</b><span>${Math.ceil(data.winterFood - 1e-8)} · reserve goal ${Math.ceil(data.reserve - 1e-8)}</span></div>
+      <div><b>Food before winter</b><span>${Math.ceil(data.beforeFood - 1e-8)} consumed</span></div>
+      <div><b>Standing harvests</b><span>+${Math.round(data.expectedHarvest)} expected · ${seconds}</span></div>
+      <div><b>Balance by spring</b><span class="${data.springBalance < 0 ? 'forecast-danger' : ''}">${data.springBalance >= 0 ? '+' : ''}${Math.floor(data.springBalance + 1e-8)} food</span></div>
+      <div><b>Protective herbs</b><span>${data.herbs}/${data.herbCapacity} stored · ${data.herbsInTransit} carried · ${data.herbsNeeded} needed</span></div>
+      <div><b>Ward fuel</b><span>${data.hasWard ? `${Math.floor(data.wardSeconds)}s of winter protection` : 'Build the single protective fire'}</span></div>
+      <div><b>Fur clothing</b><span>${data.coats}/${data.population} wearing · ${data.coatsStored} spare</span></div>
+      ${data.toolsAvailable ? `<div><b>Tools</b><span>${data.tools}/${data.population} equipped · ${data.toolsStored} spare</span></div>` : ''}
+      <div><b>Cold danger</b><span class="${data.exposed ? 'forecast-danger' : ''}">${data.exposed} residents freezing · uncoated limit ${getConfig().cold.unclothedSurvivalSeconds}s outdoors</span></div>
+      <div><b>Next winter reward</b><span>${data.nextStars} research star(s)</span></div>
+      <p>Current population and assigned crops; future expeditions are excluded. Harvests require farmers and storage space.</p>`;
+  }
+
+  closeForecast(): void { const panel=this.overlay.querySelector<HTMLDetailsElement>('#game-forecast');if(panel)panel.open=false; }
+
+  updateWarnings(warnings: SettlementWarning[]): void {
+    let panel=this.overlay.querySelector<HTMLElement>('#settlement-warnings');
+    if(!panel) { panel=this.el('div');panel.id='settlement-warnings';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');this.overlay.append(panel); }
+    const key=warnings.map(w=>w.id+w.text).join('|');
+    if(panel.dataset.content!==key) {
+      panel.replaceChildren();panel.dataset.content=key;
+      for(const warning of warnings) {
+        const item=this.el('div');item.dataset.warning=warning.id;if(warning.urgent)item.className='warning-urgent';
+        item.innerHTML=iconMarkup('warning',true);const text=this.el('span');text.textContent=warning.text;item.append(text);panel.append(item);
+      }
+    }
+    panel.hidden=!warnings.length;
+    this.overlay.style.setProperty('--warnings-height',`${panel.hidden?0:panel.getBoundingClientRect().height}px`);
+  }
+
   updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean }): void {
     const title = data.paused ? 'Time to make a plan' : data.shelter ? 'Safe by the hearth' : data.mode === 'clear' ? 'Make room for your village' : data.mode === 'build' ? 'Find a place to call home' : 'A little care goes a long way';
     const detail = data.mode === 'clear' ? 'Tap trees to mark them · Free villagers will do the rest' : data.mode === 'build' ? 'Tap a green footprint to place · Esc or right-click to cancel' :
       `${data.secondsLeft}s of ${data.season} left · ${data.idle} free villagers · Food for ${data.foodSeconds}s${data.enemies ? ` · ${data.enemies} in the woods` : ''} · Tap a villager to give orders`;
     this.statusEl.innerHTML = `<span class="status-dot ${data.shelter ? 'sheltered' : ''}"></span><div><strong>${title}</strong><small>${detail}</small></div>`;
     this.overlay.dataset.mode = data.mode;
-    const resume = this.overlay.querySelector<HTMLElement>('[data-leave-shelter-btn]');
-    if (resume) { resume.classList.toggle('active-action', data.shelter); resume.setAttribute('aria-pressed', String(data.shelter)); }
+    const shelterState = String(data.shelter);
+    if (this.shelterBtn.dataset.active !== shelterState) {
+      setButtonContent(this.shelterBtn, data.shelter ? 'Resume' : 'Shelter', data.shelter ? 'resume' : 'home');
+      this.shelterBtn.dataset.active = shelterState;
+    }
+    this.shelterBtn.classList.toggle('active-action', data.shelter);
+    this.shelterBtn.setAttribute('aria-pressed', shelterState);
+    this.shelterBtn.title = data.shelter ? 'Release everyone and resume their jobs' : 'Call everyone to shelter';
     for (const button of this.overlay.querySelectorAll<HTMLElement>('#game-bottom-bar button')) {
       if (button.textContent?.includes('Clear')) button.classList.toggle('active-action', data.mode === 'clear');
       if (button.textContent?.includes('Build')) button.classList.toggle('active-action', data.mode === 'build' || this.buildPanelOpen);

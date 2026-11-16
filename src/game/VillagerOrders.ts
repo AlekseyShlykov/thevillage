@@ -2,7 +2,8 @@ import { BuildingConfig, BuildingInstance, TileData, VillagerData } from '../typ
 
 export const villagerOrders = {
   chop: { label: 'Chop', icon: 'axe', hint: 'Choose a tree to chop.' },
-  hunt: { label: 'Hunt here', icon: 'bow', hint: 'Choose a forest tile to hunt in.' },
+  hunt: { label: 'Hunt here', icon: 'bow', hint: 'Choose a forest area. The hunter will go 10–20 tiles beyond its edge for food and fur.' },
+  herbs: { label: 'Gather herbs', icon: 'herbs', hint: 'Choose forest to collect protective herbs. Maximum 5 including expeditions; 4 fuel a full winter.' },
   farm: { label: 'Farm', icon: 'wheat', hint: 'Choose a finished garden.' },
   build: { label: 'Build', icon: 'hammer', hint: 'Choose an unfinished construction site.' },
   repair: { label: 'Repair', icon: 'repair', hint: 'Choose a damaged building.' },
@@ -13,7 +14,7 @@ export const villagerOrders = {
 export type VillagerOrder = keyof typeof villagerOrders;
 export type TargetedVillagerOrder = Exclude<VillagerOrder, 'stop'>;
 export function validJobTarget(order: TargetedVillagerOrder, tile: TileData | null, building: BuildingInstance | null, cfg: BuildingConfig | null, villagerId: string): boolean {
-  if (order === 'chop' || order === 'hunt') return tile?.type === 'forest';
+  if (order === 'chop' || order === 'hunt' || order === 'herbs') return tile?.type === 'forest';
   if (order === 'move') return !!tile && !tile.buildingId;
   if (!building || !cfg) return false;
   if (order === 'build') return !building.built && (!building.assignedWorkers.length || building.assignedWorkers.includes(villagerId));
@@ -22,7 +23,7 @@ export function validJobTarget(order: TargetedVillagerOrder, tile: TileData | nu
     (building.assignedWorkers.length < cfg.maxWorkers || building.assignedWorkers.includes(villagerId));
 }
 const taskNames: Record<string, string> = {
-  clearing: 'Chopping wood', hunting: 'Hunting', farming: 'Tending crops',
+  clearing: 'Chopping wood', hunting: 'Hunting', gatheringHerbs: 'Gathering protective herbs', farming: 'Tending crops',
   building: 'Building', repairing: 'Repairing', working: 'Working', returnHome: 'Going to shelter',
 };
 export function villagerActivity(v: VillagerData): string {

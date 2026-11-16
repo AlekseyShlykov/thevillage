@@ -13,7 +13,11 @@ async function main(): Promise<void> {
     }
 
     const assets = new AssetLoader();
-    await assets.loadAll();
+    await Promise.all([
+      assets.loadAll(),
+      document.fonts.load('400 12px "PT Sans"').catch(() => []),
+      document.fonts.load('700 12px "PT Sans"').catch(() => []),
+    ]);
 
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     if (!canvas) throw new Error('Canvas element not found');

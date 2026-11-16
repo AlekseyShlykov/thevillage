@@ -5,13 +5,13 @@ import { TechnologySystem } from './TechnologySystem';
 import { getConfig } from '../data/ConfigLoader';
 import { HealthState, VillagerState } from '../types';
 import { TileMap } from '../world/TileMap';
+import { workerProductivity } from './EquipmentSystem';
 
 /** Production is time-based, uses workers actually on site, and survives saving. */
 export class ProductionSystem {
   update(dt: number, buildings: BuildingSystem, villagers: VillagerSystem, resources: ResourceSystem,
     tech: TechnologySystem, map: TileMap, onHarvest: (amount: number) => void, onClothing: (amount: number) => void): void {
     const cfg = getConfig(), rates = cfg.resources;
-    const tools = resources.resources.tools > 0 ? (tech.getEffect('toolProductivityBonus') ?? rates.toolProductivityBonus) : 1;
     for (const b of buildings.buildings) {
       if (!b.built) continue;
       b.assignedWorkers = b.assignedWorkers.filter(id => {
@@ -21,22 +21,9 @@ export class ProductionSystem {
       const arrival = new Set(buildings.getArrivalTiles(b).map(t => `${t.x},${t.y}`));
       const workers = b.assignedWorkers.map(id => villagers.getVillagerById(id)!).filter(v =>
         v.state === VillagerState.Working && arrival.has(`${Math.floor(v.x)},${Math.floor(v.y)}`));
-      const work = workers.reduce((sum, v) => sum + (v.health === HealthState.Injured ? cfg.villagers.injuredWorkPenalty : 1), 0) * dt * tools;
+      const work = workers.reduce((sum, v) => sum + workerProductivity(v, tech), 0) * dt;
       if (work <= 0) continue;
       switch (b.configId) {
-        case 'garden': {
-          b.productionProgress = (b.productionProgress ?? 0) + work;
-          while (b.productionProgress >= cfg.villagers.farmingDuration) {
-            b.productionProgress -= cfg.villagers.farmingDuration;
-            resources.addFood(cfg.villagers.farmingHarvestFood); onHarvest(cfg.villagers.farmingHarvestFood);
-          }
-          b.farmingProgress = b.productionProgress / cfg.villagers.farmingDuration;
-          break;
-        }
-        case 'hunterHut':
-          resources.addFood(rates.hunterFoodPerSecond * work); resources.addFur(rates.hunterFurPerSecond * work);
-          if (Math.random() < rates.huntingDeathChance * dt / cfg.villagers.freeHuntDuration) villagers.damageVillager(workers[0], rates.huntingInjuryDamage);
-          break;
         case 'lumberCamp': {
           const radius = cfg.buildings.lumberCamp.boostRadius!;
           let forest = false;
@@ -49,6 +36,7 @@ export class ProductionSystem {
         case 'workshop':
         case 'furWorkshop': {
           const isTools = b.configId === 'workshop', duration = isTools ? rates.workshopToolProductionTime : rates.furWorkshopProcessTime;
+          if(isTools ? resources.resources.wood<rates.workshopToolCostWood || resources.resources.tools>=resources.capacity.tools : resources.resources.fur<rates.furPerClothing) break;
           b.productionProgress = Math.min(duration, (b.productionProgress ?? 0) + work);
           if (b.productionProgress < duration) break;
           if (isTools && resources.resources.tools < resources.capacity.tools && resources.consumeWood(rates.workshopToolCostWood)) {

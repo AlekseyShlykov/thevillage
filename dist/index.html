@@ -26,9 +26,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Before Night Falls</title>
+  <link rel="preload" href="./assets/fonts/PTSans-Regular.ttf" as="font" type="font/ttf" crossorigin />
   <style>
+    @font-face {
+      font-family: 'PT Sans';
+      src: url('./assets/fonts/PTSans-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PT Sans';
+      src: url('./assets/fonts/PTSans-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PT Sans';
+      src: url('./assets/fonts/PTSans-Italic.ttf') format('truetype');
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PT Sans';
+      src: url('./assets/fonts/PTSans-BoldItalic.ttf') format('truetype');
+      font-weight: 700;
+      font-style: italic;
+      font-display: swap;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
+    html, body { font-family: 'PT Sans', sans-serif; width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
     #game-container {
       position: relative;
       width: 100%;
@@ -46,7 +75,7 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       pointer-events: none;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'PT Sans', sans-serif;
       color: #e0d8c8;
     }
     #ui-overlay > * { pointer-events: auto; }
@@ -60,7 +89,7 @@
       align-items: center;
       justify-content: center;
       z-index: 1000;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'PT Sans', sans-serif;
       color: #e0d8c8;
     }
     #loading-screen h1 { font-size: 2rem; margin-bottom: 1rem; }
@@ -75,7 +104,7 @@
       align-items: center;
       justify-content: center;
       z-index: 999;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'PT Sans', sans-serif;
       color: #e0d8c8;
       padding: 24px;
       text-align: center;
@@ -110,8 +139,8 @@
     }
 
   </style>
-  <script type="module" crossorigin src="./assets/index-Dnoag0V4.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-9haAgCvd.css">
+  <script type="module" crossorigin src="./assets/index-D7vlWen0.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-My4ZHeqc.css">
 </head>
 <body>
   <div id="loading-screen">

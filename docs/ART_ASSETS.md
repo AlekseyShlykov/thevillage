@@ -5,17 +5,22 @@ Original sprites were preserved. Final project-bound PNGs:
 
 - `public/assets/isometric/village-atlas.png` — 1536 × 1024, transparent, 3 × 2.
 - `public/assets/isometric/village-winter-atlas.png` — aligned winter variant.
+- `public/assets/isometric/garden-growth-atlas.png` — 1774 × 887, transparent, 4 × 2: seven growth stages plus a winter bed.
+- `public/assets/isometric/herbal-fire-atlas.png` — 1774 × 887, transparent, 4 × 2: unlit hearth plus seven flame poses.
 
 Columns 0–2 of row 0 contain spruce, fir and birch. Row 1 contains the existing
 hut, storage and lumber camp. `IsometricArt` samples cells directly at runtime;
 there is no manual cutting, background removal or external image processing.
 The style references were `public/assets/buildings/hut.png` and
-`public/assets/villagers/villager_idle.png`. Procedural Canvas art handles the
-existing gardens, palisades and fires, with shape fallbacks for missing images.
+`public/assets/villagers/villager_idle.png`. Gardens and herbal hearths match the
+village atlas through generated illustrated props. Procedural Canvas art handles
+palisades, gates, the ordinary camp fire and missing-image fallbacks.
+The complete new prop prompts are in [PROP_ART_PROMPTS.md](PROP_ART_PROMPTS.md).
 
 ## Interface icons
 
-`public/assets/ui/icons/` contains 34 original, hand-authored SVG illustrations.
+`public/assets/ui/icons/` contains 37 original, hand-authored SVG illustrations,
+including protective herbs for gathering orders and winter forecasts.
 The source paths and shared palette live in `scripts/draw-ui-icons.mjs`; regenerate
 the shipped SVG files with `node scripts/draw-ui-icons.mjs`. No external icon
 library, image service or additional runtime dependency is needed.
@@ -75,3 +80,44 @@ glowing amber and chimney smoke visible. Do not add ground, scenery, new objects
 people, UI, cell outlines or text. No fog or glow around silhouettes, no opaque
 background. This is a drop-in seasonal sprite sheet; strict alignment and exact
 3x2 atlas organization are essential.
+
+## Smoke-free cottage update
+
+The built-in `image_gen` tool (imagegen skill, not the fallback CLI) edited both
+atlases in place at the user's request. Final assets remain:
+
+- `public/assets/isometric/village-atlas.png`
+- `public/assets/isometric/village-winter-atlas.png`
+
+Both are RGBA 1536 × 1024 with the existing aligned 3 × 2 layout. The static
+chimney plume was removed; Canvas `BuildingEffects.chimneySmoke` now supplies
+resident-dependent animated smoke. Connected timber fences and hinged gates
+remain native Canvas artwork. Garden stages and the herbal brazier now use the
+generated prop atlases described above. The ward icon is
+an original SVG added through `scripts/draw-ui-icons.mjs`.
+
+### Summer edit prompt
+
+Use case: precise-object-edit. Edit target: the supplied transparent 1536x1024 production sprite atlas. REMOVE ONLY THE BAKED-IN WHITE SMOKE ABOVE THE CHIMNEY of the cottage in the bottom-left cell. This is essential: chimney must be completely extinguished, no smoke, no steam, no fog or glow above the chimney; the game will add dynamic smoke in code. Preserve the cottage and its empty open stone chimney, the roof, every other sprite, all six objects, exact 3-column by 2-row cell layout, object positions, sizes and bottom baselines. Preserve the illustrated pixel-detail cozy northern village style and summer colors. Absolutely no rearranging cells, moving sprites, crop changes, added ground, borders, labels or text. Return the same landscape 1536x1024 atlas with a genuinely transparent alpha background. The ONLY visual change is removing the smoke plume from that cottage.
+
+### Winter edit prompt
+
+Use case: precise-object-edit. Edit target: supplied transparent 1536x1024 WINTER production sprite atlas. REMOVE ONLY THE BAKED-IN WHITE SMOKE ABOVE THE CHIMNEY of the snow-covered cottage in the bottom-left cell. Chimney must be completely extinguished: no smoke, no steam, no fog or glow above its open stone mouth. The game will add animated smoke when residents are inside. Preserve the cottage, its open empty stone chimney, all snow, every other sprite, all six objects, exact 3-column by 2-row cell layout, object positions, sizes and bottom baselines. Preserve the original illustrated pixel-detail cozy northern village style, winter colors and warm window. Do not rearrange cells, move objects, crop, add ground, labels, borders or text. Same landscape 1536x1024 atlas with genuinely transparent alpha background. ONLY remove the smoke plume.
+
+## Handheld work tools
+
+`public/assets/tools/rake.png`, `axe.png` and `hammer.png` are transparent
+generated images used directly in the Canvas work animation. They replace the
+symbolic tool shapes, retain grip-relative rotation and have native shape
+fallbacks. The existing SVG interface collection also gains `clothing.svg`.
+See [PROP_ART_PROMPTS.md](PROP_ART_PROMPTS.md) for the built-in image generation
+prompt set. No CLI/API fallback was used.
+
+## Typography
+
+The game uses self-hosted PT Sans for interface text, headings, tooltips and
+Canvas labels. The unmodified Regular, Bold, Italic and BoldItalic TTF files
+are under `public/assets/fonts/`; the embedded SIL Open Font License and
+ParaType copyright notice are preserved in `OFL.txt`. No external font service
+is required. Regular and Bold load with game assets before Canvas text is drawn;
+missing fonts fall back to the browser sans-serif.

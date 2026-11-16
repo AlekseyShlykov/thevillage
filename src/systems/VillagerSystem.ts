@@ -2,6 +2,7 @@ import { VillagerData, VillagerState, HealthState, Position, BuildingInstance, T
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
 import { findPath } from '../utils/Pathfinding';
+import { HuntingGrounds } from '../world/HuntingGrounds';
 
 let nextVillagerId = 1;
 const key = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`;
@@ -13,7 +14,8 @@ export class VillagerSystem {
   public unbuiltPalisadeIds = new Set<string>();
   private shelterTiles = new Set<string>();
   private onVillagerDeath: (() => void) | null = null;
-  constructor(private tileMap: TileMap) {}
+  public huntingGrounds: HuntingGrounds;
+  constructor(private tileMap: TileMap) { this.huntingGrounds = new HuntingGrounds(tileMap); }
   setOnVillagerDeath(callback: () => void): void { this.onVillagerDeath = callback; }
   private walkable(x: number, y: number): boolean {
     return this.shelterTiles.has(key(x, y)) || this.tileMap.isWalkable(x, y, this.openGateIds, this.unbuiltPalisadeIds);
@@ -55,6 +57,9 @@ export class VillagerSystem {
     v.state = path.length ? VillagerState.Moving : VillagerState.Idle;
     return true;
   }
+  canReach(v: VillagerData, x: number, y: number): boolean {
+    return this.walkable(x,y) && findPath(Math.floor(v.x),Math.floor(v.y),x,y,(tx,ty)=>this.walkable(tx,ty),this.tileMap.width,this.tileMap.height).length>0;
+  }
   sendVillagerToTile(id: string, x: number, y: number): boolean {
     const v = this.getVillagerById(id); if (!v || v.health === HealthState.Dead || !this.assignPath(v, x, y)) return false;
     v.currentTask = null; v.holdPosition = true; return true;
@@ -66,22 +71,15 @@ export class VillagerSystem {
     tile.markedForClearing = true; v.currentTask = 'clearing'; return true;
   }
   sendVillagerToHunt(id: string, target?: Position): boolean {
-    const v = this.getVillagerById(id); if (!v || v.health === HealthState.Dead || (!target && v.currentTask === 'hunting')) return false;
-    if (target) {
-      if (this.tileMap.getTile(target.x, target.y)?.type !== TileType.Forest || this.villagers.some(o => o.id !== id && o.health !== HealthState.Dead && o.currentTask === 'hunting' && o.targetX === target.x && o.targetY === target.y)) return false;
-      if (!this.assignPath(v, target.x, target.y)) return false;
+    const v = this.getVillagerById(id);
+    if (!v || v.health === HealthState.Dead || Object.values(v.cargo ?? {}).some(n => n > 0) || (!target && v.currentTask === 'hunting')) return false;
+    if (target && this.tileMap.getTile(target.x, target.y)?.type !== TileType.Forest) return false;
+    const candidates = this.huntingGrounds.candidates(v, target);
+    for (const p of candidates) {
+      if (this.villagers.some(o => o.id !== id && o.health !== HealthState.Dead && o.currentTask === 'hunting' && o.targetX === p.x && o.targetY === p.y)) continue;
+      if (!this.assignPath(v, p.x, p.y)) continue;
       v.currentTask = 'hunting'; v.taskProgress = 0; return true;
     }
-    const cfg = getConfig().villagers, candidates: Position[] = [];
-    const radius = cfg.huntMaxDistance;
-    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
-      const distance = Math.hypot(dx, dy), x = Math.floor(v.x) + dx, y = Math.floor(v.y) + dy;
-      if (distance < cfg.huntMinDistance || distance > radius || this.tileMap.getTile(x, y)?.type !== TileType.Forest) continue;
-      if (this.villagers.some(o => o.id !== id && o.currentTask === 'hunting' && o.targetX === x && o.targetY === y)) continue;
-      candidates.push({ x, y });
-    }
-    candidates.sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
-    for (const p of candidates) if (this.assignPath(v, p.x, p.y)) { v.currentTask = 'hunting'; v.taskProgress = 0; return true; }
     return false;
   }
   assignVillagerToBuilding(id: string, buildingId: string, buildings: BuildingInstance[]): boolean {
@@ -155,13 +153,16 @@ export class VillagerSystem {
         }
       }
       if (!v.path.length && (v.state === VillagerState.Moving || v.state === VillagerState.Idle)) {
-        if (v.currentTask === 'returnHome') { v.currentTask = null; v.state = VillagerState.Idle; }
+        if (v.currentTask === 'returnHome') {
+          // A carrier without a route must retry after housing becomes reachable.
+          if (!Object.values(v.cargo ?? {}).some(n => n > 0)) v.currentTask = null;
+          v.state = VillagerState.Idle;
+        }
         else if (v.currentTask === 'building') v.state = VillagerState.Building;
         else if (v.currentTask) v.state = VillagerState.Working;
         else v.state = VillagerState.Idle;
       }
       if (stayInShelterMode && inside) { v.path = []; v.currentTask = null; v.state = VillagerState.Idle; }
-      v.timeOutsideInWinter = isWinter && !inside ? (v.timeOutsideInWinter ?? 0) + dt : 0;
       if (v.health === HealthState.Injured) {
         v.hp = Math.min(v.maxHp, v.hp + cfg.healRate * dt);
         if (v.hp >= v.maxHp / 2) { v.health = HealthState.Healthy; if (v.state === VillagerState.Injured) v.state = VillagerState.Idle; }
@@ -174,9 +175,9 @@ export class VillagerSystem {
     if (v.hp <= 0) { v.health = HealthState.Dead; v.state = VillagerState.Dead; v.path = []; this.onVillagerDeath?.(); }
     else v.health = HealthState.Injured;
   }
-  serialize(): VillagerData[] { return this.villagers.map(v => ({ ...v, path: v.path.map(p => ({ ...p })) })); }
+  serialize(): VillagerData[] { return this.villagers.map(v => ({ ...v, path: v.path.map(p => ({ ...p })), cargo: v.cargo ? { ...v.cargo } : undefined })); }
   deserialize(data: VillagerData[]): void {
-    this.villagers = data.map(v => ({ ...v, path: (v.path ?? []).map(p => ({ ...p })) }));
+    this.villagers = data.map(v => ({ ...v, path: (v.path ?? []).map(p => ({ ...p })), cargo: v.cargo ? { ...v.cargo } : undefined }));
     nextVillagerId = Math.max(0, ...data.map(v => Number(v.id.replace('v_', '')) || 0)) + 1;
   }
 }

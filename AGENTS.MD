@@ -212,3 +212,16 @@ The result must be a playable prototype where a player can:
 - unlock technologies
 - survive winter hordes
 - grow the village
+
+---
+
+# Browser Testing
+
+Run ordinary tests without sound. Launch dedicated test browsers with
+`--mute-audio`; keep page audio muted before starting the game. The browser
+regression runner defaults to silent playback as an additional safeguard.
+Enable audio only when the user explicitly requests a sound check. For that
+case alone, omit the browser mute flag and use `CHECK_AUDIO=1`.
+
+Close test browsers and temporary servers after checks. Preserve a localhost
+server that the user asked to leave running.

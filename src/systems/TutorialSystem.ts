@@ -1,4 +1,5 @@
 import { Season } from '../types';
+import { getConfig } from '../data/ConfigLoader';
 
 export type TutorialStage =
   | 'markForest'
@@ -29,7 +30,7 @@ export interface TutorialState {
   enabled: boolean;
 }
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 7;
 
 /**
  * A non-blocking, action-driven first-year tutorial.
@@ -66,7 +67,7 @@ export class TutorialSystem {
   onHuntStarted(villagerId: string): void {
     if (this.stage === 'hunt') {
       this.protectedHunterId = villagerId;
-      this.advance('placeHut');
+      this.advance('placeGarden');
     }
   }
 
@@ -91,7 +92,7 @@ export class TutorialSystem {
   onBuildingCompleted(buildingId: string, configId: string): void {
     if (buildingId !== this.trackedBuildingId) return;
     if (this.stage === 'buildHut' && configId === 'hut') {
-      this.advance('unlockGarden');
+      this.advance('placeGarden');
     } else if (this.stage === 'buildGarden' && configId === 'garden') {
       this.advance('assignGarden');
     }
@@ -117,8 +118,9 @@ export class TutorialSystem {
     if (this.stage === 'stockpileFood' && food >= targetFood) {
       this.advance('waitForAutumn');
     }
-    if (this.stage === 'waitForAutumn' && (season === Season.Autumn || season === Season.Winter)) {
-      this.advance('shelter');
+    if (this.stage === 'waitForAutumn') {
+      if (food < targetFood) this.advance('stockpileFood');
+      else if (season === Season.Autumn || season === Season.Winter) this.advance('shelter');
     }
 
     // Do not let an unfinished helper linger into later years.
@@ -138,19 +140,19 @@ export class TutorialSystem {
       case 'buildHut':
         return this.objective(3, 'Construction', 'A free villager is heading to the site automatically. Wait for the hut to finish.');
       case 'unlockGarden':
-        return this.objective(4, 'Unlock food production', 'Open “Tech” and unlock Garden with the technology point from the new hut.');
+        return this.objective(4, 'Unlock food production', 'Gardens are already known. Open Build to place one; stars are earned after winter.');
       case 'placeGarden':
-        return this.objective(5, 'Place a garden', 'Open “Build”, choose Garden, and place it on cleared ground.');
+        return this.objective(3, 'Place a garden', 'Open “Build”, choose Garden, and place it on cleared ground.');
       case 'buildGarden':
-        return this.objective(5, 'Build the garden', 'A free builder will construct the garden automatically.');
+        return this.objective(3, 'Build the garden', 'A free builder will construct the garden automatically.');
       case 'assignGarden':
-        return this.objective(6, 'Assign a farmer', 'Tap the finished garden and choose “Assign a free villager”. You can also select a villager and send them to work there.');
+        return this.objective(4, 'Assign a farmer', 'Tap the finished garden and choose “Assign a free villager”. You can also select a villager and send them to work there.');
       case 'stockpileFood':
-        return this.objective(7, 'Prepare supplies', `Reach ${targetFood} food before winter. Current food: ${Math.floor(food)}/${targetFood}.`);
+        return this.objective(5, 'Prepare supplies', `Reach ${targetFood} food for the time until spring. Crops need ${getConfig().farming.growthSeasons} seasons; keep a farmer to harvest before frost. Current food: ${Math.floor(food)}/${targetFood}.`);
       case 'waitForAutumn':
-        return this.objective(8, 'Keep preparing', 'Your basic food reserve is ready. Keep gathering resources until autumn.');
+        return this.objective(6, 'Keep preparing', 'Your basic food reserve is ready. Keep gathering resources until autumn.');
       case 'shelter':
-        return this.objective(9, 'Take shelter', 'Autumn is here. Before the horde arrives, press “Shelter”.');
+        return this.objective(7, 'Take shelter', 'Autumn is here. Before the horde arrives, press “Shelter”.');
       default:
         return null;
     }
@@ -167,7 +169,7 @@ export class TutorialSystem {
   }
 
   deserialize(data: TutorialState): void {
-    this.stage = data.stage ?? 'done';
+    this.stage = ['unlockGarden','placeHut','buildHut'].includes(data.stage) ? 'placeGarden' : data.stage ?? 'done';
     this.trackedBuildingId = data.trackedBuildingId ?? null;
     this.clearingMarks = data.clearingMarks ?? 0;
     this.protectedHunterId = data.protectedHunterId ?? null;
