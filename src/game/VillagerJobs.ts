@@ -2,6 +2,7 @@ import { HealthState, Position, Season, VillagerData } from '../types';
 import { IconName } from '../ui/icons';
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
+import { clearingTargets } from '../world/ForestClearingQueue';
 import { BuildingSystem } from '../systems/BuildingSystem';
 import { VillagerSystem } from '../systems/VillagerSystem';
 import { ResourceSystem } from '../systems/ResourceSystem';
@@ -27,10 +28,7 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
   const home = homes.find(reach);
   if (home) jobs.push({key:'shelter',kind:cargo?'deliver':'shelter',label:cargo?'Deliver supplies':'Take shelter',icon:'home',target:home});
   if (!sheltered) {
-    const trees: Position[] = [];
-    for (let y=0;y<map.height;y++) for (let x=0;x<map.width;x++)
-      if (map.getTile(x,y)?.type === 'forest' && !villagers.isTileAlreadyBeingClearedByOther(v.id,x,y)) trees.push({x,y});
-    trees.sort((a,b) => distance(a)-distance(b));
+    const trees=clearingTargets(map,v,true).filter(p=>!villagers.isTileAlreadyBeingClearedByOther(v.id,p.x,p.y));
     const tree = trees.find(reach);
     if (tree && v.currentTask !== 'clearing') jobs.push({key:'chop',kind:'chop',label:'Chop wood',icon:'axe',target:tree});
     if (!cargo && v.currentTask !== 'hunting' && villagers.huntingGrounds.candidates(v).some(reach))

@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 101 browser checks passed, without sound.
+Recorded 2026-11-16. All 104 browser checks passed, without sound.
 
 ## Browser coverage
 
@@ -71,7 +71,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | generated rake, axe and hammer load with distinct animated work poses | PASS |
 | expanded resources and job cards fit phone, tablet and desktop screens | PASS |
 | global Hunt and Herbs interrupt employed workers immediately | PASS |
-| Clear immediately finds the nearest tree and continues with the next one | PASS |
+| Clear immediately starts expanding the settlement and continues chopping | PASS |
 | one resident leaves shelter and receives a job while everyone else stays inside | PASS |
 | a carrier completes delivery before a queued manual hunting order | PASS |
 | annual farming, clearing and unfinished construction resume but expeditions do not | PASS |
@@ -108,6 +108,9 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | unreachable queued trees do not block reachable work and older marks still work | PASS |
 | Clear, Escape, right-click and background exit selection without deleting queued work | PASS |
 | mobile Clear starts chopping, taps queue trees and camera drags do not add work | PASS |
+| 120 automatic cuts with real path movement expand all sides of the village without tunnels | PASS |
+| a loaded old corridor draws workers back around the village while explicit distant clicks still win | PASS |
+| multiple woodcutters reserve distinct trees and keep a broad clearing after 120 cuts | PASS |
 | season changes avoid calendar toasts and preserve the new Tech star announcement | PASS |
 | later winter rewards announce two stars and loading cannot announce or award them twice | PASS |
 | Winter plan is hidden on touch phones and tablets and remains available on desktop | PASS |
@@ -235,7 +238,7 @@ label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
 its previous time and biological crop growth is another 25% shorter. Workshop
 removal refunded wood and obsolete research exactly once on repeated loading.
 
-The final compiled build `index-C3Zq5n6v.js` passed silent checks on
+The final compiled build `index-z6rDqMN6.js` passed silent checks on
 `http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
 removed tool counter, background dismissal, shelter toggle, square controls,
 tooltips and loaded interface art. All four local PT Sans faces loaded, and
@@ -298,7 +301,7 @@ A midwinter save charged only the remaining fuel after loading.
 
 The compiled localhost build passed startup acknowledgement plus the existing
 jobs, mobile dismissal, toolbar alignment, typography and layout checks with no
-browser exceptions. The local preview uses `index-C3Zq5n6v.js`; both distribution
+browser exceptions. The local preview uses `index-z6rDqMN6.js`; both distribution
 folders contain the moat atlas and heating configuration. Tests remained muted.
 
 
@@ -308,7 +311,7 @@ All 96 scenarios passed without sound. Clicking Clear immediately interrupted a
 busy farmer, started a valid chopping path and enabled persistent selection. Six
 canvas tree clicks queued six tiles in click order; clicking one again added no
 duplicate. The current automatic tree finished first, then all six explicit trees
-were cut in the selected order before automatic nearest-tree work resumed. Each
+were cut in the selected order before automatic village expansion resumed. Each
 tree awarded wood once and removed its queue metadata.
 
 A 25-tree queue retained order after saving/loading and spring recall. Two workers
@@ -352,4 +355,27 @@ transition neither duplicated the stars nor announced a second award. Screenshot
 The production localhost build passed its existing startup, clearing queue,
 typography, menu and touch-dismissal checks, plus hidden Winter plan on mobile,
 with no browser exceptions. `npm run build:itch` passed; the current production
-bundle is `index-C3Zq5n6v.js`.
+bundle is `index-z6rDqMN6.js`.
+
+
+## Circular automatic forest clearing
+
+All 104 browser checks passed silently. A single resident followed actual A*
+paths while cutting 120 automatic targets in 597.4 simulated seconds. The cuts
+covered all eight angular sectors (13–20 trees per sector), remained adjacent
+to existing cleared ground and never exceeded 8.87 tiles from the village centre.
+The resulting broad clearing was visually reviewed in `village-clearing-expanded.png`.
+Four workers also cut 120 distinct trees, distributed 27–33 per quadrant, without
+reserving duplicate targets or extending narrow corridors.
+
+A loaded save with an old corridor reaching x=77 sent its worker back to the
+village edge at (45,28), radius 5.71. The individual Chop wood job selected the
+same village-edge target. Explicitly queueing (78,29) still overrode automatic
+expansion, preserving the player's ability to choose distant trees.
+The existing many-tree queue, priority, save/load, unreachable-tree and mobile
+interaction scenarios all continued to pass. Ring width is configurable under
+`villagers.clearingRingWidth`, defaulting to one tile.
+
+The production localhost build passed startup, Clear, three actual canvas queue
+clicks, typography, mobile visibility and dismissal checks without browser errors.
+`npm run build:itch` passed; distribution uses `index-z6rDqMN6.js`.

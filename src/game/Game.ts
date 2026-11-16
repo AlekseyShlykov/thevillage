@@ -1369,7 +1369,7 @@ export class Game {
     this.cancelBuild();
     const started=this.dispatchOrder('chop');
     this.deselectVillager();this.ui.closeForecast();this.mode='clear';
-    if(started)this.ui.notify('Chopping started. Click trees to queue them; Clear or Esc finishes selection.');
+    if(started)this.ui.notify('Widening the village clearing. Click trees to queue specific targets; Clear or Esc finishes selection.');
     this.updateUI();this.render();
   }
 

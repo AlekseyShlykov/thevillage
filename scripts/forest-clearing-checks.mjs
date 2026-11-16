@@ -65,4 +65,30 @@ export async function runForestClearingChecks({check,ev,shot,call,clickSelector,
     await until('g.tileMap.getTile(34,27).type==="clear"',30);
     await call('Emulation.setTouchEmulationEnabled',{enabled:false});await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});await ev('g.renderer.resize()');return{marked:3,dragAdded:0};
   });
+  await check('120 automatic cuts with real path movement expand all sides of the village without tunnels',async()=>{
+    const r=await ev(`(()=>{econReset();const [v,other]=g.villagerSystem.villagers;other.holdPosition=true;g.toggleClearMode();const center=g.tileMap.getClearingCenter(),cuts=[];let elapsed=0,frontier=true;
+      while(cuts.length<120&&elapsed<2400){
+        const target=v.currentTask==='clearing'?{x:v.targetX,y:v.targetY}:null;
+        const wasForest=target&&g.tileMap.getTile(target.x,target.y)?.type==='forest';
+        if(wasForest)frontier=frontier&&[[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy])=>{const t=g.tileMap.getTile(target.x+dx,target.y+dy);return t&&t.type!=='forest';});
+        g.villagerSystem.update(.1,g.buildingSystem.buildings,false,g.buildingSystem.getHousingTiles());g.updateForestClearing(.1);elapsed+=.1;
+        if(wasForest&&g.tileMap.getTile(target.x,target.y).type==='clear')cuts.push(target);
+      }
+      const sectors=Array(8).fill(0),radii=cuts.map(p=>{const dx=p.x+.5-center.x,dy=p.y+.5-center.y;sectors[Math.floor(((Math.atan2(dy,dx)+Math.PI*2)%(Math.PI*2))/(Math.PI/4))]++;return Math.hypot(dx,dy);});
+      g.cancelBuild();g.ui.resetNotifications();g.camera.setZoom(.85);g.camera.centerOn(center.x*48,center.y*48);g.updateUI();g.render();
+      return{cuts:cuts.length,elapsed,sectors,maxRadius:Math.max(...radii),unique:new Set(cuts.map(p=>p.x+','+p.y)).size,frontier};})()`);
+    assert.equal(r.cuts,120);assert.equal(r.unique,120);assert(r.maxRadius<11,JSON.stringify(r));assert(r.sectors.every(n=>n>=6),JSON.stringify(r));assert(r.frontier);
+    await shot('village-clearing-expanded');return r;
+  });
+  await check('a loaded old corridor draws workers back around the village while explicit distant clicks still win',async()=>{
+    const r=await ev(`(()=>{econReset();for(let x=45;x<=77;x++)g.tileMap.setTileType(x,29,'clear');const v=g.villagerSystem.villagers[0];Object.assign(v,{x:77,y:29,state:'idle',path:[],currentTask:null});const saved=JSON.parse(JSON.stringify(g.serializeState()));g.deserializeState(saved);const loaded=g.villagerSystem.villagers[0],job=g.jobsFor(loaded.id).find(j=>j.kind==='chop');g.startNearestClearing(loaded.id);const automatic={x:loaded.targetX,y:loaded.targetY},center=g.tileMap.getClearingCenter();clearingQueue.queueForestTile(g.tileMap,78,29);g.startNearestClearing(loaded.id);return{automatic,personalJob:job.target,radius:Math.hypot(automatic.x+.5-center.x,automatic.y+.5-center.y),manual:{x:loaded.targetX,y:loaded.targetY},manualPath:loaded.path.length};})()`);
+    assert(r.radius<7,JSON.stringify(r));assert.deepEqual(r.personalJob,r.automatic);assert.deepEqual(r.manual,{x:78,y:29});assert(r.manualPath>0);return r;
+  });
+  await check('multiple woodcutters reserve distinct trees and keep a broad clearing after 120 cuts',async()=>{
+    const r=await ev(`(()=>{econReset();g.villagerSystem.spawnVillager(38,27);g.villagerSystem.spawnVillager(39,27);const people=g.villagerSystem.getAliveVillagers(),cuts=[];for(const v of people)g.startNearestClearing(v.id);let distinct=true;
+      for(let i=0;i<30;i++){const targets=people.map(v=>({x:v.targetX,y:v.targetY}));distinct=distinct&&new Set(targets.map(p=>p.x+','+p.y)).size===people.length;for(const v of people)Object.assign(v,{x:v.targetX,y:v.targetY,path:[],state:'working'});g.updateForestClearing(balance.villagers.clearForestTime+.1);cuts.push(...targets);g.updateForestClearing(balance.villagers.clearingDispatchInterval+.1);}
+      const center=g.tileMap.getClearingCenter(),sectors=Array(4).fill(0);for(const p of cuts)sectors[(p.x+.5>=center.x?1:0)+(p.y+.5>=center.y?2:0)]++;
+      return{cuts:cuts.length,distinct,unique:new Set(cuts.map(p=>p.x+','+p.y)).size,maxRadius:Math.max(...cuts.map(p=>Math.hypot(p.x+.5-center.x,p.y+.5-center.y))),sectors};})()`);
+    assert.equal(r.cuts,120);assert.equal(r.unique,120);assert(r.distinct&&r.maxRadius<11,JSON.stringify(r));assert(r.sectors.every(n=>n>=15));return r;
+  });
 }

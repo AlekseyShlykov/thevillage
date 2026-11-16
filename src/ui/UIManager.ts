@@ -142,7 +142,7 @@ export class UIManager {
     }
 
     const clearBtn = this.btn('Clear', () => this.callbacks.onToggleClearMode(), 'axe');
-    clearBtn.title='Start chopping now, then click trees to add them to a queue. Click Clear again to finish selecting.';
+    clearBtn.title='Expand the clearing around the village, or click specific trees to queue them. Click Clear again to finish selecting.';
     clearBtn.dataset.globalClear='true';bottomBar.appendChild(clearBtn);
 
     const huntBtn = this.btn('Hunt', () => this.callbacks.onGoHunting(), 'bow');

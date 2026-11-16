@@ -55,6 +55,7 @@
     "starvationInterval": 20,
     "maxHP": 100,
     "clearingDispatchInterval": 0.4,
+    "clearingRingWidth": 1,
     "huntForestDepth": 10,
     "huntTargetSearchRadius": 20,
     "huntMaxForestDepth": 20,

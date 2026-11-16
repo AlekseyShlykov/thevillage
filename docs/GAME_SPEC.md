@@ -69,7 +69,7 @@ responsibilities independently of the simulation systems.
 ## Gameplay loop
 
 Start with one hut, two villagers, a 10 × 10 clearing and configured supplies.
-Press Clear to chop the nearest trees, hunt deep in the forest, build the initially known
+Press Clear to widen the village clearing, hunt deep in the forest, build the initially known
 garden, assign a farmer and harvest before frost. Expand housing and prepare
 food, worn coats and protective herbs. Call Shelter before winter exposure or
 the horde threatens residents.
@@ -175,9 +175,18 @@ Clear immediately dispatches a worker to a reachable unreserved tree, interrupti
 another job if necessary, and enters tree-selection mode. Click forest tiles to
 queue any number of specific trees in click order; duplicates are ignored. Queued
 tiles show numbered markers and the status ribbon shows the queue size. A worker
-finishes its current tree, then chooses queued trees before automatic nearby work.
+finishes its current tree, then chooses queued trees before automatic expansion.
 Workers reserve distinct targets, skip unreachable requests without deleting them,
-and fall back to nearby trees when no selected target is available. Idle residents
+and fall back to widening the settlement when no selected target is available.
+Automatic targets must touch a cleared tile along a grid edge. They are ordered
+in concentric bands around the original village centre, with worker travel distance
+used only within the same band. `villagers.clearingRingWidth` sets the band width
+(one tile by default). This fills the nearby perimeter before progressing outward,
+producing a broad round clearing rather than a narrow corridor following one
+worker's position. Both the global Clear and individual Chop wood jobs use this
+selection. Explicit queued trees and legacy marked requests retain priority and
+can target deeper forest. The centre derives from the map, so loading a save or
+placing a distant outpost does not move the expansion origin. Idle residents
 may help with marked work, while Stop and settlement shelter still prevent automatic
 dispatch. Click Clear again, press Escape, right-click or click empty ground to
 leave selection; current work and queued trees remain. Clicking a resident exits
@@ -477,7 +486,7 @@ selection and open menus. Click/tap buildings without a resident selected for ge
 actions. Drag to pan, scroll/pinch or use +/−
 to zoom, and use the home button to center the village. Space pauses; Escape or
 right-click cancels placement. Orders remain available while paused.
-Clear starts chopping immediately and enables repeated tree clicks to form an
+Clear immediately expands the village clearing in radial bands and enables tree clicks to form an
 ordered queue. Click Clear again, use Escape/right-click, or click empty ground
 to finish selecting; queued work continues. Shelter calls everybody
 home; the same button becomes Resume and releases them. Release one keeps
