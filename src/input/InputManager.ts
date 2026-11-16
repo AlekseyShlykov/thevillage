@@ -1,198 +1,63 @@
 import { Camera } from '../core/Camera';
-
 export interface InputState {
-  mouseX: number;
-  mouseY: number;
-  worldX: number;
-  worldY: number;
-  tileX: number;
-  tileY: number;
-  clicked: boolean;
-  rightClicked: boolean;
-  isDragging: boolean;
+  mouseX: number; mouseY: number; worldX: number; worldY: number;
+  tileX: number; tileY: number; clicked: boolean; rightClicked: boolean; isDragging: boolean;
 }
-
+/** CSS pixels are used throughout input, independent of the canvas backing resolution. */
 export class InputManager {
-  private camera: Camera;
-  private canvas: HTMLCanvasElement;
-  private _state: InputState = {
-    mouseX: 0,
-    mouseY: 0,
-    worldX: 0,
-    worldY: 0,
-    tileX: 0,
-    tileY: 0,
-    clicked: false,
-    rightClicked: false,
-    isDragging: false,
-  };
-
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private cameraStartX = 0;
-  private cameraStartY = 0;
-  private isPointerDown = false;
-  private dragThreshold = 5;
-  private touchDragThreshold = 12;
-  private hasDragged = false;
-  private isTouchActive = false;
-
-  constructor(canvas: HTMLCanvasElement, camera: Camera) {
-    this.canvas = canvas;
-    this.camera = camera;
-    this.setupListeners();
-  }
-
-  get state(): InputState {
-    return this._state;
-  }
-
-  consumeClick(): boolean {
-    if (this._state.clicked) {
-      this._state.clicked = false;
-      return true;
-    }
-    return false;
-  }
-
-  consumeRightClick(): boolean {
-    if (this._state.rightClicked) {
-      this._state.rightClicked = false;
-      return true;
-    }
-    return false;
-  }
-
-  private getCanvasPos(clientX: number, clientY: number) {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    };
-  }
-
-  private updateWorldPos(canvasX: number, canvasY: number): void {
-    this._state.mouseX = canvasX;
-    this._state.mouseY = canvasY;
-    const world = this.camera.screenToWorld(canvasX, canvasY);
-    this._state.worldX = world.x;
-    this._state.worldY = world.y;
-    const tile = this.camera.screenToTile(canvasX, canvasY);
-    this._state.tileX = tile.tx;
-    this._state.tileY = tile.ty;
-  }
-
-  private setupListeners(): void {
-    this.canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
-        const pos = this.getCanvasPos(e.clientX, e.clientY);
-        this.startDrag(pos.x, pos.y);
-      }
+  private _state: InputState = { mouseX: -1, mouseY: -1, worldX: 0, worldY: 0, tileX: -1, tileY: -1, clicked: false, rightClicked: false, isDragging: false };
+  private pointers = new Map<number, { x: number; y: number }>();
+  private origin = { x: 0, y: 0, cx: 0, cy: 0 };
+  private dragged = false;
+  private pinchDistance = 0;
+  constructor(private canvas: HTMLCanvasElement, private camera: Camera) {
+    canvas.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+      const p = this.pos(e); this.pointers.set(e.pointerId, p); this.update(p.x, p.y);
+      this.origin = { ...p, cx: camera.x, cy: camera.y }; this.dragged = false;
+      if (this.pointers.size > 1) { this.dragged = true; this.pinchDistance = this.distance(); }
     });
-
-    this.canvas.addEventListener('mousemove', (e) => {
-      const pos = this.getCanvasPos(e.clientX, e.clientY);
-      this.onMove(pos.x, pos.y);
-    });
-
-    this.canvas.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
-        const pos = this.getCanvasPos(e.clientX, e.clientY);
-        this.endDrag(pos.x, pos.y, false);
-      }
-    });
-
-    this.canvas.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      const pos = this.getCanvasPos(e.clientX, e.clientY);
-      this.updateWorldPos(pos.x, pos.y);
-      this._state.rightClicked = true;
-    });
-
-    this.canvas.addEventListener(
-      'touchstart',
-      (e) => {
-        e.preventDefault();
-        this.isTouchActive = true;
-        if (e.touches.length === 1) {
-          const t = e.touches[0];
-          const pos = this.getCanvasPos(t.clientX, t.clientY);
-          this.startDrag(pos.x, pos.y);
+    canvas.addEventListener('pointermove', e => {
+      const p = this.pos(e);
+      if (this.pointers.has(e.pointerId)) {
+        this.pointers.set(e.pointerId, p);
+        if (this.pointers.size > 1) {
+          const d = this.distance(), ps = [...this.pointers.values()];
+          if (this.pinchDistance) camera.setZoom(camera.zoom * d / this.pinchDistance, (ps[0].x + ps[1].x) / 2, (ps[0].y + ps[1].y) / 2);
+          this.pinchDistance = d; this.dragged = true;
+        } else {
+          const dx = p.x - this.origin.x, dy = p.y - this.origin.y;
+          if (Math.hypot(dx, dy) > (e.pointerType === 'touch' ? 10 : 5)) this.dragged = true;
+          if (this.dragged) { camera.x = this.origin.cx - dx; camera.y = this.origin.cy - dy; camera.clamp(); }
         }
-      },
-      { passive: false }
-    );
-
-    this.canvas.addEventListener(
-      'touchmove',
-      (e) => {
-        e.preventDefault();
-        if (e.touches.length === 1) {
-          const t = e.touches[0];
-          const pos = this.getCanvasPos(t.clientX, t.clientY);
-          this.onMove(pos.x, pos.y);
-        }
-      },
-      { passive: false }
-    );
-
-    this.canvas.addEventListener(
-      'touchend',
-      (e) => {
-        e.preventDefault();
-        let x = this._state.mouseX;
-        let y = this._state.mouseY;
-        if (e.changedTouches && e.changedTouches.length > 0) {
-          const t = e.changedTouches[0];
-          const pos = this.getCanvasPos(t.clientX, t.clientY);
-          x = pos.x;
-          y = pos.y;
-        }
-        this.endDrag(x, y, true);
-        this.isTouchActive = false;
-      },
-      { passive: false }
-    );
-    this.canvas.addEventListener('touchcancel', () => { this.isTouchActive = false; }, { passive: true });
-  }
-
-  private startDrag(x: number, y: number): void {
-    this.isPointerDown = true;
-    this.hasDragged = false;
-    this.dragStartX = x;
-    this.dragStartY = y;
-    this.cameraStartX = this.camera.x;
-    this.cameraStartY = this.camera.y;
-    this.updateWorldPos(x, y);
-  }
-
-  private onMove(x: number, y: number): void {
-    this.updateWorldPos(x, y);
-    if (this.isPointerDown) {
-      const dx = x - this.dragStartX;
-      const dy = y - this.dragStartY;
-      const threshold = this.isTouchActive ? this.touchDragThreshold : this.dragThreshold;
-      if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-        this.hasDragged = true;
-        this._state.isDragging = true;
       }
-      if (this.hasDragged) {
-        this.camera.x = this.cameraStartX - dx;
-        this.camera.y = this.cameraStartY - dy;
-        this.camera.clamp();
-      }
-    }
+      this._state.isDragging = this.dragged && this.pointers.size > 0;
+      this.update(p.x, p.y);
+    });
+    canvas.addEventListener('pointerup', e => {
+      if (!this.pointers.has(e.pointerId)) return;
+      const p = this.pos(e); this.update(p.x, p.y);
+      if (!this.dragged && this.pointers.size === 1) this._state.clicked = true;
+      this.pointers.delete(e.pointerId); this._state.isDragging = false;
+      if (this.pointers.size === 1) { const remaining = [...this.pointers.values()][0]; this.origin = { ...remaining, cx: camera.x, cy: camera.y }; }
+      if (!this.pointers.size) { this.dragged = false; this.pinchDistance = 0; }
+    });
+    canvas.addEventListener('pointercancel', e => { this.pointers.delete(e.pointerId); this._state.isDragging = false; this.dragged = true; });
+    canvas.addEventListener('contextmenu', e => { e.preventDefault(); const p = this.pos(e); this.update(p.x, p.y); this._state.rightClicked = true; });
+    canvas.addEventListener('wheel', e => { e.preventDefault(); const p = this.pos(e); camera.setZoom(camera.zoom * Math.exp(-e.deltaY * 0.001), p.x, p.y); this.update(p.x, p.y); }, { passive: false });
   }
-
-  private endDrag(x: number, y: number, _isTouch: boolean): void {
-    if (this.isPointerDown && !this.hasDragged) {
-      this.updateWorldPos(x, y);
-      this._state.clicked = true;
-    }
-    this.isPointerDown = false;
-    this._state.isDragging = false;
-    this.hasDragged = false;
+  private pos(e: { clientX: number; clientY: number }) { const r = this.canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  private distance() { const p = [...this.pointers.values()]; return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); }
+  private update(x: number, y: number) {
+    const world = this.camera.screenToWorld(x, y), tile = this.camera.screenToTile(x, y);
+    Object.assign(this._state, { mouseX: x, mouseY: y, worldX: world.x, worldY: world.y, tileX: tile.tx, tileY: tile.ty });
   }
+  reset(): void {
+    this.pointers.clear(); this.dragged = false; this.pinchDistance = 0;
+    Object.assign(this._state, { clicked: false, rightClicked: false, isDragging: false, tileX: -1, tileY: -1, mouseX: -1, mouseY: -1 });
+  }
+  get state(): InputState { return this._state; }
+  consumeClick(): boolean { const v = this._state.clicked; this._state.clicked = false; return v; }
+  consumeRightClick(): boolean { const v = this._state.rightClicked; this._state.rightClicked = false; return v; }
 }

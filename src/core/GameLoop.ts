@@ -8,8 +8,11 @@ export class GameLoop {
   public gameSpeed = 1;
   public onUpdate: ((dt: number) => void) | null = null;
   public onRender: (() => void) | null = null;
+  /** Input and UI keep running while the simulation is paused. */
+  public onFrame: ((realDt: number) => void) | null = null;
 
   start(): void {
+    if (this.running) return;
     this.running = true;
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
@@ -39,6 +42,7 @@ export class GameLoop {
       this.fpsTimer = 0;
     }
 
+    this.onFrame?.(cappedDt);
     if (this.onUpdate && this.gameSpeed > 0) {
       this.onUpdate(dt);
     }

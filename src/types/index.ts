@@ -92,6 +92,7 @@ export interface BuildingInstance {
   farmingProgress?: number;
   /** Gate open/closed state (only for palisadeGate) */
   gateOpen?: boolean;
+  productionProgress?: number;
 }
 
 export interface VillagerData {
@@ -108,6 +109,8 @@ export interface VillagerData {
   assignedBuildingId: string | null;
   currentTask: string | null;
   taskProgress: number;
+  /** A direct Stop/Move order keeps this villager out of automatic job dispatch. */
+  holdPosition?: boolean;
   /** Seconds spent outside during winter (resets when entering housing). */
   timeOutsideInWinter?: number;
   /** Failed attempts to reach current task goal; after 2, villager is sent to shelter. */
@@ -127,6 +130,7 @@ export interface EnemyData {
   speed: number;
   damage: number;
   attackCooldown: number;
+  villagerAttackCooldown?: number;
   targetX: number | null;
   targetY: number | null;
   path: Position[];
@@ -187,6 +191,9 @@ export interface GameBalanceConfig {
     viewportTilesY: number;
     startClearingSize: number;
   };
+  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number };
+  tutorial: { minimumFoodReserve: number; winterReserveMultiplier: number };
+  gameplay: { demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number };
   resources: Record<string, number>;
   villagers: Record<string, number>;
   buildings: Record<string, BuildingConfig>;

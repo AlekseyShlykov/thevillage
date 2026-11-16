@@ -53,7 +53,7 @@ export class AssetLoader {
   private loaded = false;
 
   async loadAll(): Promise<void> {
-    const allPaths: string[] = [];
+    const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png'];
 
     for (const p of Object.values(BUILDING_SPRITE_MAP)) allPaths.push(p);
     for (const arr of Object.values(TILE_SPRITE_MAP)) allPaths.push(...arr);
@@ -79,6 +79,8 @@ export class AssetLoader {
       img.src = `./assets/${path}`;
     });
   }
+
+  getAtlas(season?: string): HTMLImageElement | null { return (season === 'winter' ? this.images.get('isometric/village-winter-atlas.png') : null) ?? this.images.get('isometric/village-atlas.png') ?? null; }
 
   isLoaded(): boolean {
     return this.loaded;

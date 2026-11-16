@@ -16,7 +16,7 @@ export class BuildingSystem {
     return getConfig().buildings[configId] || null;
   }
 
-  /** Tiles just south of the building (where workers stand to build). */
+  /** Reachable perimeter tiles; a northern or side entrance is valid too. */
   getArrivalTiles(b: BuildingInstance): { x: number; y: number }[] {
     const cfg = this.getBuildingConfig(b.configId);
     if (!cfg) return [];
@@ -24,8 +24,13 @@ export class BuildingSystem {
     const row = b.tileY + cfg.height;
     for (let dx = 0; dx < cfg.width; dx++) {
       out.push({ x: b.tileX + dx, y: row });
+      out.push({ x: b.tileX + dx, y: b.tileY - 1 });
     }
-    return out;
+    for (let dy = 0; dy < cfg.height; dy++) {
+      out.push({ x: b.tileX - 1, y: b.tileY + dy });
+      out.push({ x: b.tileX + cfg.width, y: b.tileY + dy });
+    }
+    return out.filter(t => this.tileMap.isWalkable(t.x, t.y));
   }
 
   /** Returns unbuilt building for which (tx, ty) is one of the arrival tiles (worker standing there = on site). */
@@ -205,15 +210,14 @@ export class BuildingSystem {
     if (!b) return;
     const cfg = this.getBuildingConfig(b.configId);
     if (!cfg) return;
-    b.hp = cfg.hp;
-    b.maxHp = cfg.hp;
+    b.hp = b.maxHp;
     b.wintersSinceRepair = 0;
     b.needsRepair = false;
   }
 
   advanceWinterRepairCounters(): void {
     const repairCfg = getConfig().repair;
-    for (const b of this.buildings) {
+    for (const b of [...this.buildings]) {
       if (!b.built) continue;
       b.wintersSinceRepair++;
       if (b.wintersSinceRepair >= repairCfg.repairNeededAfterWinters) {

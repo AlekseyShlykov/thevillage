@@ -83,5 +83,6 @@ export class SeasonSystem {
     this.season = data.season;
     this.seasonTimer = data.seasonTimer;
     this.year = data.year;
+    this.seasonProgress = this.seasonTimer / this.getCurrentDuration();
   }
 }

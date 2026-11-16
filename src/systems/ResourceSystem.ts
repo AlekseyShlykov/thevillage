@@ -44,28 +44,28 @@ export class ResourceSystem {
   }
 
   addWood(amount: number): void {
-    if (amount > 0 && this.resources.wood >= this.capacity.wood) {
+    if (amount > 0 && this.resources.wood < this.capacity.wood && this.resources.wood + amount >= this.capacity.wood) {
       this.onCapacityReached('wood');
     }
     this.resources.wood = Math.min(this.resources.wood + amount, this.capacity.wood);
   }
 
   addFood(amount: number): void {
-    if (amount > 0 && this.resources.food >= this.capacity.food) {
+    if (amount > 0 && this.resources.food < this.capacity.food && this.resources.food + amount >= this.capacity.food) {
       this.onCapacityReached('food');
     }
     this.resources.food = Math.min(this.resources.food + amount, this.capacity.food);
   }
 
   addFur(amount: number): void {
-    if (amount > 0 && this.resources.fur >= this.capacity.fur) {
+    if (amount > 0 && this.resources.fur < this.capacity.fur && this.resources.fur + amount >= this.capacity.fur) {
       this.onCapacityReached('fur');
     }
     this.resources.fur = Math.min(this.resources.fur + amount, this.capacity.fur);
   }
 
   addTools(amount: number): void {
-    if (amount > 0 && this.resources.tools >= this.capacity.tools) {
+    if (amount > 0 && this.resources.tools < this.capacity.tools && this.resources.tools + amount >= this.capacity.tools) {
       this.onCapacityReached('tools');
     }
     this.resources.tools = Math.min(this.resources.tools + amount, this.capacity.tools);

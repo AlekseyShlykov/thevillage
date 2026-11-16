@@ -4,7 +4,12 @@
     "autumnDuration": 30,
     "winterDuration": 120,
     "springDuration": 30,
-    "order": ["spring", "summer", "autumn", "winter"]
+    "order": [
+      "spring",
+      "summer",
+      "autumn",
+      "winter"
+    ]
   },
   "map": {
     "tileSize": 48,
@@ -12,7 +17,7 @@
     "mapHeight": 60,
     "viewportTilesX": 25,
     "viewportTilesY": 18,
-    "startClearingSize": 4
+    "startClearingSize": 10
   },
   "resources": {
     "startingWood": 20,
@@ -31,7 +36,11 @@
     "furWorkshopProcessTime": 20,
     "smokehouseFoodEfficiencyBonus": 1.3,
     "toolProductivityBonus": 1.5,
-    "toolDefenseBonus": 1.2
+    "toolDefenseBonus": 1.2,
+    "lumberCampWoodPerSecond": 0.35,
+    "furPerClothing": 1,
+    "huntingInjuryDamage": 40,
+    "winterProductionMultiplier": 0.5
   },
   "villagers": {
     "startingCount": 2,
@@ -42,14 +51,21 @@
     "buildSpeed": 0.8,
     "clearForestTime": 4,
     "hungerDamageInterval": 10,
-    "healRate": 0.01,
+    "healRate": 0.4,
     "injuredWorkPenalty": 0.5,
     "winterOutsideDeathSeconds": 20,
     "freeHuntDuration": 30,
     "freeHuntFoodAmount": 15,
     "freeHuntDeathChance": 0.08,
     "farmingDuration": 50,
-    "farmingHarvestFood": 45
+    "farmingHarvestFood": 45,
+    "stuckRepathSeconds": 2,
+    "starvationDelay": 12,
+    "starvationInterval": 20,
+    "huntMinDistance": 4,
+    "huntMaxDistance": 9,
+    "maxHP": 100,
+    "clearingDispatchInterval": 0.4
   },
   "buildings": {
     "hut": {
@@ -158,7 +174,12 @@
       "tier": 2,
       "maxWorkers": 0,
       "hp": 80,
-      "storageBonus": { "wood": 50, "food": 50, "fur": 50, "tools": 50 },
+      "storageBonus": {
+        "wood": 50,
+        "food": 50,
+        "fur": 50,
+        "tools": 50
+      },
       "description": "Increases resource storage by 50 each"
     },
     "palisadeWall": {
@@ -311,7 +332,7 @@
     "baseToolCapacity": 50
   },
   "horde": {
-    "delayAfterWinterStart": 2,
+    "delayAfterWinterStart": 8,
     "firstWaveYear": 1,
     "baseEnemyCount": 5,
     "enemyCountPerLevel": 3,
@@ -326,25 +347,34 @@
     "watchtowerVisibilityDistance": 8,
     "waveDuration": 45,
     "timeBetweenWaves": 30,
-    "wavesPerWinter": [1, 1, 2, 2, 3],
+    "wavesPerWinter": [
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
     "patrolDuration": 20,
     "minSurvivors": 3,
     "palisadeDamageReduction": 0.5,
-    "buildingDamagePerAttack": 15,
+    "buildingDamagePerAttack": 4,
     "villagerDamagePerAttack": 25,
     "villagerBaseDamage": 5,
-    "villagerToolDamage": 12
+    "villagerToolDamage": 12,
+    "firstWinterBuildingDamageMultiplier": 0.15,
+    "firstWinterEnemyCount": 2
   },
   "comfort": {
     "baseFoodWeight": 0.25,
     "warmthWeight": 0.25,
     "housingWeight": 0.25,
     "healthWeight": 0.15,
-    "defenseWeight": 0.10,
+    "defenseWeight": 0.1,
     "comfortProductivityBonus": 0.3,
     "comfortGrowthThreshold": 0.6,
-    "populationGrowthChance": 0.15,
-    "growthCheckInterval": 30
+    "populationGrowthChance": 0.6,
+    "growthCheckInterval": 35,
+    "minimumFoodForArrival": 6
   },
   "fur": {
     "lifetimeWinters": 5,
@@ -359,37 +389,225 @@
     "fogVisibilityReduction": 0.4,
     "strongWindWorkPenalty": 0.3,
     "eventMinDuration": 15,
-    "eventMaxDuration": 40
+    "eventMaxDuration": 40,
+    "eventCooldown": 20,
+    "checkInterval": 10,
+    "eventMinIntensity": 0.6,
+    "eventMaxIntensity": 1
   },
   "technology": {
     "techPointsPerBuildingBuilt": 1,
-    "techPointsPerWinterSurvived": 0,
+    "techPointsPerWinterSurvived": 2,
     "techPointsPerLevelReached": 2,
     "techs": {
-      "garden": { "id": "garden", "name": "Garden", "tier": 1, "cost": 2, "unlocks": ["garden"], "description": "Grow food in a garden plot" },
-      "hunterHut": { "id": "hunterHut", "name": "Hunter Hut", "tier": 3, "cost": 2, "unlocks": ["hunterHut"], "description": "Send hunters for food and fur" },
-      "storage": { "id": "storage", "name": "Storage", "tier": 2, "cost": 2, "unlocks": ["storage"], "description": "Store up to 50 more of each resource" },
-      "workshop": { "id": "workshop", "name": "Workshop", "tier": 3, "cost": 3, "unlocks": ["workshop"], "description": "Enables tool production" },
-      "lumberCamp": { "id": "lumberCamp", "name": "Lumber Camp", "tier": 1, "cost": 2, "unlocks": ["lumberCamp"], "description": "4 wood per chopped tree when built" },
-      "palisade": { "id": "palisade", "name": "Palisade", "tier": 2, "cost": 4, "unlocks": ["palisadeWall", "palisadeGate"], "description": "Defensive walls and gates" },
-      "campFire": { "id": "campFire", "name": "Camp Fire", "tier": 2, "cost": 2, "unlocks": ["campFire"], "description": "Detection radius and shelter for 1 villager in winter" },
-      "furWorkshop": { "id": "furWorkshop", "name": "Fur Workshop", "tier": 3, "cost": 5, "unlocks": ["furWorkshop"], "description": "Turns fur into winter clothing" },
-      "smokehouse": { "id": "smokehouse", "name": "Smokehouse", "tier": 3, "cost": 4, "unlocks": ["smokehouse"], "description": "Improves food efficiency" },
-      "scoutFire": { "id": "scoutFire", "name": "Scout Fire", "tier": 3, "cost": 5, "unlocks": ["scoutFire"], "description": "Forest early warning system" },
-      "watchtower": { "id": "watchtower", "name": "Watchtower", "tier": 4, "cost": 7, "unlocks": ["watchtower"], "description": "Long range detection and light" },
-      "betterTools": { "id": "betterTools", "name": "Better Tools", "tier": 4, "cost": 6, "unlocks": [], "description": "Improved tool effectiveness", "effect": { "toolProductivityBonus": 1.5, "toolDefenseBonus": 1.4 } },
-      "house": { "id": "house", "name": "House", "tier": 4, "cost": 5, "unlocks": ["house"], "description": "Better villager housing" },
-      "largeHouse": { "id": "largeHouse", "name": "Large House", "tier": 5, "cost": 8, "unlocks": ["largeHouse"], "description": "Spacious housing" },
-      "reinforcedPalisade": { "id": "reinforcedPalisade", "name": "Reinforced Palisade", "tier": 5, "cost": 7, "unlocks": [], "description": "Stronger defensive walls", "effect": { "palisadeHPMultiplier": 2.0 } },
-      "hearth": { "id": "hearth", "name": "Hearth", "tier": 5, "cost": 6, "unlocks": [], "description": "Improved building warmth", "effect": { "comfortBonus": 8 } }
+      "garden": {
+        "id": "garden",
+        "name": "Garden",
+        "tier": 1,
+        "cost": 2,
+        "unlocks": [
+          "garden"
+        ],
+        "description": "Grow food in a garden plot"
+      },
+      "hunterHut": {
+        "id": "hunterHut",
+        "name": "Hunter Hut",
+        "tier": 2,
+        "cost": 2,
+        "unlocks": [
+          "hunterHut"
+        ],
+        "description": "Send hunters for food and fur"
+      },
+      "storage": {
+        "id": "storage",
+        "name": "Storage",
+        "tier": 2,
+        "cost": 2,
+        "unlocks": [
+          "storage"
+        ],
+        "description": "Store up to 50 more of each resource"
+      },
+      "workshop": {
+        "id": "workshop",
+        "name": "Workshop",
+        "tier": 2,
+        "cost": 3,
+        "unlocks": [
+          "workshop"
+        ],
+        "description": "Enables tool production"
+      },
+      "lumberCamp": {
+        "id": "lumberCamp",
+        "name": "Lumber Camp",
+        "tier": 1,
+        "cost": 2,
+        "unlocks": [
+          "lumberCamp"
+        ],
+        "description": "Workers gather wood and improve nearby tree yields"
+      },
+      "palisade": {
+        "id": "palisade",
+        "name": "Palisade",
+        "tier": 2,
+        "cost": 4,
+        "unlocks": [
+          "palisadeWall",
+          "palisadeGate"
+        ],
+        "description": "Defensive walls and gates"
+      },
+      "campFire": {
+        "id": "campFire",
+        "name": "Camp Fire",
+        "tier": 2,
+        "cost": 2,
+        "unlocks": [
+          "campFire"
+        ],
+        "description": "Detection radius and shelter for 1 villager in winter"
+      },
+      "furWorkshop": {
+        "id": "furWorkshop",
+        "name": "Fur Workshop",
+        "tier": 3,
+        "cost": 5,
+        "unlocks": [
+          "furWorkshop"
+        ],
+        "description": "Turns fur into winter clothing"
+      },
+      "smokehouse": {
+        "id": "smokehouse",
+        "name": "Smokehouse",
+        "tier": 3,
+        "cost": 4,
+        "unlocks": [
+          "smokehouse"
+        ],
+        "description": "Improves food efficiency"
+      },
+      "scoutFire": {
+        "id": "scoutFire",
+        "name": "Scout Fire",
+        "tier": 3,
+        "cost": 5,
+        "unlocks": [
+          "scoutFire"
+        ],
+        "description": "Forest early warning system"
+      },
+      "watchtower": {
+        "id": "watchtower",
+        "name": "Watchtower",
+        "tier": 4,
+        "cost": 7,
+        "unlocks": [
+          "watchtower"
+        ],
+        "description": "Long range detection and light"
+      },
+      "betterTools": {
+        "id": "betterTools",
+        "name": "Better Tools",
+        "tier": 4,
+        "cost": 6,
+        "unlocks": [],
+        "description": "Improved tool effectiveness",
+        "effect": {
+          "toolProductivityBonus": 1.8,
+          "toolDefenseBonus": 1.4
+        }
+      },
+      "house": {
+        "id": "house",
+        "name": "House",
+        "tier": 4,
+        "cost": 5,
+        "unlocks": [
+          "house"
+        ],
+        "description": "Better villager housing"
+      },
+      "largeHouse": {
+        "id": "largeHouse",
+        "name": "Large House",
+        "tier": 5,
+        "cost": 8,
+        "unlocks": [
+          "largeHouse"
+        ],
+        "description": "Spacious housing"
+      },
+      "reinforcedPalisade": {
+        "id": "reinforcedPalisade",
+        "name": "Reinforced Palisade",
+        "tier": 5,
+        "cost": 7,
+        "unlocks": [],
+        "description": "Stronger defensive walls",
+        "effect": {
+          "palisadeHPMultiplier": 2.0
+        }
+      },
+      "hearth": {
+        "id": "hearth",
+        "name": "Hearth",
+        "tier": 5,
+        "cost": 6,
+        "unlocks": [],
+        "description": "Improved building warmth",
+        "effect": {
+          "comfortBonus": 8
+        }
+      }
     }
   },
   "levels": {
-    "1": { "populationThreshold": 0, "availableTiers": [1] },
-    "2": { "populationThreshold": 4, "availableTiers": [1, 2] },
-    "3": { "populationThreshold": 10, "availableTiers": [1, 2, 3] },
-    "4": { "populationThreshold": 20, "availableTiers": [1, 2, 3, 4] },
-    "5": { "populationThreshold": 51, "availableTiers": [1, 2, 3, 4, 5] }
+    "1": {
+      "populationThreshold": 0,
+      "availableTiers": [
+        1
+      ]
+    },
+    "2": {
+      "populationThreshold": 4,
+      "availableTiers": [
+        1,
+        2
+      ]
+    },
+    "3": {
+      "populationThreshold": 10,
+      "availableTiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    "4": {
+      "populationThreshold": 20,
+      "availableTiers": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "5": {
+      "populationThreshold": 51,
+      "availableTiers": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
   },
   "repair": {
     "repairNeededAfterWinters": 5,
@@ -420,5 +638,23 @@
   },
   "analytics": {
     "analyticsUrl": "https://script.google.com/macros/s/AKfycbx3VUX14DUHmxh4r0wRnLtUa9SrVWjX67xQqeyuffhIpZdyqJVoC78kBrwnHBH7qBMq/exec"
+  },
+  "rendering": {
+    "tileWidth": 80,
+    "tileHeight": 40,
+    "zoom": 1,
+    "minZoom": 0.55,
+    "maxZoom": 1.65
+  },
+  "tutorial": {
+    "minimumFoodReserve": 20,
+    "winterReserveMultiplier": 1.15
+  },
+  "gameplay": {
+    "demoWinters": 8,
+    "foodWarningSeconds": 40,
+    "foodComfortPerVillager": 10,
+    "defenseComfortHP": 200,
+    "refundFraction": 0.5
   }
 }

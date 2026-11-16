@@ -1,11 +1,16 @@
-import { ResourceState, Season, BuildingConfig, TechConfig } from '../types';
+import { ResourceState, Season, BuildingConfig, TechConfig, VillagerData } from '../types';
 import { TutorialObjective } from '../systems/TutorialSystem';
+import { TargetedVillagerOrder, VillagerOrder, villagerActivity, villagerOrders } from '../game/VillagerOrders';
+import { IconName, iconMarkup, setButtonContent } from './icons';
+
+export interface UIAction { label: string; icon?: IconName; callback: () => void }
 
 export interface UICallbacks {
   onSpeedChange: (speed: number) => void;
   onBuildSelect: (buildingId: string) => void;
   onBuildCancel: () => void;
   onBuildPanelOpen?: () => void;
+  onTechPanelOpen?: () => void;
   onDemolish: () => void;
   onTechUnlock: (techId: string) => void;
   onSave: () => void;
@@ -20,6 +25,10 @@ export interface UICallbacks {
   onTutorialSkip: () => void;
   onSoundToggle?: () => void;
   onEmailSubmitted?: () => void;
+  onCameraZoom?: (factor: number) => void;
+  onCameraHome?: () => void;
+  onVillagerOrder: (order: VillagerOrder) => void;
+  onVillagerDeselect: () => void;
 }
 
 export class UIManager {
@@ -35,6 +44,8 @@ export class UIManager {
   private infoPanel!: HTMLElement;
   private notificationEl!: HTMLElement;
   private tutorialPanel!: HTMLElement;
+  private statusEl!: HTMLElement;
+  private notificationTimer = 0;
   private tutorialContentKey = '';
   private callbacks: UICallbacks;
   private buildPanelOpen = false;
@@ -69,7 +80,7 @@ export class UIManager {
       cursor: 'pointer', fontSize: '12px',
     }) as HTMLButtonElement;
     this.topBarTechBtn.setAttribute('data-tech-btn', 'true');
-    this.topBarTechBtn.textContent = '📖 Tech';
+    setButtonContent(this.topBarTechBtn, 'Tech', 'book');
     this.topBarTechBtn.addEventListener('click', () => this.toggleTechPanel());
     this.topBar.appendChild(this.topBarTechBtn);
     this.topBarRightDiv = this.el('div', { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' });
@@ -81,13 +92,13 @@ export class UIManager {
       padding: '4px 8px', background: 'rgba(60,60,80,0.9)', border: '1px solid rgba(255,255,255,0.15)',
       borderRadius: '4px', color: '#e0d8c8', cursor: 'pointer', fontSize: '12px',
     });
-    this.soundBtn.textContent = '🔊';
+    setButtonContent(this.soundBtn, 'Mute sound', 'sound'); this.soundBtn.classList.add('icon-only');
     this.soundBtn.addEventListener('click', () => this.callbacks.onSoundToggle?.());
     this.topBarRightDiv.appendChild(this.soundBtn);
-    const saveBtn = this.btn('💾 Save', () => this.callbacks.onSave());
+    const saveBtn = this.btn('Save', () => this.callbacks.onSave(), 'save');
     saveBtn.setAttribute('data-save-btn', 'true');
     this.topBarRightDiv.appendChild(saveBtn);
-    const loadBtn = this.btn('📂 Load', () => this.callbacks.onLoad());
+    const loadBtn = this.btn('Load', () => this.callbacks.onLoad(), 'load');
     loadBtn.setAttribute('data-load-btn', 'true');
     this.topBarRightDiv.appendChild(loadBtn);
     this.topBar.appendChild(this.topBarRightDiv);
@@ -104,35 +115,36 @@ export class UIManager {
     this.overlay.appendChild(bottomBar);
 
     const speeds = [
-      { label: '⏸', speed: 0 },
+      { label: 'Pause', speed: 0 },
       { label: '1×', speed: 1 },
       { label: '2×', speed: 2 },
       { label: '4×', speed: 4 },
     ];
     for (const s of speeds) {
-      const btn = this.btn(s.label, () => this.callbacks.onSpeedChange(s.speed));
+      const btn = this.btn(s.label, () => this.callbacks.onSpeedChange(s.speed), s.speed === 0 ? 'pause' : undefined);
+      if (s.speed === 0) btn.classList.add('icon-only');
       btn.setAttribute('data-speed', String(s.speed));
       this.speedButtons.push(btn);
       bottomBar.appendChild(btn);
     }
 
-    const clearBtn = this.btn('🪓 Clear', () => this.callbacks.onToggleClearMode());
+    const clearBtn = this.btn('Clear', () => this.callbacks.onToggleClearMode(), 'axe');
     bottomBar.appendChild(clearBtn);
 
-    const huntBtn = this.btn('🦌 Hunt', () => this.callbacks.onGoHunting());
+    const huntBtn = this.btn('Hunt', () => this.callbacks.onGoHunting(), 'bow');
     bottomBar.appendChild(huntBtn);
 
-    const buildBtn = this.btn('🏗 Build', () => this.toggleBuildPanel());
+    const buildBtn = this.btn('Build', () => this.toggleBuildPanel(), 'build');
     bottomBar.appendChild(buildBtn);
 
-    const returnHomeBtn = this.btn('🏠 To shelter', () => this.callbacks.onReturnHome());
+    const returnHomeBtn = this.btn('Shelter', () => this.callbacks.onReturnHome(), 'home');
     bottomBar.appendChild(returnHomeBtn);
 
-    const leaveShelterBtn = this.btn('🚪 Leave shelter', () => this.callbacks.onLeaveShelter());
+    const leaveShelterBtn = this.btn('Resume', () => this.callbacks.onLeaveShelter(), 'resume');
     leaveShelterBtn.setAttribute('data-leave-shelter-btn', 'true');
     bottomBar.appendChild(leaveShelterBtn);
 
-    const repairBtn = this.btn('🔧 Repair all', () => this.callbacks.onRepairAll());
+    const repairBtn = this.btn('Repair', () => this.callbacks.onRepairAll(), 'repair');
     repairBtn.setAttribute('data-repair-btn', 'true');
     bottomBar.appendChild(repairBtn);
 
@@ -191,6 +203,19 @@ export class UIManager {
     this.tutorialPanel.setAttribute('data-ui', 'true');
     this.tutorialPanel.setAttribute('data-tutorial-panel', 'true');
     this.overlay.appendChild(this.tutorialPanel);
+    const heading = this.el('div'); heading.className = 'game-heading';
+    heading.innerHTML = `<span class="eyebrow">A HOME AT THE EDGE OF THE WOODS</span><h1>Before Night Falls${iconMarkup('research')}</h1>`;
+    this.overlay.appendChild(heading);
+    this.statusEl = this.el('div'); this.statusEl.id = 'status-ribbon'; this.statusEl.setAttribute('role', 'status');
+    this.overlay.appendChild(this.statusEl);
+    const controls = this.el('div'); controls.className = 'camera-controls'; controls.setAttribute('data-ui', 'true');
+    for (const [icon, title, action] of [
+      ['minus', 'Zoom out', () => this.callbacks.onCameraZoom?.(1 / 1.15)],
+      ['home', 'Center village', () => this.callbacks.onCameraHome?.()],
+      ['plus', 'Zoom in', () => this.callbacks.onCameraZoom?.(1.15)],
+    ] as const) { const button = this.btn(title, action, icon); button.classList.add('icon-only'); button.title = title; controls.appendChild(button); }
+    this.overlay.appendChild(controls);
+    for (const button of this.overlay.querySelectorAll('button')) if (!button.getAttribute('aria-label')) button.setAttribute('aria-label', button.textContent ?? '');
   }
 
   updateTutorial(objective: TutorialObjective | null): void {
@@ -213,11 +238,11 @@ export class UIManager {
       this.tutorialPanel.append(heading, body, skip);
       this.tutorialContentKey = key;
     }
-    this.tutorialPanel.style.display = 'block';
+    this.tutorialPanel.style.display = this.buildPanelOpen || this.techPanelOpen || this.infoPanel.dataset.villager ? 'none' : 'block';
   }
 
   /** Show context menu with actions for selected villager at (screenX, screenY). */
-  showActionMenu(screenX: number, screenY: number, actions: { label: string; callback: () => void }[]): void {
+  showActionMenu(screenX: number, screenY: number, actions: UIAction[]): void {
     this.hideActionMenu();
     if (actions.length === 0) return;
 
@@ -255,20 +280,24 @@ export class UIManager {
       const btn = this.btn(a.label, () => {
         a.callback();
         this.hideActionMenu();
-      });
+      }, a.icon);
       btn.style.width = '100%';
       btn.style.marginBottom = '2px';
       btn.style.textAlign = 'left';
       menu.appendChild(btn);
     }
 
-    const cancel = this.btn('Cancel', () => this.hideActionMenu());
+    const cancel = this.btn('Cancel', () => this.hideActionMenu(), 'close');
     cancel.style.width = '100%';
     cancel.style.marginTop = '4px';
     menu.appendChild(cancel);
 
     this.overlay.appendChild(menu);
     this.actionMenuEl = menu;
+    menu.classList.add('action-menu');
+    const rect = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(screenX, innerWidth - rect.width - 8))}px`;
+    menu.style.top = `${Math.max(8, Math.min(screenY + 8, innerHeight - rect.height - 145))}px`;
   }
 
   hideActionMenu(): void {
@@ -300,23 +329,24 @@ export class UIManager {
     };
     const sc = seasonColors[data.season] || '#aaa';
     const pct = Math.round(data.seasonProgress * 100);
-    const foodStyle = data.foodLow ? ' style="color:#e66;font-weight:bold"' : '';
 
+    const resource = (icon: IconName, label: string, value: number, low = false) =>
+      `<span class="resource ${low ? 'resource-low' : ''}" title="${label}"><span class="resource-icon">${iconMarkup(icon)}</span><span><small>${label}</small><strong>${Math.floor(value)}</strong></span></span>`;
     this.topBarStatsDiv.innerHTML =
-      `<span>🪵 ${Math.floor(data.resources.wood)}</span>` +
-      `<span${foodStyle}>🍖 ${Math.floor(data.resources.food)}</span>` +
-      `<span>🧥 ${Math.floor(data.resources.fur)}</span>` +
-      `<span>🔧 ${Math.floor(data.resources.tools)}</span>` +
-      `<span style="color:${sc}">${data.season.charAt(0).toUpperCase() + data.season.slice(1)} Y${data.year}</span>` +
-      `<span style="display:inline-block;width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden;vertical-align:middle" data-season-bar>` +
-        `<span style="display:block;width:${pct}%;height:100%;background:${sc};border-radius:3px"></span>` +
-      `</span>` +
-      `<span>😊 ${Math.round(data.comfort * 100)}%</span>` +
-      `<span>👥 ${data.population}/${data.housing}</span>` +
-      `<span>Lv${data.level}</span>` +
-      `<span>⭐ ${Math.floor(data.resources.techPoints)}</span>`;
+      resource('wood', 'Wood', data.resources.wood) + resource('food', 'Food', data.resources.food, data.foodLow) +
+      resource('fur', 'Fur', data.resources.fur) + resource('tools', 'Tools', data.resources.tools) +
+      `<span class="season-stat"><span style="color:${sc}">${data.season} <b>· Year ${data.year}</b></span><span class="season-track"><i style="width:${pct}%;background:${sc}"></i></span></span>` +
+      `<span class="village-stat" title="Population / housing">${iconMarkup('villagers')} <b>${data.population}/${data.housing}</b><small>VILLAGERS</small></span>` +
+      `<span class="village-stat" title="Comfort affects productivity and arrivals">${iconMarkup('comfort')} <b>${Math.round(data.comfort * 100)}%</b><small>COMFORT</small></span>` +
+      `<span class="village-stat" title="Village level and research points">${iconMarkup('research')} <b>${Math.floor(data.resources.techPoints)}</b><small>LEVEL ${data.level}</small></span>`;
 
-    this.soundBtn.textContent = data.soundOn !== false ? '🔊' : '🔇';
+    const soundOn = data.soundOn !== false;
+    if (this.soundBtn.dataset.soundState !== String(soundOn)) {
+      setButtonContent(this.soundBtn, soundOn ? 'Mute sound' : 'Unmute sound', soundOn ? 'sound' : 'muted');
+      this.soundBtn.dataset.soundState = String(soundOn);
+      this.soundBtn.setAttribute('aria-pressed', String(soundOn));
+      this.soundBtn.title = soundOn ? 'Mute sound' : 'Unmute sound';
+    }
 
     if (data.gameSpeed !== undefined) this.setSpeedHighlight(data.gameSpeed);
   }
@@ -332,10 +362,10 @@ export class UIManager {
     }
   }
 
-  updateBuildPanel(buildings: Record<string, BuildingConfig>, unlockedIds: Set<string>, canAfford: (wood: number, tools: number) => boolean, maxBuildingTier = 2): void {
+  updateBuildPanel(buildings: Record<string, BuildingConfig>, unlockedIds: Set<string>, canAfford: (wood: number, tools: number) => boolean, maxBuildingTier = Number.MAX_SAFE_INTEGER): void {
     this.buildPanel.innerHTML = '<div style="font-size:14px;font-weight:bold;margin-bottom:8px;color:#ffe0a0">Build Menu</div>';
 
-    const cancelBtn = this.btn('Cancel', () => this.callbacks.onBuildCancel());
+    const cancelBtn = this.btn('Cancel', () => this.callbacks.onBuildCancel(), 'close');
     cancelBtn.style.width = '100%';
     cancelBtn.style.marginBottom = '8px';
     this.buildPanel.appendChild(cancelBtn);
@@ -351,15 +381,31 @@ export class UIManager {
         opacity: affordable ? '1' : '0.5',
         border: '1px solid rgba(255,255,255,0.05)',
       });
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', affordable ? '0' : '-1');
+      item.setAttribute('aria-label', `${cfg.name}: ${cfg.costWood} wood, ${cfg.costTools} tools`);
+      item.addEventListener('keydown', e => { if ((e as KeyboardEvent).key === 'Enter' && item.getAttribute('data-affordable') === 'true') this.callbacks.onBuildSelect(id); });
       item.setAttribute('data-building-id', id);
       item.setAttribute('data-affordable', affordable ? 'true' : 'false');
       item.setAttribute('data-ui', 'true');
       item.innerHTML = `
         <div style="font-weight:bold;font-size:12px">${cfg.name}</div>
         <div style="font-size:10px;opacity:0.7">${cfg.description}</div>
-        <div style="font-size:10px;margin-top:2px">🪵${cfg.costWood} 🔧${cfg.costTools} | ${cfg.width}×${cfg.height}</div>
+        <div class="resource-cost">${iconMarkup('wood', true)}<span>${cfg.costWood}</span>${iconMarkup('tools', true)}<span>${cfg.costTools}</span><span class="footprint-size">${cfg.width}×${cfg.height}</span></div>
       `;
       this.buildPanel.appendChild(item);
+    }
+  }
+
+  updateBuildAffordability(buildings: Record<string, BuildingConfig>, canAfford: (wood: number, tools: number) => boolean): void {
+    for (const item of this.buildPanel.querySelectorAll<HTMLElement>('[data-building-id]')) {
+      const cfg = buildings[item.dataset.buildingId!]; if (!cfg) continue;
+      const affordable = canAfford(cfg.costWood, cfg.costTools);
+      item.dataset.affordable = String(affordable);
+      item.style.opacity = affordable ? '1' : '.5';
+      item.style.cursor = affordable ? 'pointer' : 'default';
+      item.tabIndex = affordable ? 0 : -1;
+      item.setAttribute('aria-disabled', String(!affordable));
     }
   }
 
@@ -369,9 +415,12 @@ export class UIManager {
     techPoints: number,
     currentLevel: number,
   ): void {
+    const key = `${currentLevel}:${Math.floor(techPoints)}:${[...unlocked].join(',')}:${available.map(t => t.id).join(',')}`;
+    if (this.techPanel.dataset.contentKey === key) return;
+    this.techPanel.dataset.contentKey = key;
     this.techPanel.innerHTML = `
       <div style="font-size:14px;font-weight:bold;margin-bottom:4px;color:#ffe0a0">Technology Tree</div>
-      <div style="font-size:11px;margin-bottom:8px;opacity:0.7">Tech Points: ⭐${Math.floor(techPoints)} | Level ${currentLevel}</div>
+      <div style="font-size:11px;margin-bottom:8px;opacity:0.7">Tech Points: ${iconMarkup('research', true)}${Math.floor(techPoints)} | Level ${currentLevel}</div>
     `;
 
     if (unlocked.size > 0) {
@@ -379,7 +428,7 @@ export class UIManager {
       unlockedDiv.innerHTML = '<div style="font-size:11px;opacity:0.5;margin-bottom:4px">Unlocked:</div>';
       for (const id of unlocked) {
         const d = this.el('div', { fontSize: '11px', opacity: '0.6', padding: '2px 0' });
-        d.textContent = `✓ ${id}`;
+        d.innerHTML = `${iconMarkup('check', true)} ${id}`;
         unlockedDiv.appendChild(d);
       }
       this.techPanel.appendChild(unlockedDiv);
@@ -404,30 +453,76 @@ export class UIManager {
       item.innerHTML = `
         <div style="font-weight:bold;font-size:12px">${tech.name} <span style="opacity:0.5">T${tech.tier}</span></div>
         <div style="font-size:10px;opacity:0.7">${tech.description}</div>
-        <div style="font-size:10px;margin-top:2px">Cost: ⭐${tech.cost}</div>
+        <div style="font-size:10px;margin-top:2px">Cost: ${iconMarkup('research', true)}${tech.cost}</div>
       `;
+      item.setAttribute('data-tech-id', tech.id);
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', canAfford ? '0' : '-1');
       if (canAfford) {
+        item.addEventListener('keydown', e => { if ((e as KeyboardEvent).key === 'Enter') this.callbacks.onTechUnlock(tech.id); });
         item.addEventListener('click', () => this.callbacks.onTechUnlock(tech.id));
       }
       this.techPanel.appendChild(item);
     }
   }
 
-  showInfo(lines: string[]): void {
+  showInfo(lines: (string | { text: string; icon: IconName })[]): void {
+    delete this.infoPanel.dataset.villager;
     this.infoPanel.style.display = 'block';
-    this.infoPanel.innerHTML = lines.map(l => `<div style="margin-bottom:2px">${l}</div>`).join('');
+    this.infoPanel.replaceChildren(...lines.map(line => {
+      const row = this.el('div'); row.className = 'info-line';
+      if (typeof line === 'string') row.textContent = line;
+      else { row.innerHTML = iconMarkup(line.icon, true); row.appendChild(document.createTextNode(line.text)); }
+      return row;
+    }));
   }
 
   hideInfo(): void {
     this.infoPanel.style.display = 'none';
+    delete this.infoPanel.dataset.villager;
+  }
+
+  /** Update text without replacing focused job buttons on every simulation tick. */
+  showVillager(v: VillagerData, order: TargetedVillagerOrder | null, workplace: string, progress: number | null): void {
+    if (this.buildPanelOpen || this.techPanelOpen) { this.infoPanel.style.display = 'none'; return; }
+    if (this.infoPanel.dataset.villager !== v.id) {
+      this.infoPanel.innerHTML = '';
+      this.infoPanel.dataset.villager = v.id;
+      const header = this.el('div'); header.className = 'villager-header';
+      const title = this.el('span'); title.textContent = `Villager ${v.id.replace('v_', '')}`;
+      const close = this.btn('Deselect villager', () => this.callbacks.onVillagerDeselect(), 'close'); close.classList.add('icon-only');
+      header.append(title, close);
+      const status = this.el('div'); status.dataset.villagerStatus = 'true';
+      const health = this.el('small'); health.dataset.villagerHealth = 'true';
+      const meter = document.createElement('progress'); meter.max = 1; meter.setAttribute('aria-label', 'Job progress');
+      const grid = this.el('div'); grid.className = 'villager-orders';
+      for (const [key, item] of Object.entries(villagerOrders)) {
+        const button = this.btn(item.label, () => this.callbacks.onVillagerOrder(key as VillagerOrder), item.icon);
+        button.dataset.villagerOrder = key; button.title = item.hint; grid.appendChild(button);
+      }
+      const hint = this.el('div'); hint.dataset.orderHint = 'true'; hint.setAttribute('role', 'status');
+      const cancel = this.btn('Cancel order', () => this.callbacks.onVillagerOrder(this.infoPanel.dataset.targetOrder as VillagerOrder), 'close');
+      cancel.dataset.orderCancel = 'true';
+      this.infoPanel.append(header, status, health, meter, grid, hint, cancel);
+    }
+    this.infoPanel.style.display = 'block'; this.tutorialPanel.style.display = 'none';
+    this.infoPanel.dataset.targetOrder = order ?? '';
+    this.infoPanel.querySelector<HTMLElement>('[data-order-cancel]')!.hidden = !order;
+    this.infoPanel.querySelector<HTMLElement>('[data-villager-status]')!.textContent = `${villagerActivity(v)}${workplace ? ` · ${workplace}` : ''}`;
+    this.infoPanel.querySelector<HTMLElement>('[data-villager-health]')!.textContent = `Health ${Math.round(v.hp)}/${v.maxHp}${v.health === 'injured' ? ' · Recovering' : ''}`;
+    const meter = this.infoPanel.querySelector('progress')!; meter.hidden = progress === null; meter.value = progress ?? 0;
+    this.infoPanel.querySelector<HTMLElement>('[data-order-hint]')!.textContent = order ? `${villagerOrders[order].hint} Right-click or Esc to cancel.` : 'Choose a job, then tap its destination. You can also tap a tree or building.';
+    for (const button of this.infoPanel.querySelectorAll<HTMLElement>('[data-villager-order]')) {
+      const active = button.dataset.villagerOrder === order;
+      button.classList.toggle('active-action', active); button.setAttribute('aria-pressed', String(active));
+    }
   }
 
   notify(message: string, duration = 3000): void {
     this.notificationEl.textContent = message;
     this.notificationEl.style.display = 'block';
-    setTimeout(() => {
-      this.notificationEl.style.display = 'none';
-    }, duration);
+    clearTimeout(this.notificationTimer);
+    this.notificationTimer = window.setTimeout(() => { this.notificationEl.style.display = 'none'; }, duration);
   }
 
   private toggleBuildPanel(): void {
@@ -436,6 +531,9 @@ export class UIManager {
     if (this.buildPanelOpen) {
       this.techPanelOpen = false;
       this.techPanel.style.display = 'none';
+      this.tutorialPanel.style.display = 'none';
+      this.hideActionMenu();
+      this.infoPanel.style.display = 'none';
       this.callbacks.onBuildPanelOpen?.();
     }
   }
@@ -446,6 +544,10 @@ export class UIManager {
     if (this.techPanelOpen) {
       this.buildPanelOpen = false;
       this.buildPanel.style.display = 'none';
+      this.tutorialPanel.style.display = 'none';
+      this.hideActionMenu();
+      this.infoPanel.style.display = 'none';
+      this.callbacks.onTechPanelOpen?.();
     }
   }
 
@@ -460,6 +562,8 @@ export class UIManager {
     return this.buildPanelOpen;
   }
 
+  isTechPanelOpen(): boolean { return this.techPanelOpen; }
+
   isOverUI(x: number, y: number): boolean {
     const els = document.elementsFromPoint(x, y);
     for (const el of els) {
@@ -469,6 +573,20 @@ export class UIManager {
       }
     }
     return false;
+  }
+
+  updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean }): void {
+    const title = data.paused ? 'Time to make a plan' : data.shelter ? 'Safe by the hearth' : data.mode === 'clear' ? 'Make room for your village' : data.mode === 'build' ? 'Find a place to call home' : 'A little care goes a long way';
+    const detail = data.mode === 'clear' ? 'Tap trees to mark them · Free villagers will do the rest' : data.mode === 'build' ? 'Tap a green footprint to place · Esc or right-click to cancel' :
+      `${data.secondsLeft}s of ${data.season} left · ${data.idle} free villagers · Food for ${data.foodSeconds}s${data.enemies ? ` · ${data.enemies} in the woods` : ''} · Tap a villager to give orders`;
+    this.statusEl.innerHTML = `<span class="status-dot ${data.shelter ? 'sheltered' : ''}"></span><div><strong>${title}</strong><small>${detail}</small></div>`;
+    this.overlay.dataset.mode = data.mode;
+    const resume = this.overlay.querySelector<HTMLElement>('[data-leave-shelter-btn]');
+    if (resume) { resume.classList.toggle('active-action', data.shelter); resume.setAttribute('aria-pressed', String(data.shelter)); }
+    for (const button of this.overlay.querySelectorAll<HTMLElement>('#game-bottom-bar button')) {
+      if (button.textContent?.includes('Clear')) button.classList.toggle('active-action', data.mode === 'clear');
+      if (button.textContent?.includes('Build')) button.classList.toggle('active-action', data.mode === 'build' || this.buildPanelOpen);
+    }
   }
 
   showGameOver(emailSubmitUrl?: string): void {
@@ -625,12 +743,12 @@ export class UIManager {
     overlay.appendChild(formWrap);
 
     if (isDemoEnd) {
-      const restartBtn = this.btn('🔄 Start Over', () => this.callbacks.onRestart());
+      const restartBtn = this.btn('Start Over', () => this.callbacks.onRestart(), 'restart');
       restartBtn.style.fontSize = '14px';
       restartBtn.style.padding = '10px 20px';
       overlay.appendChild(restartBtn);
     } else {
-      const closeBtn = this.btn('Close', () => this.hideGameOver());
+      const closeBtn = this.btn('Close', () => this.hideGameOver(), 'close');
       closeBtn.style.fontSize = '14px';
       closeBtn.style.padding = '10px 20px';
       overlay.appendChild(closeBtn);
@@ -641,13 +759,13 @@ export class UIManager {
   }
 
   private appendGameOverButtons(overlay: HTMLElement): void {
-    const loadBtn = this.btn('📂 Load game', () => this.callbacks.onLoad());
+    const loadBtn = this.btn('Load game', () => this.callbacks.onLoad(), 'load');
     loadBtn.style.fontSize = '14px';
     loadBtn.style.padding = '10px 20px';
     loadBtn.style.marginBottom = '8px';
     overlay.appendChild(loadBtn);
 
-    const restartBtn = this.btn('🔄 Start Over', () => this.callbacks.onRestart());
+    const restartBtn = this.btn('Start Over', () => this.callbacks.onRestart(), 'restart');
     restartBtn.style.fontSize = '14px';
     restartBtn.style.padding = '10px 20px';
     overlay.appendChild(restartBtn);
@@ -667,14 +785,14 @@ export class UIManager {
     return e;
   }
 
-  private btn(label: string, onClick: () => void): HTMLElement {
+  private btn(label: string, onClick: () => void, icon?: IconName): HTMLElement {
     const b = this.el('button', {
       padding: '6px 12px', background: 'rgba(60,60,80,0.9)',
       border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px',
       color: '#e0d8c8', cursor: 'pointer', fontSize: '12px',
       fontFamily: 'inherit',
     });
-    b.textContent = label;
+    setButtonContent(b, label, icon);
     b.setAttribute('data-ui', 'true');
     b.addEventListener('click', onClick);
     b.addEventListener('mouseenter', () => b.style.background = 'rgba(80,80,100,0.9)');

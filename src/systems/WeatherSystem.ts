@@ -10,7 +10,7 @@ export class WeatherSystem {
       this.currentEvent.remainingDuration -= dt;
       if (this.currentEvent.remainingDuration <= 0) {
         this.currentEvent = null;
-        this.eventCooldown = 20;
+        this.eventCooldown = getConfig().weather.eventCooldown;
       }
       return;
     }
@@ -23,21 +23,20 @@ export class WeatherSystem {
     if (season === Season.Spring) return;
 
     const cfg = getConfig().weather;
-    const roll = Math.random();
-    const checkInterval = 10;
+    const checkInterval = cfg.checkInterval;
     const chance = dt / checkInterval;
 
     if (season === Season.Winter || season === Season.Autumn) {
-      if (roll < cfg.snowstormChance * chance) {
+      if (Math.random() < cfg.snowstormChance * chance) {
         this.startEvent('snowstorm');
         return;
       }
     }
-    if (roll < cfg.fogChance * chance) {
+    if (Math.random() < cfg.fogChance * chance) {
       this.startEvent('fog');
       return;
     }
-    if (roll < cfg.strongWindChance * chance) {
+    if (Math.random() < cfg.strongWindChance * chance) {
       this.startEvent('strongWind');
     }
   }
@@ -48,13 +47,14 @@ export class WeatherSystem {
     this.currentEvent = {
       type,
       remainingDuration: duration,
-      intensity: 0.6 + Math.random() * 0.4,
+      intensity: cfg.eventMinIntensity + Math.random() * (cfg.eventMaxIntensity - cfg.eventMinIntensity),
     };
   }
 
   /** Clear weather event (for new game). */
   reset(): void {
     this.currentEvent = null;
+    this.eventCooldown = 0;
   }
 
   getWorkSpeedMultiplier(): number {
@@ -76,11 +76,13 @@ export class WeatherSystem {
     return 1;
   }
 
-  serialize(): WeatherEvent | null {
-    return this.currentEvent ? { ...this.currentEvent } : null;
+  serialize(): { currentEvent: WeatherEvent | null; eventCooldown: number } {
+    return { currentEvent: this.currentEvent ? { ...this.currentEvent } : null, eventCooldown: this.eventCooldown };
   }
 
-  deserialize(data: WeatherEvent | null): void {
-    this.currentEvent = data;
+  deserialize(data: WeatherEvent | ReturnType<WeatherSystem['serialize']> | null): void {
+    if (data && 'currentEvent' in data) {
+      this.currentEvent = data.currentEvent; this.eventCooldown = data.eventCooldown;
+    } else { this.currentEvent = data; this.eventCooldown = 0; }
   }
 }

@@ -111,10 +111,10 @@ export class TutorialSystem {
     if (this.stage === 'shelter') this.advance('done');
   }
 
-  update(food: number, season: Season, year: number): void {
+  update(food: number, season: Season, year: number, targetFood = 20): void {
     if (!this.enabled || this.stage === 'done') return;
 
-    if (this.stage === 'stockpileFood' && food >= 20) {
+    if (this.stage === 'stockpileFood' && food >= targetFood) {
       this.advance('waitForAutumn');
     }
     if (this.stage === 'waitForAutumn' && (season === Season.Autumn || season === Season.Winter)) {
@@ -125,32 +125,32 @@ export class TutorialSystem {
     if (year > 1) this.skip();
   }
 
-  getObjective(food: number): TutorialObjective | null {
+  getObjective(food: number, targetFood = 20): TutorialObjective | null {
     if (!this.enabled || this.stage === 'done') return null;
 
     switch (this.stage) {
       case 'markForest':
-        return this.objective(1, 'Make room', `Press “🪓 Clear” and mark a 2×2 area beside the clearing (${this.clearingMarks}/4 tiles).`);
+        return this.objective(1, 'Make room', `Press “Clear” and mark a 2×2 area beside the clearing (${this.clearingMarks}/4 tiles).`);
       case 'hunt':
-        return this.objective(2, 'Find food', 'Press “🦌 Hunt” to send one free villager into the forest.');
+        return this.objective(2, 'Find food', 'Press “Hunt” to send one free villager into the forest.');
       case 'placeHut':
-        return this.objective(3, 'Plan a new hut', 'Open “🏗 Build”, choose Hut, and place it on cleared ground.');
+        return this.objective(3, 'Plan a new hut', 'Open “Build”, choose Hut, and place it on cleared ground.');
       case 'buildHut':
         return this.objective(3, 'Construction', 'A free villager is heading to the site automatically. Wait for the hut to finish.');
       case 'unlockGarden':
-        return this.objective(4, 'Unlock food production', 'Open “📖 Tech” and unlock Garden with the technology point from the new hut.');
+        return this.objective(4, 'Unlock food production', 'Open “Tech” and unlock Garden with the technology point from the new hut.');
       case 'placeGarden':
-        return this.objective(5, 'Place a garden', 'Open “🏗 Build”, choose Garden, and place it on cleared ground.');
+        return this.objective(5, 'Place a garden', 'Open “Build”, choose Garden, and place it on cleared ground.');
       case 'buildGarden':
         return this.objective(5, 'Build the garden', 'A free builder will construct the garden automatically.');
       case 'assignGarden':
-        return this.objective(6, 'Assign a farmer', 'Select a villager, then the finished garden, and choose “👷 Work here” or “🌾 Grow food”.');
+        return this.objective(6, 'Assign a farmer', 'Tap the finished garden and choose “Assign a free villager”. You can also select a villager and send them to work there.');
       case 'stockpileFood':
-        return this.objective(7, 'Prepare supplies', `Reach 20 food before winter. Current food: ${Math.floor(food)}/20.`);
+        return this.objective(7, 'Prepare supplies', `Reach ${targetFood} food before winter. Current food: ${Math.floor(food)}/${targetFood}.`);
       case 'waitForAutumn':
         return this.objective(8, 'Keep preparing', 'Your basic food reserve is ready. Keep gathering resources until autumn.');
       case 'shelter':
-        return this.objective(9, 'Take shelter', 'Autumn is here. Before the horde arrives, press “🏠 To shelter”.');
+        return this.objective(9, 'Take shelter', 'Autumn is here. Before the horde arrives, press “Shelter”.');
       default:
         return null;
     }

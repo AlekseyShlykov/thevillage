@@ -109,52 +109,6 @@
       filter: blur(2px) brightness(0.75) saturate(0.9);
     }
 
-    /* Mobile: natural wrap for both bars */
-    @media (max-width: 768px) {
-      #game-top-bar {
-        height: auto !important;
-        flex-wrap: wrap;
-        padding: 6px 8px;
-        gap: 4px 8px;
-        font-size: 11px;
-      }
-      #game-top-bar [data-topbar-stats],
-      #game-top-bar [data-topbar-buttons] {
-        display: contents !important;
-      }
-      #game-top-bar [data-season-bar] {
-        width: 48px !important;
-      }
-      #game-top-bar [data-save-btn],
-      #game-top-bar [data-load-btn] {
-        display: none !important;
-      }
-
-      #game-bottom-bar {
-        height: auto !important;
-        flex-wrap: wrap;
-        padding: 6px 8px;
-        gap: 6px;
-      }
-      #game-bottom-bar button {
-        min-height: 44px;
-        min-width: 44px;
-      }
-      #game-bottom-bar [data-repair-btn] {
-        display: none !important;
-      }
-      #ui-overlay [data-notification-el] {
-        bottom: calc(100px + 20px) !important;
-      }
-      #ui-overlay [data-info-panel] {
-        display: none !important;
-      }
-      #ui-overlay [data-tutorial-panel] {
-        top: 112px !important;
-        left: 8px !important;
-        width: min(300px, calc(100% - 16px)) !important;
-      }
-    }
   </style>
 </head>
 <body>

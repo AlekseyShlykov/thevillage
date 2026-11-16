@@ -9,6 +9,7 @@ let nextEnemyId = 1;
 export class HordeSystem {
   public enemies: EnemyData[] = [];
   public isActive = false;
+  public visibilityMultiplier = 1;
   private waveTimer = 0;
   private currentWave = 0;
   private wavesThisWinter = 0;
@@ -64,7 +65,7 @@ export class HordeSystem {
     const cfg = getConfig().horde;
 
     this.waveTimer -= dt;
-    if (this.waveTimer <= 0 && !this.waveSpawned) {
+    if (this.waveTimer <= 0 && !this.waveSpawned && this.currentWave < this.wavesThisWinter) {
       this.spawnWave(villageCenterX, villageCenterY);
       this.waveSpawned = true;
     }
@@ -84,12 +85,14 @@ export class HordeSystem {
 
       this.updateVisibility(e, villageCenterX, villageCenterY, detectionBuildings);
 
-      if (!winterRetreatPhase) {
+      e.villagerAttackCooldown = Math.max(0, (e.villagerAttackCooldown ?? 0) - dt);
+      if (!winterRetreatPhase && e.villagerAttackCooldown <= 0) {
         const killRadius = 1.2;
         for (const v of outsideVillagers) {
           const dist = Math.sqrt((e.x - v.x) ** 2 + (e.y - v.y) ** 2);
           if (dist < killRadius) {
             onVillagerKilledByHorde(v.id);
+            e.villagerAttackCooldown = cfg.enemyAttackRate as number;
             break;
           }
         }
@@ -243,7 +246,7 @@ export class HordeSystem {
     if (e.attackCooldown <= 0) {
       e.attackCooldown = (cfg.enemyAttackRate as number) || 2;
       if (e.targetBuildingId) {
-        const dmg = ((cfg.buildingDamagePerAttack as number) || 15) / 10;
+        const dmg = (cfg.buildingDamagePerAttack as number) * (this.winterYear === 1 ? cfg.firstWinterBuildingDamageMultiplier as number : 1);
         onAttackBuilding(e.targetBuildingId, dmg);
       }
     }
@@ -324,8 +327,9 @@ export class HordeSystem {
       e.path.shift();
     } else {
       const speed = (cfg.enemySpeed as number) || 0.8;
-      e.x += (dx / dist) * speed * dt;
-      e.y += (dy / dist) * speed * dt;
+      const step = Math.min(dist, speed * dt);
+      e.x += (dx / dist) * step;
+      e.y += (dy / dist) * step;
     }
   }
 
@@ -392,8 +396,9 @@ export class HordeSystem {
         e.path.shift();
       } else {
         const speed = (cfg.enemySpeed as number) || 0.8;
-        e.x += (dx / dist) * speed * dt;
-        e.y += (dy / dist) * speed * dt;
+        const step = Math.min(dist, speed * dt);
+        e.x += (dx / dist) * step;
+        e.y += (dy / dist) * step;
       }
     }
   }
@@ -522,7 +527,7 @@ export class HordeSystem {
     const cfg = getConfig().horde;
     const base = (cfg.baseEnemyCount as number) || 5;
     const perLevel = (cfg.enemyCountPerLevel as number) || 3;
-    const count = base + perLevel * (this.winterLevel - 1) + Math.floor(this.winterYear * 0.5) + this.currentWave;
+    const count = this.winterYear === 1 ? cfg.firstWinterEnemyCount as number : base + perLevel * (this.winterLevel - 1) + Math.floor(this.winterYear * 0.5) + this.currentWave;
     const edgeTiles = this.tileMap.getForestEdgeTiles();
     if (edgeTiles.length === 0) return;
 
@@ -564,14 +569,14 @@ export class HordeSystem {
     const distToVillage = Math.sqrt(
       (enemy.x - villageCenterX) ** 2 + (enemy.y - villageCenterY) ** 2
     );
-    if (distToVillage <= baseDist) {
+    if (distToVillage <= baseDist * this.visibilityMultiplier) {
       enemy.visible = true;
       return;
     }
 
     for (const d of detectionBuildings) {
       const dist = Math.sqrt((enemy.x - d.x) ** 2 + (enemy.y - d.y) ** 2);
-      if (dist <= d.radius) {
+      if (dist <= d.radius * this.visibilityMultiplier) {
         enemy.visible = true;
         return;
       }
@@ -595,11 +600,23 @@ export class HordeSystem {
     return this.enemies.filter(e => e.state !== 'dead');
   }
 
-  serialize(): EnemyData[] {
-    return this.enemies.map(e => ({ ...e, path: [] }));
+  serialize() {
+    return { enemies: this.enemies.map(e => ({ ...e, path: e.path.map(p => ({ ...p })) })),
+      isActive: this.isActive, waveTimer: this.waveTimer, currentWave: this.currentWave,
+      wavesThisWinter: this.wavesThisWinter, waveSpawned: this.waveSpawned,
+      winterYear: this.winterYear, winterLevel: this.winterLevel };
   }
 
-  deserialize(data: EnemyData[]): void {
-    this.enemies = data;
+  deserialize(data: EnemyData[] | ReturnType<HordeSystem['serialize']>, winter = false, year = 1, level = 1): void {
+    if (Array.isArray(data)) {
+      if (winter) this.startWinter(year, level); else this.endWinter();
+      this.enemies = data; this.waveSpawned = data.length > 0;
+    } else {
+      this.enemies = data.enemies ?? []; this.isActive = data.isActive;
+      this.waveTimer = data.waveTimer; this.currentWave = data.currentWave;
+      this.wavesThisWinter = data.wavesThisWinter; this.waveSpawned = data.waveSpawned;
+      this.winterYear = data.winterYear; this.winterLevel = data.winterLevel;
+    }
+    nextEnemyId = Math.max(0, ...this.enemies.map(e => Number(e.id.replace('e_', '')) || 0)) + 1;
   }
 }

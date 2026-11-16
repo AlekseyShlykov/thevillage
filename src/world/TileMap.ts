@@ -2,6 +2,7 @@ import { TileType, TileData, Position } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 
 export class TileMap {
+  public revision = 0;
   public width: number;
   public height: number;
   public tiles: TileData[][];
@@ -15,6 +16,7 @@ export class TileMap {
   }
 
   private generate(): void {
+    this.revision++;
     const cfg = getConfig().map;
     const centerX = Math.floor(this.width / 2);
     const centerY = Math.floor(this.height / 2);
@@ -47,6 +49,7 @@ export class TileMap {
   }
 
   setTileType(x: number, y: number, type: TileType): void {
+    this.revision++;
     if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
       this.tiles[y][x].type = type;
     }
@@ -87,6 +90,7 @@ export class TileMap {
   }
 
   placeBuilding(tx: number, ty: number, w: number, h: number, buildingId: string, tileType: TileType = TileType.Building): void {
+    this.revision++;
     for (let dy = 0; dy < h; dy++) {
       for (let dx = 0; dx < w; dx++) {
         const tile = this.getTile(tx + dx, ty + dy);
@@ -99,6 +103,7 @@ export class TileMap {
   }
 
   removeBuilding(tx: number, ty: number, w: number, h: number): void {
+    this.revision++;
     for (let dy = 0; dy < h; dy++) {
       for (let dx = 0; dx < w; dx++) {
         const tile = this.getTile(tx + dx, ty + dy);
@@ -120,7 +125,7 @@ export class TileMap {
 
   getForestEdgeTiles(): Position[] {
     const result: Position[] = [];
-    const margin = 3;
+    const margin = getConfig().horde.spawnDistanceFromEdge as number;
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         if (this.tiles[y][x].type === TileType.Forest) {
@@ -166,6 +171,7 @@ export class TileMap {
   }
 
   deserialize(data: TileData[][]): void {
+    this.revision++;
     this.tiles = data;
     this.height = data.length;
     this.width = data[0]?.length ?? 0;

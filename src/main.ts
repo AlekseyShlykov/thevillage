@@ -1,3 +1,4 @@
+import './ui/game.css';
 import { loadConfig } from './data/ConfigLoader';
 import { AssetLoader } from './render/AssetLoader';
 import { Game } from './game/Game';

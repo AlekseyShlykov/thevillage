@@ -26,7 +26,11 @@ export function findPath(
   const closed = new Set<number>();
   const key = (x: number, y: number) => y * mapWidth + x;
 
-  const h = (x: number, y: number) => Math.abs(x - goalX) + Math.abs(y - goalY);
+  // Octile distance is admissible for this eight-neighbour grid.
+  const h = (x: number, y: number) => {
+    const dx = Math.abs(x - goalX), dy = Math.abs(y - goalY);
+    return Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy);
+  };
 
   const startNode: PathNode = { x: startX, y: startY, g: 0, h: h(startX, startY), f: h(startX, startY), parent: null };
   open.push(startNode);
