@@ -1,6 +1,7 @@
 import { BuildingInstance, BuildingConfig, TileType } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
+import { buildingUpgrade, completeUpgrade, isConstructionSite } from './BuildingUpgrades';
 
 let nextBuildingId = 1;
 
@@ -36,7 +37,7 @@ export class BuildingSystem {
   /** Returns unbuilt building for which (tx, ty) is one of the arrival tiles (worker standing there = on site). */
   getUnbuiltBuildingForArrivalTile(tx: number, ty: number): BuildingInstance | null {
     for (const b of this.buildings) {
-      if (b.built) continue;
+      if (!isConstructionSite(b)) continue;
       const cfg = this.getBuildingConfig(b.configId);
       if (!cfg) continue;
       const arrivalRow = b.tileY + cfg.height;
@@ -75,7 +76,10 @@ export class BuildingSystem {
       const bcfg = this.getBuildingConfig(b.configId);
       if (!bcfg) continue;
 
-      if (!isPalisade && !bIsPalisade && this.buildingsTouch(tx, ty, cfg.width, cfg.height, b.tileX, b.tileY, bcfg.width, bcfg.height)) {
+      const adjacentException = cfg.adjacentBuildingExceptions?.includes(b.configId) || bcfg.adjacentBuildingExceptions?.includes(configId);
+      const needsGap = cfg.category !== 'terrain' && bcfg.category !== 'terrain' &&
+        !(cfg.category === 'defense' && bcfg.category === 'defense') && !adjacentException;
+      if (needsGap && this.buildingsTouch(tx, ty, cfg.width, cfg.height, b.tileX, b.tileY, bcfg.width, bcfg.height)) {
         return false;
       }
 
@@ -173,7 +177,7 @@ export class BuildingSystem {
   }
 
   updateConstruction(dt: number, getBuildersOnSite: (buildingId: string) => number, onBuildProgress?: () => void, onBuildingCompleted?: (building: BuildingInstance) => void): void {
-    const unbuilt = this.buildings.filter(b => !b.built);
+    const unbuilt = this.buildings.filter(isConstructionSite);
     if (unbuilt.length === 0) return;
 
     const cfg = getConfig();
@@ -186,6 +190,14 @@ export class BuildingSystem {
       const bcfg = this.getBuildingConfig(b.configId);
       if (!bcfg) continue;
 
+      if (b.upgradeProgress !== undefined) {
+        const upgrade = buildingUpgrade(b);
+        if (!upgrade) continue;
+        b.upgradeProgress = Math.min(1, b.upgradeProgress + buildSpeed * onSite * dt / upgrade.buildTime);
+        onBuildProgress?.();
+        if (b.upgradeProgress >= 1) { completeUpgrade(b); onBuildingCompleted?.(b); }
+        continue;
+      }
       const progressPerSecond = (buildSpeed * onSite) / bcfg.buildTime;
       b.buildProgress += progressPerSecond * dt;
       onBuildProgress?.();
@@ -378,7 +390,8 @@ export class BuildingSystem {
   }
 
   deserialize(data: BuildingInstance[]): void {
-    for (const b of data) {
+    const buildings = data.map(b=>({...b,assignedWorkers:[...b.assignedWorkers]}));
+    for (const b of buildings) {
       const cfg = this.getBuildingConfig(b.configId);
       if (cfg) {
         const tileType = cfg.category === 'terrain' ? TileType.Moat : cfg.category === 'defense' ? TileType.Palisade : TileType.Building;
@@ -386,7 +399,7 @@ export class BuildingSystem {
         this.syncTerrain(b);
       }
     }
-    this.buildings = data;
-    nextBuildingId = Math.max(...data.map(b => parseInt(b.id.replace('b_', '')) || 0)) + 1;
+    this.buildings = buildings;
+    nextBuildingId = Math.max(0, ...buildings.map(b => parseInt(b.id.replace('b_', '')) || 0)) + 1;
   }
 }

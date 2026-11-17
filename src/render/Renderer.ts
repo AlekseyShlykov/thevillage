@@ -102,6 +102,7 @@ export class Renderer {
         if (hovered?.id === b.id) polygon(ctx, box.pts, 'rgba(237,211,151,.16)', '#edcf8e');
         this.art.building(ctx, b, cfg, season, this.time, buildings, occupied);
         if (!b.built) { this.bar(box.centerX, box.baseline + 7, 66, b.buildProgress, '#e8c781'); this.label(box.centerX, box.y - 3, `${cfg.name} · ${Math.round(b.buildProgress * 100)}%`); }
+        else if (b.upgradeProgress !== undefined) { this.bar(box.centerX, box.baseline + 7, 66, b.upgradeProgress, '#e8c781'); this.label(box.centerX, box.y - 3, `Upgrading · ${Math.round(b.upgradeProgress * 100)}%`); }
         else if (b.configId==='garden' && b.cropState==='ripe') this.label(box.centerX,box.y+8,`Harvest ready · ${Math.ceil(b.harvestRemaining??getConfig().farming.harvestFood)} food`);
         else if (hovered?.id === b.id) this.label(box.centerX, box.y + 8, `${cfg.name}${b.configId === 'garden' ? ` · ${b.cropState==='growing'?cropStageName(b.farmingProgress ?? 0):'Ready to sow'}` : cfg.maxWorkers ? ` · ${b.assignedWorkers.length}/${cfg.maxWorkers}` : cfg.protectionRadius ? ` · ${cfg.protectionRadius} tile ward` : ''}`);
         if (b.built && cfg.maxWorkers && b.configId !== 'garden' && hovered?.id !== b.id) this.label(box.centerX, box.baseline - 8, `${cfg.name} · ${b.assignedWorkers.length}/${cfg.maxWorkers}`, true);
@@ -199,7 +200,7 @@ export class Renderer {
     return buildings.slice().sort((a, b) => b.tileX + b.tileY + configs[b.configId].width + configs[b.configId].height - a.tileX - a.tileY - configs[a.configId].width - configs[a.configId].height).find(b => {
       const cfg = configs[b.configId]; if (!cfg) return false;
       if (tile.tx >= b.tileX && tile.tx < b.tileX + cfg.width && tile.ty >= b.tileY && tile.ty < b.tileY + cfg.height) return true;
-      if (cfg.category === 'defense' || b.configId === 'garden' || cfg.width === 1) return false;
+      if (b.configId !== 'palisadeGate' && (cfg.category === 'defense' || b.configId === 'garden' || cfg.width === 1)) return false;
       const box = this.art.buildingBounds(b, cfg);
       return sx > box.x + box.width * .15 && sx < box.x + box.width * .85 && sy > box.y + box.height * .24 && sy < box.baseline;
     }) ?? null;

@@ -4,6 +4,7 @@ import { TileMap } from '../world/TileMap';
 import { findPath } from '../utils/Pathfinding';
 import { assignSettlementShelters } from './ShelterSystem';
 import { HuntingGrounds } from '../world/HuntingGrounds';
+import { WalkableRegions } from '../world/WalkableRegions';
 
 let nextVillagerId = 1;
 const key = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`;
@@ -14,6 +15,7 @@ export class VillagerSystem {
   public openGateIds = new Set<string>();
   public unbuiltPalisadeIds = new Set<string>();
   private shelterTiles = new Set<string>();
+  private walkableRegions = new WalkableRegions();
   private onVillagerDeath: (() => void) | null = null;
   public huntingGrounds: HuntingGrounds;
   constructor(private tileMap: TileMap) { this.huntingGrounds = new HuntingGrounds(tileMap); }
@@ -22,6 +24,11 @@ export class VillagerSystem {
     return this.shelterTiles.has(key(x, y)) || this.tileMap.isWalkable(x, y, this.openGateIds, this.unbuiltPalisadeIds);
   }
   setShelters(tiles: Position[]): void { this.shelterTiles = new Set(tiles.map(t => key(t.x, t.y))); }
+  private mayReach(v: VillagerData, x: number, y: number): boolean {
+    const revision = `${this.tileMap.revision}:${[...this.openGateIds].join(',')}:${[...this.unbuiltPalisadeIds].join(',')}:${[...this.shelterTiles].join(';')}`;
+    return this.walkableRegions.mayReach(Math.floor(v.x), Math.floor(v.y), x, y,
+      this.tileMap.width, this.tileMap.height, revision, (tx,ty)=>this.walkable(tx,ty));
+  }
   spawnVillager(x: number, y: number): VillagerData {
     const v: VillagerData = { id: `v_${nextVillagerId++}`, x, y, state: VillagerState.Idle, health: HealthState.Healthy,
       hp: getConfig().villagers.maxHP, maxHp: getConfig().villagers.maxHP, targetX: null, targetY: null, path: [], assignedBuildingId: null, currentTask: null, taskProgress: 0 };
@@ -37,7 +44,7 @@ export class VillagerSystem {
     }
     tiles.slice(0, count).forEach(p => this.spawnVillager(p.x, p.y));
   }
-  reset(): void { this.villagers = []; this.shelterTiles.clear(); nextVillagerId = 1; }
+  reset(): void { this.villagers = []; this.shelterTiles.clear(); this.openGateIds.clear(); this.unbuiltPalisadeIds.clear(); nextVillagerId = 1; }
   getAliveVillagers(): VillagerData[] { return this.villagers.filter(v => v.health !== HealthState.Dead); }
   getAliveCount(): number { return this.villagers.reduce((n, v) => n + Number(v.health !== HealthState.Dead), 0); }
   getVillagerById(id: string): VillagerData | null { return this.villagers.find(v => v.id === id) ?? null; }
@@ -50,7 +57,7 @@ export class VillagerSystem {
     return this.villagers.some(v => v.id !== id && v.health !== HealthState.Dead && v.currentTask === 'clearing' && v.targetX === x && v.targetY === y);
   }
   assignPath(v: VillagerData, gx: number, gy: number): boolean {
-    if (!this.walkable(gx, gy)) return false;
+    if (!this.walkable(gx, gy) || !this.mayReach(v, gx, gy)) return false;
     const path = findPath(Math.floor(v.x), Math.floor(v.y), gx, gy, (x, y) => this.walkable(x, y), this.tileMap.width, this.tileMap.height);
     if (!path.length) return false;
     path.shift(); v.path = path; v.targetX = gx; v.targetY = gy; v.stuckTimer = 0;
@@ -59,7 +66,7 @@ export class VillagerSystem {
     return true;
   }
   canReach(v: VillagerData, x: number, y: number): boolean {
-    return this.walkable(x,y) && findPath(Math.floor(v.x),Math.floor(v.y),x,y,(tx,ty)=>this.walkable(tx,ty),this.tileMap.width,this.tileMap.height).length>0;
+    return this.walkable(x,y) && this.mayReach(v,x,y) && findPath(Math.floor(v.x),Math.floor(v.y),x,y,(tx,ty)=>this.walkable(tx,ty),this.tileMap.width,this.tileMap.height).length>0;
   }
   sendVillagerToTile(id: string, x: number, y: number): boolean {
     const v = this.getVillagerById(id); if (!v || v.health === HealthState.Dead || !this.assignPath(v, x, y)) return false;

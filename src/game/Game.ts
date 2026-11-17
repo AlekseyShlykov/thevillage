@@ -9,6 +9,7 @@ import { SeasonSystem } from '../systems/SeasonSystem';
 import { ResourceSystem } from '../systems/ResourceSystem';
 import { VillagerSystem } from '../systems/VillagerSystem';
 import { BuildingSystem } from '../systems/BuildingSystem';
+import { buildingUpgrade, isConstructionSite, upgradeRequirement } from '../systems/BuildingUpgrades';
 import { TechnologySystem } from '../systems/TechnologySystem';
 import { HordeSystem } from '../systems/HordeSystem';
 import { WeatherSystem } from '../systems/WeatherSystem';
@@ -287,19 +288,8 @@ export class Game {
 
     const isWinter = this.seasonSystem.isWinter();
     const housingTiles = this.buildingSystem.getHousingTiles();
-    const wallMultiplier = this.techSystem.getEffect('palisadeHPMultiplier') ?? 1;
-    for (const b of this.buildingSystem.buildings) {
-      if (b.configId !== 'palisadeWall' && b.configId !== 'palisadeGate') continue;
-      const maxHp = this.buildingSystem.getBuildingConfig(b.configId)!.hp * wallMultiplier;
-      if (maxHp !== b.maxHp) { b.hp *= maxHp / b.maxHp; b.maxHp = maxHp; }
-    }
 
-    this.villagerSystem.openGateIds = new Set(
-      this.buildingSystem.buildings.filter(b => b.configId === 'palisadeGate' && b.gateOpen).map(b => b.id)
-    );
-    this.villagerSystem.unbuiltPalisadeIds = new Set(
-      this.buildingSystem.buildings.filter(b => (b.configId === 'palisadeWall' || b.configId === 'palisadeGate') && !b.built).map(b => b.id)
-    );
+    this.syncGateRouting();
 
     this.villagerSystem.update(dt, this.buildingSystem.buildings, isWinter, housingTiles, this.stayInShelterMode);
     this.updateHunting(dt);
@@ -468,6 +458,16 @@ export class Game {
       if (!building.built) {
         actions.push({ label: 'Cancel construction', icon: 'close', callback: () => this.cancelBuilding(building.id) });
       } else {
+        if (building.configId === 'palisadeGate') actions.push({
+          label: building.gateOpen ? 'Close gate' : 'Open gate',
+          icon: building.gateOpen ? 'gateClosed' : 'gateOpen', callback: () => this.toggleGate(building.id),
+        });
+        const upgrade = buildingUpgrade(building);
+        if (building.upgradeProgress !== undefined) {
+          actions.push({ label: 'Cancel upgrade', icon: 'close', callback: () => this.cancelBuilding(building.id) });
+        } else if (upgrade && !upgradeRequirement(building, this.techSystem.unlockedTechs, this.buildingSystem.buildings)) {
+          actions.push({ label: `${upgrade.name} · ${upgrade.costWood} wood`, icon: 'hammer', callback: () => this.upgradeBuilding(building.id) });
+        }
         if (building.hp < building.maxHp || building.needsRepair) {
           actions.push({ label: 'Repair', icon: 'repair', callback: () => this.sendRepairToBuilding(building.id) });
         }
@@ -493,7 +493,8 @@ export class Game {
       this.ui.showInfo([
         cfg?.name || building.configId,
         cfg.indestructible ? 'Cannot be destroyed by monsters' : `HP: ${Math.floor(building.hp)}/${building.maxHp}`,
-        building.built ? 'Built' : `Building: ${Math.round(building.buildProgress * 100)}%`,
+        building.upgradeProgress !== undefined ? `Upgrading: ${Math.round(building.upgradeProgress * 100)}%` : building.built ? building.upgraded ? 'Reinforced' : 'Built' : `Building: ${Math.round(building.buildProgress * 100)}%`,
+        buildingUpgrade(building) && building.upgradeProgress === undefined ? upgradeRequirement(building, this.techSystem.unlockedTechs, this.buildingSystem.buildings) ?? '' : '',
         building.configId === 'garden' && building.built ? this.gardenStatus(building) : '',
         building.configId === 'furWorkshop' && building.built ? `1 pelt → 1 fur coat. ${this.resourceSystem.resources.fur >= getConfig().resources.furPerClothing ? 'Assign a worker to sew coats.' : 'Needs pelts: send a resident hunting.'}` : '',
         `Workers: ${building.assignedWorkers.length}/${cfg?.maxWorkers || 0}`,
@@ -659,7 +660,7 @@ export class Game {
       return false;
     }
     const building = this.buildingSystem.buildings.find(b => b.id === buildingId);
-    if (!building || building.built) {
+    if (!building || !isConstructionSite(building)) {
       this.ui.notify('Not a construction site.');
       return false;
     }
@@ -686,7 +687,7 @@ export class Game {
   private dispatchBuilder(villagerId: string, buildingId: string): boolean {
     const building = this.buildingSystem.buildings.find(b => b.id === buildingId);
     const villager = this.villagerSystem.getVillagerById(villagerId);
-    if (!building || building.built || !villager || villager.health === HealthState.Dead) return false;
+    if (!building || !isConstructionSite(building) || !villager || villager.health === HealthState.Dead) return false;
     if (building.assignedWorkers.length > 0) return false;
 
     const arrivalTiles = this.buildingSystem.getArrivalTiles(building);
@@ -755,7 +756,7 @@ export class Game {
   private handleBuildClick(tx: number, ty: number): void {
     if (!this.selectedBuildingId) return;
     const cfg = this.buildingSystem.getBuildingConfig(this.selectedBuildingId);
-    if (!cfg) return;
+    if (!cfg || cfg.upgradeOnly) return;
 
     if (!this.resourceSystem.canAfford(cfg.costWood, cfg.costTools)) {
       this.ui.notify('Not enough resources!');
@@ -932,10 +933,7 @@ export class Game {
     const cfg = getConfig().villagers;
     const alive = this.villagerSystem.getAliveCount();
     const winterMult = this.seasonSystem.isWinter() ? cfg.winterFoodConsumptionMultiplier : 1;
-    const smokehouseBonus = this.buildingSystem.getBuildingsOfType('smokehouse').length > 0
-      ? getConfig().resources.smokehouseFoodEfficiencyBonus : 1;
-
-    const consumption = cfg.foodConsumptionPerSecond * alive * winterMult * dt / smokehouseBonus;
+    const consumption = cfg.foodConsumptionPerSecond * alive * winterMult * dt;
     this.resourceSystem.consumeFood(consumption);
 
     if (this.resourceSystem.resources.food <= 0) {
@@ -1085,7 +1083,7 @@ export class Game {
       if(this.villagerSystem.getAliveVillagers().some(v=>v.currentTask==='repairing'&&v.assignedBuildingId===b.id))continue;
       for(const v of workers())if(this.sendRepairToBuilding(b.id,v.id,false))break;
     }
-    for(const b of buildings.filter(b=>!b.built&&!b.assignedWorkers.length))
+    for(const b of buildings.filter(b=>isConstructionSite(b)&&!b.assignedWorkers.length))
       for(const v of workers())if(this.dispatchBuilder(v.id,b.id))break;
   }
 
@@ -1098,7 +1096,7 @@ export class Game {
   /** Number of workers currently standing on this building's arrival tiles (construction only progresses when > 0). */
   private getBuildersOnSite(buildingId: string): number {
     const b = this.buildingSystem.buildings.find(x => x.id === buildingId);
-    if (!b || b.built) return 0;
+    if (!b || !isConstructionSite(b)) return 0;
     const arrivalTiles = this.buildingSystem.getArrivalTiles(b);
     const tileSet = new Set(arrivalTiles.map(p => `${p.x},${p.y}`));
     let count = 0;
@@ -1114,7 +1112,7 @@ export class Game {
   /** True if at least one villager is on site building (unbuilt) or on site repairing. */
   private hasAnyoneBuildingOrRepairing(): boolean {
     for (const b of this.buildingSystem.buildings) {
-      if (!b.built && this.getBuildersOnSite(b.id) > 0) return true;
+      if (isConstructionSite(b) && this.getBuildersOnSite(b.id) > 0) return true;
     }
     for (const v of this.villagerSystem.villagers) {
       if (v.health === HealthState.Dead || v.currentTask !== 'repairing') continue;
@@ -1148,7 +1146,7 @@ export class Game {
   /** Keep the builder at a new garden or fur workshop as its first worker. */
   private releaseBuildersFromCompletedBuildings(): void {
     for (const b of this.buildingSystem.buildings) {
-      if (!b.built || b.assignedWorkers.length === 0) continue;
+      if (isConstructionSite(b) || b.assignedWorkers.length === 0) continue;
       for (const villagerId of [...b.assignedWorkers]) {
         const v = this.villagerSystem.getVillagerById(villagerId);
         if (v && v.health !== HealthState.Dead && v.currentTask === 'building') {
@@ -1196,6 +1194,8 @@ export class Game {
   }
 
   private startBuildMode(buildingId: string): void {
+    const cfg = this.buildingSystem.getBuildingConfig(buildingId);
+    if (!cfg || cfg.upgradeOnly || !this.techSystem.isBuildingUnlocked(buildingId)) return;
     this.deselectVillager();
     this.mode = 'build';
     this.ui.closePanels();
@@ -1231,12 +1231,33 @@ export class Game {
     this.ui.closePanels();
   }
 
+  private upgradeBuilding(buildingId: string): void {
+    const b = this.buildingSystem.buildings.find(b=>b.id===buildingId);
+    if (!b || b.upgradeProgress !== undefined) return;
+    const upgrade = buildingUpgrade(b), blocked = upgradeRequirement(b, this.techSystem.unlockedTechs, this.buildingSystem.buildings);
+    if (!upgrade || blocked) { this.ui.notify(blocked ?? 'No upgrade available.'); return; }
+    if (!this.resourceSystem.canAfford(upgrade.costWood, 0)) { this.ui.notify(`Need ${upgrade.costWood} wood for this upgrade.`); return; }
+    // In-place upgrades never grow into neighbouring structures or displace residents.
+    const target = this.buildingSystem.getBuildingConfig(upgrade.targetId ?? b.configId)!;
+    const current = this.buildingSystem.getBuildingConfig(b.configId)!;
+    if (target.width !== current.width || target.height !== current.height) return;
+    this.resourceSystem.consumeWood(upgrade.costWood);
+    b.upgradeProgress = 0;
+    if (!this.stayInShelterMode) for (const v of this.orderedCandidates('building')) {
+      if (!hasCargo(v) && this.dispatchBuilder(v.id, b.id)) break;
+    }
+    this.ui.hideActionMenu(); this.ui.hideInfo(); this.updateUI();
+    this.ui.notify(`${upgrade.name} queued. The building stays in use.`, 3000, 'routine');
+  }
+
   private cancelBuilding(buildingId: string): void {
     const building = this.buildingSystem.buildings.find(b => b.id === buildingId);
-    if (!building || building.built) return;
+    if (!building || !isConstructionSite(building)) return;
+    const upgrading = building.upgradeProgress !== undefined;
     const cfg = this.buildingSystem.getBuildingConfig(building.configId);
     if (cfg) {
-      this.resourceSystem.addWood(Math.floor(cfg.costWood * getConfig().gameplay.refundFraction));
+      const cost = upgrading ? buildingUpgrade(building)!.costWood : cfg.costWood;
+      this.resourceSystem.addWood(Math.floor(cost * getConfig().gameplay.refundFraction));
     }
     const assignedIds = new Set([
       ...building.assignedWorkers,
@@ -1253,8 +1274,9 @@ export class Game {
         v.path = [];
       }
     }
-    this.buildingSystem.demolishBuilding(buildingId);
-    this.ui.notify('Construction cancelled. 50% wood refunded.');
+    if (upgrading) { delete building.upgradeProgress; building.assignedWorkers = []; }
+    else this.buildingSystem.demolishBuilding(buildingId);
+    this.ui.notify(`${upgrading ? 'Upgrade' : 'Construction'} cancelled. 50% wood refunded.`);
     this.ui.hideInfo();
     this.ui.hideActionMenu();
   }
@@ -1345,7 +1367,7 @@ export class Game {
         v.resumeAnnualAfterDelivery=false;
         const plan=v.annualJob,b=this.buildingSystem.buildings.find(b=>b.id===plan?.buildingId);
         if(plan?.task==='clearing')this.startNearestClearing(v.id);
-        else if(plan?.task==='building') {const site=b&&!b.built?b:this.buildingSystem.buildings.find(b=>!b.built&&!b.assignedWorkers.length);if(site)this.dispatchBuilder(v.id,site.id);}
+        else if(plan?.task==='building') {const site=b&&isConstructionSite(b)?b:this.buildingSystem.buildings.find(b=>isConstructionSite(b)&&!b.assignedWorkers.length);if(site)this.dispatchBuilder(v.id,site.id);}
         else if(b?.built)this.villagerSystem.assignVillagerToBuilding(v.id,b.id,this.buildingSystem.buildings);
       }
       const kind=v.queuedExpedition;if(!kind)continue;
@@ -1459,7 +1481,7 @@ export class Game {
       let restored=false;
       const building=this.buildingSystem.buildings.find(b=>b.id===job.buildingId);
       if(job.task==='building') {
-        const site=building&&!building.built?building:this.buildingSystem.buildings.find(b=>!b.built&&!b.assignedWorkers.length);
+        const site=building&&isConstructionSite(building)?building:this.buildingSystem.buildings.find(b=>isConstructionSite(b)&&!b.assignedWorkers.length);
         if(site)restored=this.dispatchBuilder(v.id,site.id);
       }
       else if(job.task==='repairing' && building && (building.hp<building.maxHp||building.needsRepair)) {
@@ -1545,12 +1567,32 @@ export class Game {
       const arrivalTiles = this.buildingSystem.getArrivalTiles(building);
       const atGate = arrivalTiles.some(t => Math.floor(v.x) === t.x && Math.floor(v.y) === t.y);
       if (!atGate) continue;
-      building.gateOpen = !building.gateOpen;
-      this.ui.notify(building.gateOpen ? 'Gate opened.' : 'Gate closed.', 3000, 'routine');
+      this.toggleGate(building.id);
       v.currentTask = null;
       v.assignedBuildingId = null;
       v.state = VillagerState.Idle;
     }
+  }
+
+  /** A gate control works while paused or sheltered and changes routing immediately. */
+  private syncGateRouting(): void {
+    const buildings = this.buildingSystem.buildings;
+    this.villagerSystem.openGateIds = new Set(buildings.filter(b=>b.configId==='palisadeGate'&&b.gateOpen).map(b=>b.id));
+    this.villagerSystem.unbuiltPalisadeIds = new Set(buildings.filter(b=>(b.configId==='palisadeGate'||b.configId==='palisadeWall')&&!b.built).map(b=>b.id));
+  }
+
+  private toggleGate(buildingId: string): void {
+    const gate = this.buildingSystem.buildings.find(b=>b.id===buildingId);
+    if (!gate?.built || gate.configId !== 'palisadeGate') return;
+    gate.gateOpen = !gate.gateOpen;
+    if (gate.gateOpen) this.villagerSystem.openGateIds.add(gate.id);
+    else this.villagerSystem.openGateIds.delete(gate.id);
+    if (!gate.gateOpen) for (const v of this.villagerSystem.getAliveVillagers()) {
+      if (v.targetX === null || v.targetY === null || !v.path.some(p=>p.x===gate.tileX&&p.y===gate.tileY)) continue;
+      if (!this.villagerSystem.assignPath(v,v.targetX,v.targetY)) v.path=[];
+    }
+    this.ui.notify(gate.gateOpen ? 'Gate opened.' : 'Gate closed.',3000,'routine');
+    this.ui.hideActionMenu(); this.ui.hideInfo(); this.updateUI(); this.render();
   }
 
   private sendVillagerToFarm(villagerId: string, buildingId: string): void {
@@ -1675,9 +1717,10 @@ export class Game {
     this.resourceSystem.resources.techPoints -= tech.cost;
     const newBuildings = this.techSystem.unlockTech(techId);
     this.ui.notify(`Unlocked: ${tech.name}`);
-    if (newBuildings.length > 0) {
-      this.ui.notify(`New buildings: ${newBuildings.join(', ')}`);
-    }
+    const construction = newBuildings.filter(id=>!getConfig().buildings[id]?.upgradeOnly);
+    const upgrades = newBuildings.filter(id=>getConfig().buildings[id]?.upgradeOnly);
+    if (construction.length) this.ui.notify(`New buildings: ${construction.map(id=>getConfig().buildings[id].name).join(', ')}`);
+    if (upgrades.length) this.ui.notify(`Building upgrades available: ${upgrades.map(id=>getConfig().buildings[id].name).join(', ')}. Select an existing building.`);
     this.refreshTechPanel();
     this.refreshBuildPanel();this.ui.closePanels();this.updateUI();
   }
@@ -1686,9 +1729,7 @@ export class Game {
     const alive = this.villagerSystem.getAliveCount();
     const cfg = getConfig().villagers;
     const winterMult = this.seasonSystem.isWinter() ? cfg.winterFoodConsumptionMultiplier : 1;
-    const smokehouseBonus = this.buildingSystem.getBuildingsOfType('smokehouse').length > 0
-      ? getConfig().resources.smokehouseFoodEfficiencyBonus : 1;
-    const foodConsumptionPerSecond = cfg.foodConsumptionPerSecond * alive * winterMult / smokehouseBonus;
+    const foodConsumptionPerSecond = cfg.foodConsumptionPerSecond * alive * winterMult;
     const foodLow = foodConsumptionPerSecond > 0 &&
       this.resourceSystem.resources.food < getConfig().gameplay.foodWarningSeconds * foodConsumptionPerSecond;
 
@@ -1735,7 +1776,7 @@ export class Game {
           if (v.currentTask === 'clearing' && v.targetX !== null && v.targetY !== null) progress = this.tileMap.getTile(v.targetX, v.targetY)?.clearingProgress ?? 0;
           else if (v.currentTask === 'hunting') progress = v.taskProgress / cfg.freeHuntDuration;
           else if (v.currentTask === 'repairing') progress = v.taskProgress / getConfig().repair.repairTime;
-          else if (v.currentTask === 'building') progress = b?.buildProgress ?? 0;
+          else if (v.currentTask === 'building') progress = b?.upgradeProgress ?? b?.buildProgress ?? 0;
           else if (v.currentTask === 'farming') { progress = b?.cropState==='ripe'?(b.harvestProgress??0)/getConfig().farming.harvestWorkSeconds:b?.farmingProgress??0; }
           else if (b?.configId==='furWorkshop') progress=(b.productionProgress??0)/getConfig().resources.furWorkshopProcessTime;
         }
@@ -1810,6 +1851,7 @@ export class Game {
     this.hordeSystem.observeTowerConstruction(this.buildingSystem.buildings);
     return {
       economyVersion: 2,
+      buildingUpgradeVersion: 1,
       researchRewardTiming:'winter-start',
       lastRewardedWinter: this.lastRewardedWinter,
       season: this.seasonSystem.serialize(),
@@ -1858,6 +1900,7 @@ export class Game {
         const hp=getConfig().buildings.watchtower.hp;if(b.maxHp!==hp){b.hp=hp*b.hp/b.maxHp;b.maxHp=hp;}
       }
     }
+    this.syncGateRouting();
     const extraWards = this.buildingSystem.buildings.filter(b => b.configId === 'herbalFire').slice(getConfig().buildings.herbalFire.maxCount);
     for (const b of extraWards) this.buildingSystem.demolishBuilding(b.id);
     if (data.villagers) {

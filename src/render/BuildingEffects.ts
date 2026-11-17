@@ -1,6 +1,6 @@
 /** Smoke is a separate time-based effect; empty houses render none at all. */
-export function chimneySmoke(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
-  const mouthX = x - size * .207, mouthY = y - size * .713;
+export function chimneySmoke(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number, mouth = {x: -.207, y: -.713}): void {
+  const mouthX = x + size * mouth.x, mouthY = y + size * mouth.y;
   ctx.save();
   for (let i = 0; i < 6; i++) {
     const age = (time * .22 + i / 6) % 1, radius = size * (.009 + age * .022);

@@ -1,4 +1,4 @@
-import { ResourceState, Season, BuildingConfig, TechConfig, VillagerData } from '../types';
+import { ResourceState, Season, BuildingConfig, ResearchOption, VillagerData } from '../types';
 import { SeasonBriefing } from '../systems/TutorialSystem';
 import { SeasonTutorial } from './SeasonTutorial';
 import { TargetedVillagerOrder, VillagerOrder, villagerActivity, villagerOrders } from '../game/VillagerOrders';
@@ -383,6 +383,7 @@ export class UIManager {
 
     for (const [id, cfg] of Object.entries(buildings)) {
       if (!unlockedIds.has(id)) continue;
+      if (cfg.upgradeOnly) continue;
       if (cfg.tier > maxBuildingTier) continue;
       const affordable = canAfford(cfg.costWood, cfg.costTools, cfg.id);
       const item = this.el('div', {
@@ -421,12 +422,12 @@ export class UIManager {
   }
 
   updateTechPanel(
-    available: TechConfig[],
+    available: ResearchOption[],
     unlocked: Set<string>,
     techPoints: number,
     currentLevel: number,
   ): void {
-    const key = `${currentLevel}:${Math.floor(techPoints)}:${[...unlocked].join(',')}:${available.map(t => t.id).join(',')}`;
+    const key = `${currentLevel}:${Math.floor(techPoints)}:${[...unlocked].join(',')}:${available.map(t => `${t.id}:${t.blockedReason ?? ''}`).join(',')}`;
     if (this.techPanel.dataset.contentKey === key) return;
     this.techPanel.dataset.contentKey = key;
     this.techPanel.innerHTML = `
@@ -453,7 +454,7 @@ export class UIManager {
     }
 
     for (const tech of available) {
-      const canAfford = techPoints >= tech.cost;
+      const canAfford = techPoints >= tech.cost && !tech.blockedReason;
       const item = this.el('div', {
         padding: '6px', marginBottom: '4px', borderRadius: '4px',
         background: canAfford ? 'rgba(60,80,60,0.8)' : 'rgba(40,40,50,0.5)',
@@ -465,9 +466,12 @@ export class UIManager {
         <div style="font-weight:bold;font-size:12px">${tech.id === 'herbalFire' ? iconMarkup('ward') : ''}${tech.name} <span style="opacity:0.5">T${tech.tier}</span></div>
         <div style="font-size:10px;opacity:0.7">${tech.description}</div>
         <div style="font-size:10px;margin-top:2px">Cost: ${iconMarkup('research', true)}${tech.cost}</div>
+        ${tech.blockedReason ? `<div class="research-requirement">${tech.blockedReason}</div>` : ''}
       `;
       item.setAttribute('data-tech-id', tech.id);
       item.setAttribute('role', 'button');
+      item.setAttribute('aria-disabled', String(!canAfford));
+      item.title = tech.blockedReason ?? tech.description;
       item.setAttribute('tabindex', canAfford ? '0' : '-1');
       if (canAfford) {
         item.addEventListener('keydown', e => { if ((e as KeyboardEvent).key === 'Enter') this.callbacks.onTechUnlock(tech.id); });

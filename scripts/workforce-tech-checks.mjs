@@ -11,7 +11,7 @@ export async function runWorkforceTechChecks({check,ev,shot,call,clickSelector,b
     assert(await ev('!g.ui.isTechPanelOpen()&&g.resourceSystem.resources.techPoints===49'));
     const r=await ev(`(()=>{const tech=g.techSystem,available=()=>tech.getAvailableTechs(1,g.buildingSystem.buildings).map(t=>t.id),branch=available();g.unlockTech('furWorkshop');g.unlockTech('palisade');const incomplete=available();g.unlockTech('herbalFire');const advanced=available(),costs=Object.fromEntries(Object.entries(balance.technology.techs).map(([id,t])=>[id,t.cost]));g.unlockTech('lumberCamp');const before=tech.canUnlock('watchtower',50,5,g.buildingSystem.buildings),mill=g.buildingSystem.placeBuilding('lumberCamp',42,27),unfinished=tech.canUnlock('watchtower',50,5,g.buildingSystem.buildings);mill.built=true;mill.buildProgress=1;return{branch,incomplete,advanced,costs,before,unfinished,built:tech.canUnlock('watchtower',3,1,g.buildingSystem.buildings),short:tech.canUnlock('watchtower',2,5,g.buildingSystem.buildings)};})()`);
     assert.deepEqual(new Set(r.branch),new Set(['furWorkshop','palisade','herbalFire']));assert.deepEqual(r.incomplete,['herbalFire']);
-    assert(r.advanced.includes('lumberCamp')&&!r.advanced.includes('watchtower'));
+    assert(r.advanced.includes('lumberCamp')&&r.advanced.includes('watchtower'));
     for(const [id,cost]of Object.entries(r.costs))assert.equal(cost,['storage','palisade'].includes(id)?1:id==='watchtower'?3:2,id);
     assert(!r.before&&!r.unfinished&&r.built&&!r.short);await button('Tech');await shot('research-advanced-sawmill');await ev('g.ui.closePanels()');return r;
   });

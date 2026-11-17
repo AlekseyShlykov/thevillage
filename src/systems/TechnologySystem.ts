@@ -1,4 +1,4 @@
-import { BuildingInstance, TechConfig } from '../types';
+import { BuildingInstance, ResearchOption, TechConfig } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 
 export class TechnologySystem {
@@ -13,8 +13,18 @@ export class TechnologySystem {
     return getConfig().technology.techs;
   }
 
-  getAvailableTechs(_currentLevel: number,buildings:BuildingInstance[]=[]): TechConfig[] {
-    return Object.values(this.getAllTechs()).filter(t=>!this.unlockedTechs.has(t.id)&&this.requirementsMet(t,buildings));
+  getAvailableTechs(_currentLevel: number,buildings:BuildingInstance[]=[]): ResearchOption[] {
+    return Object.values(this.getAllTechs())
+      .filter(t=>!this.unlockedTechs.has(t.id) && (t.visibleAfter
+        ? t.visibleAfter.every(id=>this.unlockedTechs.has(id)) : this.requirementsMet(t,buildings)))
+      .map(t=>({...t,blockedReason:this.getBlockedReason(t,buildings)}));
+  }
+
+  private getBlockedReason(tech: TechConfig, buildings: BuildingInstance[]): string | null {
+    const missingTech = tech.prerequisites?.find(id=>!this.unlockedTechs.has(id));
+    if (missingTech) return `Research ${this.getAllTechs()[missingTech]?.name ?? missingTech} first.${tech.requiresBuildings?.includes(missingTech) ? ' Then complete the building.' : ''}`;
+    const missingBuilding = tech.requiresBuildings?.find(id=>!buildings.some(b=>b.built&&b.configId===id));
+    return missingBuilding ? `Complete a ${getConfig().buildings[missingBuilding].name} before researching ${tech.name}.` : null;
   }
 
   private requirementsMet(tech:TechConfig,buildings:BuildingInstance[]):boolean {

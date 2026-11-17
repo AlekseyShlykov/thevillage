@@ -94,13 +94,13 @@ Wood, food, raw fur, spare clothing, protective herbs and research persist.
 Storage expands wood/food/fur capacity; the saved tools field is compatibility-only; herbs have a separate fixed
 limit of five, including outbound reservations and returning carriers.
 notifications fire when reaching a limit, not on every frame. Food is consumed
-continuously, with higher winter consumption and a smokehouse efficiency bonus.
+continuously, with higher winter consumption.
 Starvation uses a configurable grace period and death interval.
 
 Production requires living assigned workers who have reached a building's
 perimeter. Injuries, comfort, weather and winter affect work. Building production
 progress is saved. Sawmills require nearby forest; fur workshops process
-pelts from direct hunting into clothing. Smokehouses reduce consumption passively.
+pelts from direct hunting into clothing. Smokehouse is currently retired.
 The tool Workshop and Better Tools research are removed: every resident has
 permanent tools and no construction recipe requires spare tools.
 
@@ -240,7 +240,7 @@ protection does not prevent hypothermia: Shelter remains necessary.
 
 ### HeatingSystem
 
-Every completed hut, house, large house, guard tower and forest camp fire uses
+Every completed hut, house, guard tower and forest camp fire uses
 four wood over one full winter, including empty shelters. Consumption is continuous,
 shared equally between shelters, and absent in other seasons. Unfinished buildings
 use no fuel. No extra charge occurs on entering a season or loading a save.
@@ -276,13 +276,52 @@ winter. Previously unlocked technologies remain owned.
 A new village has zero stars and already knows gardens and moats. Only Storage
 is initially researchable. Storage unlocks the Fur Workshop, Palisade and
 Protective Herbs branch. All three branch technologies must be researched before
-other technologies become available. Timber Guard Tower additionally requires
-Sawmill research and a completed Sawmill in the settlement. These dependencies
-are data-driven `prerequisites` and `requiresBuildings`; population levels no
-longer gate research. Costs: Storage and Palisade one star; Timber Guard Tower
-three stars; every other technology two stars. Every researched building appears
-in Build. Successfully purchasing a technology immediately closes the Tech panel.
-Hearth comfort and reinforced palisades retain their effects.
+the compact advanced set appears: Forest Camp Fire, Sawmill, Warm House and
+Timber Guard Tower. The tower card appears alongside Sawmill, disabled with a
+visible requirement and hover tooltip until Sawmill research and a completed
+Sawmill are present. Its card updates immediately when the mill finishes.
+Dependencies are data-driven `prerequisites`, `visibleAfter` and `requiresBuildings`;
+population levels no longer gate research. Costs: Storage and Palisade one star;
+Timber Guard Tower three stars; every other technology two stars. Warm House
+unlocks in-place upgrades instead of a separate Build entry. Successfully
+purchasing a technology immediately closes the Tech panel. Smokehouse, Large
+House, Hearth and the global Reinforced Palisade research are retired for now.
+
+### BuildingUpgrades
+
+Select a completed Hut after Warm House research and choose Upgrade to House.
+It costs 25 wood and 28 base construction seconds. One resident must reach the
+perimeter and build, with the ordinary weather/season/productivity modifiers.
+The Hut remains a functioning four-place shelter during construction; completion
+changes it to a six-place House with 200 HP and +2 comfort. ID, coordinates,
+2 × 2 footprint, resident locations, damage fraction and heating demand (four
+wood per winter) remain unchanged. Distinct generated summer/winter log-house
+sprites show chinked walls, heavy shingles and a stone foundation. Chimney smoke
+is still separate animation and appears only when residents are inside.
+
+After researching and completing Sawmill, select each existing palisade section
+or gate to reinforce it. Walls cost four wood and six base construction seconds;
+gates cost eight wood and eight seconds. Completed upgrades double that section's
+HP (60 → 120 for walls, 120 → 240 for gates) and visibly thicken the timber and
+add a supporting rail. Connections, corners, open gates, rotation, snow and
+walkability remain intact. This is an individual upgrade, not another research
+card or building type.
+
+Pending upgrades retain built=true, normal defense and shelter functionality;
+`upgradeProgress` distinguishes active construction. Builders can be redirected,
+reassigned automatically or resume after winter shelter. Progress, workers and
+completed reinforcement persist in saves. Cancelling returns the configured
+construction refund (50%) once, releases its workers and keeps the original
+building. Upgrades preserve existing damage and cannot be repeated on a
+fully upgraded structure. All costs, times, target IDs and HP multipliers are
+configured on each building's `upgrade` record in the balance JSON.
+
+Older saves refund Smokehouse construction/research and Hearth research once.
+Large Houses become Houses without displacement (the old excess footprint
+becomes clear ground), transferring research when necessary. Former global
+palisade reinforcement becomes an individual completed upgrade on existing
+walls and gates; its research stars are refunded. Old House footprints are
+normalized from 3 × 2 to 2 × 2 and retain their damage fraction.
 
 The former Lumber Camp is displayed as Sawmill (saved ID `lumberCamp` is retained).
 Its existing wood production and nearby clearing-yield bonus remain. It is now
@@ -572,3 +611,38 @@ manual assignments can still use the configured garden capacity of two.
 Generic Hunt, Herbs, Clear, repair, construction and production assignments do
 not remove farmers. Explicit individual orders can replace their job. Food and
 repair orders reclaim automatic woodcutters before interrupting other jobs.
+
+
+### Route rejection before A*
+
+`WalkableRegions` caches connected walkable areas so residents can reject
+impossible work assignments before running A*. This avoids repeating full-grid
+searches for every idle resident behind a closed palisade. Tile-map revision,
+open gates, unfinished palisades and shelter footprints invalidate the cache.
+A* still constructs every accepted movement path. A resident standing on a newly
+blocked tile can still try walking out; temporary resident collisions are handled
+by the existing movement system rather than the region cache.
+
+
+### Painted palisades, gate controls and tower placement
+
+An upgraded House has six actual shelter places; all six residents can enter the
+same home. Reinforced palisades use generated summer/winter timber-panel PNGs.
+`FenceSprites` projects each panel between the existing half-tile endpoints and
+covers the shared centre post, preserving straight lines, all corners and
+junctions. Ordinary fences and missing-image cases retain their Canvas rendering.
+
+Gates use four generated sprites: closed/open for summer and winter. The source
+variants share their post anchors; affine projection aligns those posts with the
+same fence endpoints in both grid axes. Upgraded gates retain the same state
+images at a stronger post height. Click the visible model of a completed gate and choose Open gate or
+Close gate. This acts immediately, including on pause and during shelter mode,
+and needs no worker. Closing recalculates any route crossing the gate. Gate state
+persists in saves, and loading restores walkability before a simulation tick.
+Legacy resident toggle-gate tasks still finish through the same control.
+
+Guard towers may touch palisade walls and gates. The rule is symmetric: a fence
+or gate can also be built next to an existing tower. Overlap, fully blocked tower
+entrances and ordinary building spacing are still rejected. The exception is
+configured as `adjacentBuildingExceptions` on the tower; moats retain their
+terrain placement rules.

@@ -28,7 +28,6 @@
     "woodPerForestTile": 2,
     "lumberCampWoodBonus": 1.5,
     "furWorkshopProcessTime": 20,
-    "smokehouseFoodEfficiencyBonus": 1.3,
     "toolDefenseBonus": 1.2,
     "lumberCampWoodPerSecond": 0.35,
     "furPerClothing": 1,
@@ -75,7 +74,14 @@
       "tier": 1,
       "maxWorkers": 0,
       "hp": 100,
-      "description": "Basic shelter for 4 villagers"
+      "description": "Basic shelter for 4 villagers",
+      "upgrade": {
+        "name": "Upgrade to House",
+        "technology": "house",
+        "costWood": 25,
+        "buildTime": 28,
+        "targetId": "house"
+      }
     },
     "garden": {
       "id": "garden",
@@ -142,7 +148,17 @@
       "tier": 2,
       "maxWorkers": 0,
       "hp": 60,
-      "description": "Defensive wall segment"
+      "description": "Defensive wall segment After completing a Sawmill, reinforce this section in place to double its durability.",
+      "upgrade": {
+        "name": "Reinforce palisade",
+        "technology": "lumberCamp",
+        "requiresBuildings": [
+          "lumberCamp"
+        ],
+        "costWood": 4,
+        "buildTime": 6,
+        "hpMultiplier": 2
+      }
     },
     "palisadeGate": {
       "id": "palisadeGate",
@@ -157,7 +173,17 @@
       "tier": 2,
       "maxWorkers": 0,
       "hp": 120,
-      "description": "Entry gate for the village wall"
+      "description": "Open or close from its action menu, including while sheltered. Reinforce in place after completing a Sawmill to double its durability.",
+      "upgrade": {
+        "name": "Reinforce gate",
+        "technology": "lumberCamp",
+        "requiresBuildings": [
+          "lumberCamp"
+        ],
+        "costWood": 8,
+        "buildTime": 8,
+        "hpMultiplier": 2
+      }
     },
     "campFire": {
       "id": "campFire",
@@ -193,21 +219,6 @@
       "hp": 80,
       "description": "Workers turn pelts into personal fur coats. Each coat protects one resident and lasts 3 winters."
     },
-    "smokehouse": {
-      "id": "smokehouse",
-      "name": "Smokehouse",
-      "width": 2,
-      "height": 2,
-      "costWood": 20,
-      "costTools": 0,
-      "buildTime": 26,
-      "capacity": 0,
-      "category": "food",
-      "tier": 3,
-      "maxWorkers": 0,
-      "hp": 70,
-      "description": "Preserves food: reduces village food use by 23%. No worker needed."
-    },
     "watchtower": {
       "id": "watchtower",
       "name": "Timber Guard Tower",
@@ -223,15 +234,19 @@
       "hp": 360,
       "detectionRadius": 8,
       "lightRadius": 4,
-      "description": "A strong shelter whose occupants shoot monsters. Completing the first tower enables defense and doubles monster health.",
+      "description": "A strong shelter whose occupants shoot monsters. Completing the first tower enables defense and doubles monster health. Can be built directly against palisades and gates.",
       "towerRange": 7,
       "towerDamage": 18,
-      "towerAttackInterval": 1.25
+      "towerAttackInterval": 1.25,
+      "adjacentBuildingExceptions": [
+        "palisadeWall",
+        "palisadeGate"
+      ]
     },
     "house": {
       "id": "house",
       "name": "House",
-      "width": 3,
+      "width": 2,
       "height": 2,
       "costWood": 40,
       "costTools": 0,
@@ -240,25 +255,10 @@
       "category": "housing",
       "tier": 4,
       "maxWorkers": 0,
-      "hp": 120,
+      "hp": 200,
       "comfortBonus": 2,
-      "description": "Better housing for 6 villagers"
-    },
-    "largeHouse": {
-      "id": "largeHouse",
-      "name": "Large House",
-      "width": 3,
-      "height": 3,
-      "costWood": 60,
-      "costTools": 0,
-      "buildTime": 30,
-      "capacity": 8,
-      "category": "housing",
-      "tier": 5,
-      "maxWorkers": 0,
-      "hp": 150,
-      "comfortBonus": 4,
-      "description": "Spacious housing for 8 villagers"
+      "description": "Upgrade an existing Hut: 6 shelter places, 200 HP and extra comfort. Same footprint; uses 4 wood per winter.",
+      "upgradeOnly": true
     },
     "herbalFire": {
       "id": "herbalFire",
@@ -422,7 +422,7 @@
         "unlocks": [
           "lumberCamp"
         ],
-        "description": "Gather timber efficiently. A completed sawmill is required before guard tower research.",
+        "description": "Gather timber efficiently. Complete a Sawmill to research guard towers and reinforce existing palisades.",
         "prerequisites": [
           "furWorkshop",
           "palisade",
@@ -471,21 +471,6 @@
           "storage"
         ]
       },
-      "smokehouse": {
-        "id": "smokehouse",
-        "name": "Smokehouse",
-        "tier": 3,
-        "cost": 2,
-        "unlocks": [
-          "smokehouse"
-        ],
-        "description": "Improves food efficiency",
-        "prerequisites": [
-          "furWorkshop",
-          "palisade",
-          "herbalFire"
-        ]
-      },
       "watchtower": {
         "id": "watchtower",
         "name": "Timber Guard Tower",
@@ -503,64 +488,22 @@
         ],
         "requiresBuildings": [
           "lumberCamp"
+        ],
+        "visibleAfter": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
         ]
       },
       "house": {
         "id": "house",
-        "name": "House",
+        "name": "Warm House",
         "tier": 4,
         "cost": 2,
         "unlocks": [
           "house"
         ],
-        "description": "Better villager housing",
-        "prerequisites": [
-          "furWorkshop",
-          "palisade",
-          "herbalFire"
-        ]
-      },
-      "largeHouse": {
-        "id": "largeHouse",
-        "name": "Large House",
-        "tier": 5,
-        "cost": 2,
-        "unlocks": [
-          "largeHouse"
-        ],
-        "description": "Spacious housing",
-        "prerequisites": [
-          "furWorkshop",
-          "palisade",
-          "herbalFire"
-        ]
-      },
-      "reinforcedPalisade": {
-        "id": "reinforcedPalisade",
-        "name": "Reinforced Palisade",
-        "tier": 5,
-        "cost": 2,
-        "unlocks": [],
-        "description": "Stronger defensive walls",
-        "effect": {
-          "palisadeHPMultiplier": 2.0
-        },
-        "prerequisites": [
-          "furWorkshop",
-          "palisade",
-          "herbalFire"
-        ]
-      },
-      "hearth": {
-        "id": "hearth",
-        "name": "Hearth",
-        "tier": 5,
-        "cost": 2,
-        "unlocks": [],
-        "description": "Improved building warmth",
-        "effect": {
-          "comfortBonus": 8
-        },
+        "description": "Upgrade existing Huts in place: six shelter places, stronger log walls and additional comfort. Select a Hut after researching.",
         "prerequisites": [
           "furWorkshop",
           "palisade",
@@ -728,6 +671,27 @@
       "refundWood": 0,
       "refundTools": 0,
       "refundResearch": 2
+    },
+    "smokehouse": {
+      "refundWood": 20,
+      "refundTools": 0,
+      "refundResearch": 2
+    },
+    "largeHouse": {
+      "refundWood": 0,
+      "refundTools": 0,
+      "refundResearch": 2,
+      "replacement": "house"
+    },
+    "hearth": {
+      "refundWood": 0,
+      "refundTools": 0,
+      "refundResearch": 2
+    },
+    "reinforcedPalisade": {
+      "refundWood": 0,
+      "refundTools": 0,
+      "refundResearch": 2
     }
   },
   "herbs": {
@@ -764,7 +728,6 @@
     "buildingIds": [
       "hut",
       "house",
-      "largeHouse",
       "watchtower",
       "campFire"
     ]

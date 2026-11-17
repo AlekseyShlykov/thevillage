@@ -3,22 +3,26 @@ import { BuildingInstance, Season } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 import { fenceAxis, fenceConnections } from '../world/FenceConnections';
 import { hash, Point, polygon } from './IsometricArt';
+import { AssetLoader } from './AssetLoader';
+import { FenceSprites } from './FenceSprites';
 
 /** Connected timber panels share the same centreline and posts in both axes.
  * Grain, rounded log caps, lashings and winter snow match the illustrated village. */
 export class FenceArt {
-  constructor(private camera: Camera) {}
+  private sprites?: FenceSprites;
+  constructor(private camera: Camera, assets?: AssetLoader) {if(assets)this.sprites=new FenceSprites(assets,camera);}
   private point(x: number, y: number): Point { const ts = getConfig().map.tileSize; return this.camera.worldToScreen(x * ts, y * ts); }
   draw(ctx: CanvasRenderingContext2D, b: BuildingInstance, buildings: BuildingInstance[], season: Season): void {
     const x = b.tileX + .5, y = b.tileY + .5, z = this.camera.zoom;
     if (b.configId === 'palisadeGate') {
       const [dx,dy] = fenceAxis(b, buildings), a = this.point(x - dx * .5, y - dy * .5), c = this.point(x + dx * .5, y + dy * .5);
+      if(this.sprites?.gate(ctx,a,c,season,!!b.gateOpen,!!b.upgraded))return;
       // Open leaves swing around their posts on the ground plane, preserving hinges.
       const angle = b.gateOpen ? Math.PI * .43 : 0, cos = Math.cos(angle), sin = Math.sin(angle);
       const left = this.point(x - dx * .5 + (dx * cos - dy * sin) * .49, y - dy * .5 + (dx * sin + dy * cos) * .49);
       const right = this.point(x + dx * .5 - (dx * cos + dy * sin) * .49, y + dy * .5 - (-dx * sin + dy * cos) * .49);
-      this.gateLeaf(ctx, a, left, season); this.gateLeaf(ctx, c, right, season);
-      this.log(ctx, a, 36, 7, hash(b.tileX, b.tileY), season); this.log(ctx, c, 36, 7, hash(b.tileX + 1, b.tileY), season);
+      this.gateLeaf(ctx, a, left, season, b.upgraded); this.gateLeaf(ctx, c, right, season, b.upgraded);
+      this.log(ctx, a, b.upgraded?42:36, b.upgraded?9:7, hash(b.tileX, b.tileY), season); this.log(ctx, c, b.upgraded?42:36, b.upgraded?9:7, hash(b.tileX + 1, b.tileY), season);
       if (!b.gateOpen) {
         const p = this.point(x, y); ctx.strokeStyle = '#536052'; ctx.lineWidth = 3 * z;
         ctx.beginPath(); ctx.moveTo(p.x - 7 * z, p.y - 17 * z); ctx.lineTo(p.x + 7 * z, p.y - 17 * z); ctx.stroke();
@@ -30,13 +34,15 @@ export class FenceArt {
     const centre = this.point(x, y);
     for (const [dx,dy] of dirs.slice().sort((a,c) => a[0]+a[1]-c[0]-c[1])) {
       const end = this.point(x + dx * .5, y + dy * .5);
+      if(b.upgraded&&this.sprites?.panel(ctx,centre,end,38,season))continue;
       this.rail(ctx, centre, end, 11, season); this.rail(ctx, centre, end, 23, season);
+      if(b.upgraded)this.rail(ctx, centre, end, 32, season);
       for (let i = 1; i <= 3; i++) {
         const t = i / 3, p = { x: centre.x + (end.x - centre.x) * t, y: centre.y + (end.y - centre.y) * t };
-        this.log(ctx, p, 25 + hash(b.tileX * 7 + dx * i, b.tileY * 7 + dy * i) % 5, 5.4, hash(b.tileX * 13 + i, b.tileY + dx + dy), season);
+        this.log(ctx, p, (b.upgraded?34:25) + hash(b.tileX * 7 + dx * i, b.tileY * 7 + dy * i) % 5, b.upgraded?7:5.4, hash(b.tileX * 13 + i, b.tileY + dx + dy), season);
       }
     }
-    this.log(ctx, centre, 32, 6.5, hash(b.tileX, b.tileY), season);
+    if(!b.upgraded||!this.sprites?.post(ctx,centre,40,8.5,season))this.log(ctx, centre, b.upgraded?40:32, b.upgraded?8.5:6.5, hash(b.tileX, b.tileY), season);
   }
   private log(ctx: CanvasRenderingContext2D, p: Point, height: number, width: number, seed: number, season: Season): void {
     const z = this.camera.zoom, w = width * z, h = height * z;
@@ -62,12 +68,13 @@ export class FenceArt {
       ctx.moveTo(a.x,a.y-(height+2)*z);ctx.lineTo(b.x,b.y-(height+2)*z);ctx.stroke();ctx.lineCap='butt';
     }
   }
-  private gateLeaf(ctx: CanvasRenderingContext2D, a: Point, b: Point, season: Season): void {
+  private gateLeaf(ctx: CanvasRenderingContext2D, a: Point, b: Point, season: Season, reinforced = false): void {
     const z = this.camera.zoom;
     for (let i = 1; i <= 4; i++) {
-      const t = i / 4; this.log(ctx, { x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t }, 27 + i % 2, 5.7, i, season);
+      const t = i / 4; this.log(ctx, { x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t }, (reinforced?35:27) + i % 2, reinforced?7.2:5.7, i, season);
     }
     this.rail(ctx, a, b, 8, season); this.rail(ctx, a, b, 23, season);
+    if(reinforced)this.rail(ctx,a,b,31,season);
     ctx.strokeStyle = '#6f6f51'; ctx.lineWidth = 2 * z; ctx.beginPath(); ctx.moveTo(a.x, a.y - 8 * z); ctx.lineTo(b.x, b.y - 23 * z); ctx.stroke();
   }
 }

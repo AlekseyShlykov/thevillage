@@ -28,9 +28,8 @@ export function cropSecondsToRipe(progress: number, seasons: SeasonSystem): numb
 export function makeForecast(seasons: SeasonSystem, resources: ResourceSystem, buildings: BuildingSystem, villagers: VillagerSystem) {
   const cfg = getConfig(), people = villagers.getAliveVillagers(), population = people.length;
   const beforeWinter = untilWinter(seasons), winterLeft = seasons.isWinter() ? Math.max(0, cfg.seasons.winterDuration - seasons.seasonTimer) : cfg.seasons.winterDuration;
-  const efficiency = buildings.getBuildingsOfType('smokehouse').length ? cfg.resources.smokehouseFoodEfficiencyBonus : 1;
-  const winterFood = population * cfg.villagers.foodConsumptionPerSecond * cfg.villagers.winterFoodConsumptionMultiplier * winterLeft / efficiency;
-  const beforeFood = population * cfg.villagers.foodConsumptionPerSecond * beforeWinter / efficiency;
+  const winterFood = population * cfg.villagers.foodConsumptionPerSecond * cfg.villagers.winterFoodConsumptionMultiplier * winterLeft;
+  const beforeFood = population * cfg.villagers.foodConsumptionPerSecond * beforeWinter;
   const crops = buildings.getBuildingsOfType('garden').filter(b => b.cropState === 'growing' || b.cropState === 'ripe').map(b => {
     const seconds = b.cropState === 'ripe' ? 0 : cropSecondsToRipe(b.farmingProgress ?? 0, seasons);
     const farmers = people.filter(v => v.assignedBuildingId === b.id && v.currentTask === 'farming').length;

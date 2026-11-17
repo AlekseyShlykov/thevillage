@@ -28,7 +28,7 @@ export class IsometricArt {
   private ward: WardFireArt;
   private moats: MoatArt;
   constructor(private camera: Camera, private assets: AssetLoader) {
-    this.fences = new FenceArt(camera); this.crops = new CropArt(camera, assets); this.ward = new WardFireArt(assets);this.moats=new MoatArt(camera,assets);
+    this.fences = new FenceArt(camera,assets); this.crops = new CropArt(camera, assets); this.ward = new WardFireArt(assets);this.moats=new MoatArt(camera,assets);
   }
   atlas(season: Season): CanvasImageSource | null {
     const image = this.assets.getAtlas(season); if (!image) return null;
@@ -63,6 +63,7 @@ export class IsometricArt {
     const size = (cfg.width + cfg.height) * this.camera.tileWidth / 2 * 1.12;
     const centerX = (pts[0].x + pts[2].x) / 2, baseline = pts[2].y;
     if(b.configId==='watchtower') {const w=118*this.camera.zoom,h=172*this.camera.zoom;return {x:centerX-w/2,y:baseline-h,width:w,height:h,centerX,baseline,pts};}
+    if(b.configId==='house')return {x:centerX-size/2,y:baseline-size*.98,width:size,height:size,centerX,baseline,pts};
     return { x: centerX - size / 2, y: baseline - size * .92, width: size, height: size, centerX, baseline, pts };
   }
   building(ctx: CanvasRenderingContext2D, b: BuildingInstance, cfg: BuildingConfig, season: Season, time: number, buildings: BuildingInstance[] = [], occupants = 0): void {
@@ -91,6 +92,18 @@ export class IsometricArt {
         polygon(ctx,pts.map(p=>({x:p.x,y:p.y-40*z})),season===Season.Winter?'#e5ebdf':'#987549','#523d2d');
         ctx.fillStyle='#ccad7a';ctx.fillRect(x-12*z,y-21*z,24*z,8*z);
       }
+    }
+    else if (b.configId === 'house') {
+      const house = this.assets.getWarmHouse?.(season);
+      if (house) { ctx.imageSmoothingEnabled = true; ctx.drawImage(house, x-size/2, y-size*.98, size, size); }
+      else {
+        const raised = pts.map(p=>({x:p.x,y:p.y-46*z}));
+        polygon(ctx,[pts[1],pts[2],raised[2],raised[1]],'#735138','#483c2b');
+        polygon(ctx,[pts[2],pts[3],raised[3],raised[2]],'#aa8153','#483c2b');
+        polygon(ctx,raised,season===Season.Winter?'#e5ece3':'#826947','#584731');
+        ctx.fillStyle='#f3bd65';ctx.fillRect(x-22*z,y-32*z,13*z,14*z);
+      }
+      if(b.built && occupants>0)chimneySmoke(ctx,x,y,size,time,{x:-.245,y:-.903});
     }
     else if (cfg.category === 'defense') this.fences.draw(ctx, b, buildings, season);
     else if (b.configId === 'campFire' || b.configId === 'herbalFire') {

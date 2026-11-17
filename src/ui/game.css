@@ -73,7 +73,7 @@ html, body { background: #314b39 !important; }
 .camera-controls { position: absolute; right: 24px; bottom: 98px; display: flex; gap: 4px; }
 .camera-controls button { width: 38px; background: var(--panel) !important; font-size: 18px !important; }
 .action-menu { background: var(--panel) !important; border-color: var(--edge) !important; max-height: calc(100dvh - 170px); overflow-y: auto; }
-.action-menu button { min-height: 42px !important; }
+.action-menu button { min-height: 44px !important; }
 #intro-screen { background: radial-gradient(ellipse at 50% 30%, #435839, #172b23 80%) !important; overflow-y: auto; }
 #intro-screen h1 { font-family: 'PT Sans', sans-serif; font-weight: normal; letter-spacing: -.5px; color: #e9d7aa !important; }
 #intro-screen .intro-image-placeholder { width: 320px !important; height: 180px !important; border-radius: 0!important; border-color: #d6b87a44 !important; box-shadow: 0 12px 44px #0005; }
@@ -209,4 +209,10 @@ html, body { background: #314b39 !important; }
   #season-tutorial p {font-size:13px;line-height:1.4;margin-bottom:8px;min-height:42px;}
   .season-tutorial-note {margin-top:4px;font-size:11px;}
   #season-tutorial button {padding:6px 10px;}
+}
+.research-requirement {
+  color: #e7c285;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 5px;
 }

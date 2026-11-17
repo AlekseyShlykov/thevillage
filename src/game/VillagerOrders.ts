@@ -17,7 +17,7 @@ export function validJobTarget(order: TargetedVillagerOrder, tile: TileData | nu
   if (order === 'chop' || order === 'hunt' || order === 'herbs') return tile?.type === 'forest';
   if (order === 'move') return !!tile && !tile.buildingId;
   if (!building || !cfg) return false;
-  if (order === 'build') return !building.built && (!building.assignedWorkers.length || building.assignedWorkers.includes(villagerId));
+  if (order === 'build') return (!building.built || building.upgradeProgress !== undefined) && (!building.assignedWorkers.length || building.assignedWorkers.includes(villagerId));
   if (order === 'repair') return building.built && (building.hp < building.maxHp || !!building.needsRepair);
   return building.built && (order !== 'farm' || building.configId === 'garden') && cfg.maxWorkers > 0 &&
     (building.assignedWorkers.length < cfg.maxWorkers || building.assignedWorkers.includes(villagerId));

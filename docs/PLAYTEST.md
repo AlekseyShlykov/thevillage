@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-17. All 130/130 browser checks passed without sound.
+Recorded 2026-11-17. All 148/148 browser checks passed without sound.
 
 ## Environment and scope
 
@@ -11,6 +11,42 @@ deterministic simulation steps. Third-party requests are blocked; no analytics
 or emails are sent. Physical phones, Safari and Firefox were not tested.
 
 ## Current changes
+
+- The upgraded House accepts six actual residents; the complete recall and entry
+  scenario passes with all six indoors.
+- Generated reinforced fence art loads with real alpha in summer and winter.
+  All sixteen connected shapes render distinctly and native fallback remains
+  usable. Four gate sprites cover open/closed states and both seasons; the
+  painted passage is transparent when open in both grid axes.
+- Clicking the visible gate model offers Open gate / Close gate immediately on
+  pause and during shelter. Closing removes paths crossing it. Loading either
+  state restores routing before an update. Phone actions pass with 44 px targets.
+- Towers alone may touch walls and gates in either placement order. Overlap,
+  ordinary building spacing and fully blocked entrances are still rejected.
+
+- Compact advanced catalogue: Smokehouse, Large House, Hearth and global
+  Reinforced Palisade research are retired. House is an upgrade and never a
+  separate Build entry. Forest Camp Fire remains available.
+- Real Hut menu clicks start a 25-wood upgrade. A builder reaches the site;
+  residents retain shelter during work. The same ID and 2 × 2 footprint become
+  a six-place, 200-HP House. Save/load, shelter/resume, cancellation, one-time
+  refund and completed worker release all pass.
+- Sawmill research and a completed mill unlock individual wall/gate reinforcement.
+  Each section doubles HP, preserves damage fraction, gate state, rotation and
+  connections, and cannot be upgraded twice. Repairs retain its extra durability.
+- Tower preview appears alongside Sawmill. Visible text and a hover title explain
+  the missing research/building; it cannot spend stars before mill completion.
+  Completing the mill updates the card and an accepted purchase closes Tech.
+- Old removed buildings/research migrate once; Large Houses become Houses with
+  cleaned excess footprints. Existing globally reinforced walls keep their
+  upgrade and damage fraction. Input save snapshots remain unchanged.
+- Generated warm-house summer/winter sprites have transparent alpha. Occupied
+  homes produce animated chimney smoke; empty homes are stable. Shape fallback
+  and phone upgrade actions remain usable and within screen bounds.
+- Walkable-region rejection avoids repeated A* searches to unreachable repairs.
+  Gates opening/closing, unfinished fences and demolition invalidate correctly.
+  The 55-resident winter stress case with 36 wall segments and 14 monsters
+  passed at about 10 ms mean frame time after this fix.
 
 - Residents inflict no monster damage before a completed tower, including after
   research or placement of an unfinished tower. Completing the first tower
@@ -105,7 +141,7 @@ long corridors. Explicit queued trees still override automatic selection.
 | an open build menu updates when resources arrive | PASS |
 | missing artwork still renders a usable world | PASS |
 | a defending worker resumes their production job | PASS |
-| repair keeps research bonuses and clears maintenance warnings | PASS |
+| repair keeps individual palisade upgrades and clears maintenance warnings | PASS |
 | older winter saves remain playable | PASS |
 | all winter weather types can occur and cooldown saves correctly | PASS |
 | herb orders reserve at most five supplies including expeditions | PASS |
@@ -205,6 +241,24 @@ long corridors. Explicit queued trees still override automatic selection.
 | loading a pre-tower save clears progress from a previously developed settlement | PASS |
 | occupied towers shoot painted arrows that visibly travel, rotate and freeze at a fixed simulation age | PASS |
 | arrow directions have a readable shape fallback and expire after the configured flight time | PASS |
+| the compact catalogue removes surplus research and keeps House out of the build menu | PASS |
+| tower appears beside Sawmill but cannot be researched until the mill is completed | PASS |
+| a real Hut action starts an on-site upgrade while residents keep their shelter | PASS |
+| unfinished upgrades save their worker and progress, then resume after shelter release | PASS |
+| cancelling an upgrade refunds once and keeps the original house and occupants | PASS |
+| palisade and gate upgrades require a sawmill, double individual HP and preserve their connections | PASS |
+| retired buildings and research migrate once without ghost footprints or lost fence upgrades | PASS |
+| warm house sprites are seasonal, smoke animates only with residents and fallback remains usable | PASS |
+| route rejection updates when gates open, construction finishes or a wall is demolished | PASS |
+| mobile upgrade actions and the locked tower requirement remain within the viewport | PASS |
+| an upgraded House actually shelters six residents | PASS |
+| only towers can touch fences and gates, in either construction order; overlap and other spacing stay blocked | PASS |
+| gate menu opens and closes immediately while paused and sheltered | PASS |
+| closing a gate removes routes through it and save loading restores gate routing without a simulation tick | PASS |
+| painted reinforced panels and all four gate images load with alpha and change with season and gate state | PASS |
+| painted palisade renders all sixteen joins and native missing-image fallbacks | PASS |
+| generated open gates show a transparent passage in both axes and both seasons | PASS |
+| a phone can open a gate using a touch-sized context action | PASS |
 | no unhandled browser exceptions | PASS |
 
 Screenshots and JSON diagnostics are local ignored files under `.qa/`. Run
@@ -215,13 +269,19 @@ acknowledgements. The runner brings its dedicated page to the foreground.
 
 ## Production artifacts
 
-`npm run build:itch` passed. The final production bundle is `index-D7pKm57w.js`.
+`npm run build:itch` passed. The final production bundle is `index-D8jFjE0p.js`.
 The compiled game at `http://localhost:4173/` passed startup and first-season
 acknowledgement, individual commands, Clear with three actual queued Canvas tree
 clicks, save/notifications, local PT Sans loading, square UI corners and layouts
 at 390, 768, 900, 1024 and 1280 px. Mobile notice dismissal and equal menu row
 bounds passed (both rows span x=16…374 at 390 px). Winter Plan is absent. No
 unhandled browser errors occurred, and all tests remained muted.
+The compiled build additionally passed an actual Hut → House upgrade through
+visible controls, confirmed its saved 200 HP and both seasonal PNG loads, and
+kept tower research blocked without a Sawmill. It also opened/closed the painted
+gate by clicking the model and placed a tower between a gate and a fence through
+the Build menu (30 wood charged). All six new defense PNGs loaded in the compiled
+game, with no browser exceptions.
 The itch.io ZIP was refreshed from the verified `itch-build/` directory; it and
 screenshots remain local ignored artifacts. The existing preview on port 4173
 is retained; the dedicated test browser and development server are closed after

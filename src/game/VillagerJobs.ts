@@ -7,6 +7,7 @@ import { BuildingSystem } from '../systems/BuildingSystem';
 import { VillagerSystem } from '../systems/VillagerSystem';
 import { ResourceSystem } from '../systems/ResourceSystem';
 import { ForagingSystem } from '../systems/ForagingSystem';
+import { isConstructionSite } from '../systems/BuildingUpgrades';
 
 export interface VillagerJob {
   key: string;
@@ -43,8 +44,8 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
     for (const b of sorted) {
       const spec = buildings.getBuildingConfig(b.configId);
       if (!spec || !buildings.getArrivalTiles(b).some(reach)) continue;
-      if (!b.built && !b.assignedWorkers.length && !offered.has('build')) {
-        jobs.push({key:'build',kind:'build',label:`Build ${spec.name}`,icon:'hammer',buildingId:b.id});offered.add('build');
+      if (isConstructionSite(b) && !b.assignedWorkers.length && !offered.has('build')) {
+        jobs.push({key:'build',kind:'build',label:`${b.built ? 'Upgrade' : 'Build'} ${spec.name}`,icon:'hammer',buildingId:b.id});offered.add('build');
       }
       if (b.built && (b.hp<b.maxHp || b.needsRepair) && !offered.has('repair') &&
         resources.canAfford(Math.ceil(spec.costWood*cfg.repair.repairCostWoodPercent),0) &&

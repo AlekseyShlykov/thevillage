@@ -58,6 +58,16 @@ export interface ResourceState {
   clothing: number;
 }
 
+export interface BuildingUpgradeConfig {
+  name: string;
+  technology: string;
+  requiresBuildings?: string[];
+  costWood: number;
+  buildTime: number;
+  targetId?: string;
+  hpMultiplier?: number;
+}
+
 export interface BuildingConfig {
   id: string;
   name: string;
@@ -86,6 +96,10 @@ export interface BuildingConfig {
   towerRange?: number;
   towerDamage?: number;
   towerAttackInterval?: number;
+  upgradeOnly?: boolean;
+  upgrade?: BuildingUpgradeConfig;
+  /** Types allowed to touch this building, in either placement order. */
+  adjacentBuildingExceptions?: string[];
 }
 
 export interface BuildingInstance {
@@ -114,6 +128,9 @@ export interface BuildingInstance {
   wardFuelSeconds?: number;
   wardActive?: boolean;
   towerAttackCooldown?: number;
+  /** Existing structures remain functional while a builder upgrades them. */
+  upgradeProgress?: number;
+  upgraded?: boolean;
 }
 
 export interface VillagerData {
@@ -176,6 +193,8 @@ export interface EnemyData {
 
 export interface TechConfig {
   prerequisites?:string[];
+  /** Show a locked research card before all purchase requirements are met. */
+  visibleAfter?: string[];
   requiresBuildings?:string[];
   id: string;
   name: string;
@@ -184,6 +203,10 @@ export interface TechConfig {
   unlocks: string[];
   description: string;
   effect?: Record<string, number>;
+}
+
+export interface ResearchOption extends TechConfig {
+  blockedReason: string | null;
 }
 
 export interface WeatherEvent {
