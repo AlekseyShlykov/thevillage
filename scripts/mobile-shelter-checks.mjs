@@ -23,9 +23,11 @@ export async function runMobileShelterChecks({check,ev,shot,call,until}) {
     const again=await ev('g.resourceSystem.resources.food=50;g.updateUI();g.resourceSystem.resources.food=0;g.updateUI();!!document.querySelector("[data-warning=food]")');
     assert(again);return{...r,newDangerShown:again};
   });
-  await check('dismissed warnings return for greater urgency; central cold alerts are also dismissible',async()=>{
+  await check('cold takes priority on mobile; dismissed warnings still return for greater urgency',async()=>{
     await tap('[data-dismiss-notice=food]');
-    const escalated=await ev('g.seasonSystem.season="winter";g.updateUI();!!document.querySelector("[data-warning=food].warning-urgent")');assert(escalated);
+    const escalated=await ev('g.seasonSystem.season="winter";g.updateUI();!document.getElementById("cold-warning").hidden&&!document.querySelector("[data-warning=food]")');assert(escalated);
+    await tap('[data-dismiss-notice=cold]');assert(await ev('!!document.querySelector("[data-warning=food].warning-urgent")'));
+    await ev('for(const v of g.villagerSystem.getAliveVillagers()){v.x=39;v.y=29;}g.updateUI();g.villagerSystem.villagers[0].x=38;');
     await ev('g.resourceSystem.resources.food=50;g.villagerSystem.villagers[0].coldExposure=16;g.updateUI()');
     await tap('[data-dismiss-notice=cold]');
     assert(await ev('document.getElementById("cold-warning").hidden'));

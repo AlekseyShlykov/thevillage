@@ -47,11 +47,6 @@ html, body { background: #314b39 !important; }
 .eyebrow { font-size: 8px; letter-spacing: 2px; color: #d9debe !important; }
 .game-heading h1 { font-family: 'PT Sans', sans-serif; font-weight: normal; font-size: 26px; margin-top: 7px; color: #f1e6c9; }
 .game-heading h1 span { font-size: 17px; margin-left: 12px; color: var(--gold); }
-#status-ribbon { position: absolute; left: 28px; bottom: 100px; display: flex; align-items: center; gap: 10px; pointer-events: none !important; text-shadow: 0 1px 8px #182f22; }
-#status-ribbon strong { display: block; font-size: 12px; font-weight: normal; color: #f3e8ca; }
-#status-ribbon small { display: block; font-size: 10px; color: #d4dbc5; margin-top: 6px; }
-.status-dot { width: 6px; height: 6px; border-radius: 0; background: #e4c37f; box-shadow: 0 0 12px #d6b87a88; }
-.status-dot.sheltered { background: #b3ca89; }
 [data-build-panel], [data-tech-panel], [data-info-panel] { background: var(--panel) !important; border: 1px solid var(--edge) !important; border-radius: 0!important; box-shadow: 0 8px 28px #11271b22 !important; }
 [data-build-panel] { left: 20px !important; top: var(--hud-top) !important; width: 270px !important; padding: 14px !important; max-height: calc(100% - 275px) !important; }
 [data-tech-panel] { top: 108px !important; right: 20px !important; width: 295px !important; padding: 14px !important; max-height: calc(100% - 220px) !important; }
@@ -111,8 +106,6 @@ html, body { background: #314b39 !important; }
   #game-bottom-bar { left: 8px !important; right: 8px !important; bottom: 8px !important; transform: none; width: auto; max-width: none; padding: 7px !important; gap: 5px !important; justify-content: center; flex-wrap: wrap; }
   #game-bottom-bar button { min-height: 44px !important; padding: 6px 9px !important; font-size: 11px !important; min-width: 44px; }
   #game-bottom-bar [data-repair-btn] { display: block !important; }
-  #status-ribbon { bottom: 132px; left: 15px; right: 15px; }
-  #status-ribbon strong { font-size: 11px; }#status-ribbon small { font-size: 9px; max-width: calc(100vw - 45px); }
   .camera-controls { right: 12px; bottom: 180px; flex-direction: column; }
   .camera-controls button { min-width: 44px; min-height: 44px; background: var(--panel) !important; }
   [data-build-panel], [data-tech-panel] { top: var(--hud-top) !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: calc(100dvh - 310px) !important; padding: 12px !important; }
@@ -183,7 +176,6 @@ html, body { background: #314b39 !important; }
   #game-bottom-bar .button-label {max-width:100%;white-space:normal;line-height:1.1;}
   #game-bottom-bar [data-speed] {min-width:0;padding:5px 3px !important;}
   #game-bottom-bar .game-icon {width:18px;height:18px;}
-  #status-ribbon {bottom:calc(var(--toolbar-height,112px) + 24px);}
   .camera-controls {bottom:calc(var(--toolbar-height,112px) + 68px);}
   [data-notification-el] {width:calc(100% - 24px);box-sizing:border-box;bottom:calc(var(--toolbar-height,112px) + 22px) !important;}
   #ui-overlay [data-info-panel],#ui-overlay [data-info-panel][data-villager] {bottom:calc(var(--toolbar-height,112px) + 24px) !important;}

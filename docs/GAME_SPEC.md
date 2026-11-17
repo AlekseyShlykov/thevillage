@@ -180,7 +180,7 @@ supplies are delivered first, then the accepted order starts without another cli
 Clear immediately dispatches a worker to a reachable unreserved tree, interrupting
 a non-farming job if necessary, and enters tree-selection mode. Click forest tiles to
 queue any number of specific trees in click order; duplicates are ignored. Queued
-tiles show numbered markers and the status ribbon shows the queue size. A worker
+tiles show numbered markers and the Clear button shows the queue size. A worker
 finishes its current tree, then chooses queued trees before automatic expansion.
 Workers reserve distinct targets, skip unreachable requests without deleting them,
 and fall back to widening the settlement when no selected target is available.
@@ -413,7 +413,10 @@ compact portrait/landscape layouts. Relevant toolbar controls remain visible and
 highlighted but cannot issue orders until the message closes. The summer lesson
 temporarily previews a locked Herbs button; the herb counter remains hidden
 until a ward is complete. The HUD shows resources,
-population, comfort, season time, idle residents and food reserve in seconds.
+population, comfort and season progress. The former lower status ribbon and all
+its headings, food-duration text and general mode instructions are removed on
+both desktop and mobile. Toolbar highlights and the Clear queue count convey
+action state; detailed resource explanations remain in tooltips.
 Mobile main controls are at least 44 px high; saving, loading and repair remain
 available. A previous notification timer cannot hide a newer message.
 All interface pictograms are original SVG assets under `public/assets/ui/icons/`,
@@ -482,6 +485,21 @@ change. Resolving the condition permits a later new warning; an ordinary warning
 also reappears if it escalates to urgent. A dismissed toast's timer is cancelled,
 and subsequent messages can appear normally. Starting or loading a game resets
 dismissals. Hidden warnings release their reserved layout height immediately.
+
+On narrow screens (at most 900 px) or devices with a coarse primary pointer,
+only one ordinary warning is shown at a time, with urgent notices first. An
+active cold alert hides ordinary warnings; a new Tech reward also defers them
+until acknowledged. Dismissing or resolving the leading notice reveals the next
+applicable warning, preserving per-episode dismissals. Resizing or changing
+orientation re-evaluates this presentation immediately.
+
+Routine successes are silent on these devices: accepted orders, tree queue
+additions, successful shelter/resume, finished repairs, population growth,
+harvests, coat production, full-storage hints and hunting/herb deliveries. Resource counters,
+resident activity and construction visuals still update. Errors, expedition
+losses, deaths, important manual-save feedback and new Tech stars remain visible.
+The delivery/loss distinction comes from the expedition system, not message-text
+matching. Desktop retains routine feedback.
 
 Calendar-only season/year and spring-autosave toasts are omitted; the HUD still
 shows the current season and year, and spring autosaves still run. Awarding winter

@@ -30,7 +30,7 @@ export class ForagingSystem {
     return false;
   }
   update(dt: number, villagers: VillagerSystem, buildings: BuildingSystem, resources: ResourceSystem,
-    tech: TechnologySystem, tutorial: TutorialSystem, notify: (s: string) => void): void {
+    tech: TechnologySystem, tutorial: TutorialSystem, notify: (s: string, kind: 'delivery' | 'loss') => void): void {
     const cfg = getConfig(), homes: Position[] = [];
     for (const b of buildings.buildings) {
       const spec = buildings.getBuildingConfig(b.configId);
@@ -43,7 +43,7 @@ export class ForagingSystem {
         v.taskProgress += dt * workerProductivity(v, tech);
         if (v.taskProgress >= cfg.villagers.freeHuntDuration) {
           if (!tutorial.isProtectedHunter(v.id) && Math.random() < cfg.villagers.freeHuntDeathChance) {
-            villagers.damageVillager(v, v.maxHp); notify('A hunter died in the forest. Their supplies were lost.');
+            villagers.damageVillager(v, v.maxHp); notify('A hunter died in the forest. Their supplies were lost.','loss');
           } else {
             v.cargo = { food: cfg.villagers.freeHuntFoodAmount, fur: cfg.villagers.freeHuntFurAmount, herbs: 0 };
             v.currentTask = 'returnHome'; v.path = []; v.state = VillagerState.Idle;
@@ -54,7 +54,7 @@ export class ForagingSystem {
         v.taskProgress += dt * workerProductivity(v, tech);
         if (v.taskProgress >= cfg.herbs.gatherSeconds) {
           if (Math.random() < cfg.herbs.deathChance) {
-            villagers.damageVillager(v, v.maxHp); notify('A herb gatherer died deep in the forest. Their supplies were lost.'); continue;
+            villagers.damageVillager(v, v.maxHp); notify('A herb gatherer died deep in the forest. Their supplies were lost.','loss'); continue;
           }
           v.cargo = { food: 0, fur: 0, herbs: resources.resources.herbs + this.reservedHerbs(villagers) <= cfg.herbs.capacity ? 1 : 0 };
           v.currentTask = 'returnHome'; v.path = []; v.state = VillagerState.Idle;
@@ -63,7 +63,7 @@ export class ForagingSystem {
       if (v.health === HealthState.Dead || !Object.values(v.cargo ?? {}).some(n => n > 0)) continue;
       if (homeKeys.has(`${Math.floor(v.x)},${Math.floor(v.y)}`)) {
         const cargo = v.cargo!; resources.addFood(cargo.food); resources.addFur(cargo.fur); resources.addHerbs(cargo.herbs);
-        notify(cargo.herbs ? `Protective herbs delivered: ${resources.resources.herbs}/${cfg.herbs.capacity}` : `Hunt delivered: +${cargo.food} food, +${cargo.fur} pelts`);
+        notify(cargo.herbs ? `Protective herbs delivered: ${resources.resources.herbs}/${cfg.herbs.capacity}` : `Hunt delivered: +${cargo.food} food, +${cargo.fur} pelts`,'delivery');
         v.cargo = undefined;
         if (v.currentTask === 'returnHome') { v.currentTask = null; v.taskProgress = 0; v.path = []; v.state = VillagerState.Idle; }
       } else if (!v.path.length && v.currentTask === 'returnHome') {

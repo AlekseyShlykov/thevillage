@@ -1,6 +1,8 @@
 import { SettlementWarning } from '../systems/WarningSystem';
 import { iconMarkup, setButtonContent } from './icons';
 
+export type NoticePriority = 'routine' | 'important';
+
 /** Dismissals last for one danger episode; an escalation or a resolved/new danger is shown again. */
 export class Notifications {
   private toast = document.createElement('div');
@@ -13,6 +15,8 @@ export class Notifications {
   private timer = 0;
   private researchOpen = document.createElement('button');
   private researchPending = false;
+  private compact = window.matchMedia('(max-width: 900px), (pointer: coarse)');
+  private toastPriority: NoticePriority = 'important';
 
   constructor(private overlay: HTMLElement,onOpenTech:()=>void) {
     this.toast.dataset.notificationEl = 'true'; this.toast.hidden = true;
@@ -29,6 +33,10 @@ export class Notifications {
     this.warnings.id = 'settlement-warnings'; this.warnings.hidden = true;
     this.warnings.setAttribute('role', 'status'); this.warnings.setAttribute('aria-live', 'polite');
     overlay.append(this.toast, this.cold, this.warnings);
+    this.compact.addEventListener('change', () => {
+      if (this.compact.matches && this.toastPriority === 'routine' && !this.researchPending) this.hideToast();
+      this.updateWarnings(this.current);
+    });
   }
 
   private closeButton(id: string, close: () => void): HTMLButtonElement {
@@ -43,9 +51,11 @@ export class Notifications {
   private hideToast(): void {
     window.clearTimeout(this.timer);this.toast.hidden=true;
     this.researchPending=false;this.researchOpen.hidden=true;delete this.toast.dataset.researchAward;
+    this.updateWarnings(this.current);
   }
-  notify(message: string, duration: number): void {
-    if(this.researchPending)return;
+  notify(message: string, duration: number, priority: NoticePriority = 'important'): void {
+    if(this.researchPending || (this.compact.matches && priority === 'routine'))return;
+    this.toastPriority = priority;
     window.clearTimeout(this.timer); this.toastMessage.textContent = message; this.toast.hidden = false;
     this.timer = window.setTimeout(() => { this.toast.hidden = true; }, duration);
   }
@@ -55,6 +65,7 @@ export class Notifications {
     window.clearTimeout(this.timer);this.researchPending=true;this.researchOpen.hidden=false;
     this.toast.dataset.researchAward='true';this.toast.hidden=false;
     this.toastMessage.textContent=`+${stars} new Tech star${stars===1?'':'s'}! Open Tech to choose a new building.`;
+    this.updateWarnings(this.current);
   }
   acknowledgeResearch():void {if(this.researchPending)this.hideToast();}
 
@@ -64,6 +75,10 @@ export class Notifications {
   }
 
   updateWarnings(warnings: SettlementWarning[]): void {
+    // Also refresh during normal UI ticks: some browsers defer media-query events.
+    if (this.compact.matches && this.toastPriority === 'routine' && !this.researchPending && !this.toast.hidden) {
+      window.clearTimeout(this.timer); this.toast.hidden = true;
+    }
     this.current = warnings;
     for (const [id, wasUrgent] of this.dismissed) {
       const active = warnings.find(w => w.id === id);
@@ -72,7 +87,13 @@ export class Notifications {
     const visible = warnings.filter(w => !this.dismissed.has(w.id));
     const danger = visible.find(w => w.id === 'cold'); this.cold.hidden = !danger;
     if (danger && this.coldMessage.textContent !== danger.text) this.coldMessage.textContent = danger.text;
-    const ordinary = visible.filter(w => w.id !== 'cold');
+    let ordinary = visible.filter(w => w.id !== 'cold');
+    if (this.compact.matches) {
+      // One actionable notice at a time. Cold and new research take precedence.
+      const order = ['heating', 'food', 'wood', 'coats', 'crops', 'herbs'];
+      ordinary = danger || this.researchPending ? [] : ordinary.sort((a, b) =>
+        Number(!!b.urgent) - Number(!!a.urgent) || order.indexOf(a.id) - order.indexOf(b.id)).slice(0, 1);
+    }
     const key = ordinary.map(w => w.id + Number(!!w.urgent) + w.text).join('|');
     if (this.warnings.dataset.content !== key) {
       this.warnings.replaceChildren(); this.warnings.dataset.content = key;

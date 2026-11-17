@@ -11,8 +11,8 @@ export async function runForestClearingChecks({check,ev,shot,call,clickSelector,
     const started=await ev(`(()=>{const v=g.villagerSystem.villagers.find(v=>v.currentTask==='clearing');window.queueChopper=v.id;window.queueStart={x:v.targetX,y:v.targetY};window.treeClicks=Array.from({length:8},(_,i)=>({x:34,y:26+i})).filter(p=>p.x!==v.targetX||p.y!==v.targetY).sort((a,b)=>Math.hypot(b.x-v.x,b.y-v.y)-Math.hypot(a.x-v.x,a.y-v.y)).slice(0,6);return{task:v.currentTask,path:v.path.length,mode:g.mode,other:g.villagerSystem.villagers.filter(v=>v.currentTask==='farming').length};})()`);
     assert.equal(started.task,'clearing');assert(started.path>0);assert.equal(started.mode,'clear');assert.equal(started.other,1);
     const points=await ev('treeClicks');for(const p of points)await tile(p.x+.5,p.y+.5);await tile(points[0].x+.5,points[0].y+.5);
-    const queued=await ev(`({points:clearingQueue.queuedForestTiles(g.tileMap),mode:g.mode,pressed:document.querySelector('[data-global-clear]').getAttribute('aria-pressed'),hint:document.getElementById('status-ribbon').textContent})`);
-    assert.deepEqual(queued.points,points);assert.equal(queued.mode,'clear');assert.equal(queued.pressed,'true');assert(queued.hint.includes('6 trees queued'));
+    const queued=await ev(`({points:clearingQueue.queuedForestTiles(g.tileMap),mode:g.mode,pressed:document.querySelector('[data-global-clear]').getAttribute('aria-pressed'),label:document.querySelector('[data-global-clear]').textContent})`);
+    assert.deepEqual(queued.points,points);assert.equal(queued.mode,'clear');assert.equal(queued.pressed,'true');assert(queued.label.includes('Clear (6)'));
     await shot('forest-clearing-queue');return{started,queued:queued.points.length};
   });
   await check('queued trees are chopped in click order before automatic nearby trees',async()=>{

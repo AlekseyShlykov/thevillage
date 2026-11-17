@@ -1,4 +1,4 @@
-/** Run against `npm run dev` and a dedicated Chrome --mute-audio --remote-debugging-port=9461.
+/** Run against `npm run dev` and a dedicated Chrome --headless=new --mute-audio --remote-debugging-port=9461.
  * Requires Node 22+. No browser automation packages or production debug hooks.
  * Silent by default. CHECK_AUDIO=1 is reserved for explicitly requested sound checks.
  */
@@ -46,7 +46,7 @@ async function until(expression, seconds = 90) {
 }
 async function check(name, fn) { try { const detail = await fn(); checks.push({ name, pass: true, detail }); console.log('PASS', name, JSON.stringify(detail ?? '')); } catch (e) { checks.push({ name, pass: false, error: e.message }); console.log('FAIL', name, e.message); await shot('failure-' + checks.length).catch(() => {}); await fs.writeFile(`${output}/failure-state-${checks.length}.json`,JSON.stringify(await ev('g.serializeState()'),null,2)).catch(()=>{}); } }
 try {
-  await call('Page.enable'); await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
+  await call('Page.enable'); await call('Page.bringToFront'); await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
   if (!checkAudio) {
     // Also mute media in the page, even if Chrome was launched without --mute-audio.
     await call('Page.addScriptToEvaluateOnNewDocument', { source: `(()=>{const originalPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(...args){this.muted=true;return originalPlay.apply(this,args);};})();` });
@@ -307,6 +307,7 @@ try {
   await (await import('./forest-clearing-checks.mjs')).runForestClearingChecks({check,ev,shot,call,clickSelector,tile,until});
   await (await import('./presentation-checks.mjs')).runPresentationChecks({check,ev,shot,call,clickSelector});
   await (await import('./workforce-tech-checks.mjs')).runWorkforceTechChecks({check,ev,shot,call,clickSelector,button});
+  await (await import('./notification-checks.mjs')).runNotificationChecks({check,ev,shot,call,clickSelector,tile});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

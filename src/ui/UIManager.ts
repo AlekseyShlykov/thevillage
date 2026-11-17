@@ -7,7 +7,7 @@ import { TooltipController } from './TooltipController';
 import { getConfig } from '../data/ConfigLoader';
 import { hasCoat } from '../systems/EquipmentSystem';
 import { VillagerJob } from '../game/VillagerJobs';
-import { Notifications } from './Notifications';
+import { Notifications, NoticePriority } from './Notifications';
 import { SettlementWarning } from '../systems/WarningSystem';
 
 export interface UIAction { label: string; icon?: IconName; callback: () => void }
@@ -57,7 +57,6 @@ export class UIManager {
   private notifications!: Notifications;
   private toolbarKey = "";
   private seasonTutorial!: SeasonTutorial;
-  private statusEl!: HTMLElement;
   private callbacks: UICallbacks;
   private buildPanelOpen = false;
   private techPanelOpen = false;
@@ -203,8 +202,6 @@ export class UIManager {
     this.notifications = new Notifications(this.overlay,()=>{if(!this.techPanelOpen)this.toggleTechPanel();});
 
     this.seasonTutorial=new SeasonTutorial(this.overlay,()=>this.callbacks.onTutorialAcknowledge(),()=>this.callbacks.onTutorialSkip());
-    this.statusEl = this.el('div'); this.statusEl.id = 'status-ribbon'; this.statusEl.setAttribute('role', 'status');
-    this.overlay.appendChild(this.statusEl);
     const controls = this.el('div'); controls.className = 'camera-controls'; controls.setAttribute('data-ui', 'true');
     for (const [icon, title, action] of [
       ['minus', 'Zoom out', () => this.callbacks.onCameraZoom?.(1 / 1.15)],
@@ -537,7 +534,7 @@ export class UIManager {
     }
   }
 
-  notify(message: string, duration = 3000): void { this.notifications.notify(message, duration); }
+  notify(message: string, duration = 3000, priority: NoticePriority = 'important'): void { this.notifications.notify(message, duration, priority); }
   notifyResearchStars(stars:number):void {this.notifications.notifyResearchStars(stars);}
   resetNotifications(): void { this.notifications.reset(); }
 
@@ -604,11 +601,7 @@ export class UIManager {
 
   updateWarnings(warnings: SettlementWarning[]): void { this.notifications.updateWarnings(warnings); }
 
-  updateStatus(data: { mode: string; shelter: boolean; season: Season; secondsLeft: number; foodSeconds: number; idle: number; enemies: number; paused: boolean; clearingQueued:number }): void {
-    const title = data.paused ? 'Time to make a plan' : data.shelter ? 'Safe by the hearth' : data.mode === 'clear' ? 'Make room for your village' : data.mode === 'build' ? 'Find a place to call home' : 'A little care goes a long way';
-    const detail = data.mode === 'clear' ? `${data.clearingQueued} trees queued · Tap trees to add · Clear / Esc / right-click to finish` : data.mode === 'build' ? 'Tap a green footprint to place · Esc or right-click to cancel' :
-      `${data.secondsLeft}s of ${data.season} left · ${data.idle} free villagers · Food for ${data.foodSeconds}s${data.enemies ? ` · ${data.enemies} in the woods` : ''} · Tap a villager to give orders`;
-    this.statusEl.innerHTML = `<span class="status-dot ${data.shelter ? 'sheltered' : ''}"></span><div><strong>${title}</strong><small>${detail}</small></div>`;
+  updateActions(data: { mode: string; shelter: boolean; clearingQueued:number }): void {
     this.overlay.dataset.mode = data.mode;
     const shelterState = String(data.shelter);
     if (this.shelterBtn.dataset.active !== shelterState) {
@@ -621,7 +614,13 @@ export class UIManager {
     this.layoutBottomBar();
     this.shelterBtn.title = data.shelter ? 'Release everyone and resume their jobs' : 'Call everyone to shelter';
     for (const button of this.overlay.querySelectorAll<HTMLElement>('#game-bottom-bar button')) {
-      if (button.hasAttribute('data-global-clear')) {button.classList.toggle('active-action', data.mode === 'clear');button.setAttribute('aria-pressed',String(data.mode==='clear'));}
+      if (button.hasAttribute('data-global-clear')) {
+        const label = data.clearingQueued ? `Clear (${data.clearingQueued})` : 'Clear';
+        if (button.getAttribute('aria-label') !== label) setButtonContent(button, label, 'axe');
+        button.classList.toggle('active-action', data.mode === 'clear');
+        button.setAttribute('aria-pressed',String(data.mode==='clear'));
+        button.title = data.mode === 'clear' ? 'Tap trees to queue them. Clear / Esc finishes selection.' : 'Start clearing nearby trees; tap trees to queue specific targets.';
+      }
       if (button.textContent?.includes('Build')) button.classList.toggle('active-action', data.mode === 'build' || this.buildPanelOpen);
     }
   }

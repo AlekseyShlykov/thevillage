@@ -1,17 +1,28 @@
 # Playtest and regression checks
 
-Recorded 2026-11-17. All 115 distinct browser checks passed without sound: the full 114/114 run plus
-a final 11/11 workforce/technology run, including the added stale-repair case.
+Recorded 2026-11-17. All 122/122 browser checks passed without sound.
 
 ## Environment and scope
 
-Dedicated Chrome on macOS, 1280 × 900 desktop and 390 × 844 mobile emulation at
+Dedicated headless Chrome on macOS, 1280 × 900 desktop and 390 × 844 mobile emulation at
 DPR 2. Additional widths: 768, 900, 1024; landscape phone and touch tablet layouts
 are included. The runner uses real Canvas clicks, buttons and touch events with
 deterministic simulation steps. Third-party requests are blocked; no analytics
 or emails are sent. Physical phones, Safari and Firefox were not tested.
 
 ## Current changes
+
+- The lower status ribbon and every heading/countdown in it are removed on
+  mobile and desktop. Queue length is on Clear (for example, Clear (3)); active
+  command and shelter states still update.
+- Mobile/touch layouts show one ordinary warning at a time, prioritizing urgent
+  heating. Cold alerts and new Tech rewards defer ordinary warnings. Dismissals
+  reveal the next relevant warning without reviving an already dismissed one.
+- Successful orders, queued trees, deliveries, harvests, coat production and
+  full-storage hints no longer create phone toasts. Commands and resource
+  transfers still work; actual failures, deaths and new Tech stars remain visible.
+- Switching between desktop and touch presentation compacts notices during the
+  next UI update, including browsers which delay media-query change events.
 
 - Winter Plan is absent from the DOM on every tested screen size; warnings still
   use the internal economy estimate. Cold alerts are 14 px, horizontally centred
@@ -124,7 +135,7 @@ long corridors. Explicit queued trees still override automatic selection.
 | garden construction is four times quicker and crops another quarter quicker | PASS |
 | generated cargo and tower artwork load; ward stock is drawn directly on the fire | PASS |
 | mobile toasts and warnings close with touch and stay dismissed during the same danger | PASS |
-| dismissed warnings return for greater urgency; central cold alerts are also dismissible | PASS |
+| cold takes priority on mobile; dismissed warnings still return for greater urgency | PASS |
 | both mobile toolbar rows have identical edges for every resource and shelter state | PASS |
 | Shelter fills tower places first and keeps a configured home reserve | PASS |
 | recall moves residents already inside a house into both towers and keeps the home group | PASS |
@@ -159,22 +170,31 @@ long corridors. Explicit queued trees still override automatic selection.
 | research is awarded before winter work and legacy winter saves receive it only once | PASS |
 | generic commands never take farmers; explicit selection can redirect one | PASS |
 | automatic food and repairs reclaim woodcutters before other construction | PASS |
+| a stale repair order for a dead resident cannot spend wood | PASS |
 | manual farming chooses separate reachable gardens before adding a second farmer | PASS |
 | only gardens render below a resident working along their rear edge | PASS |
 | winter moat and fur workshop sprites load distinctly; fence and gate carry snow | PASS |
 | generated winter moat keeps every open junction continuous in all sixteen masks | PASS |
 | Herbs plays a valid rustle sound and respects the sound-off setting | PASS |
 | new fur workshop has seasonal artwork and renders a distinct missing-image fallback | PASS |
+| desktop and mobile omit the status ribbon and its headings in every interaction mode | PASS |
+| phone commands and tree queue work without success toasts; failures remain visible | PASS |
+| phone deliveries and crafted coats update resources without routine popups | PASS |
+| phone shows one warning with urgent heating first and cold suppresses duplicates | PASS |
+| dismissing the leading phone warning reveals the next without restoring dismissed warnings | PASS |
+| phone Tech reward defers ordinary warnings and remains accessible until acknowledged | PASS |
+| desktop keeps routine feedback and switching to touch mode immediately compacts notices | PASS |
 | no unhandled browser exceptions | PASS |
-| a stale repair order for a dead resident cannot spend wood | PASS |
 
 Screenshots and JSON diagnostics are local ignored files under `.qa/`. Run
 `scripts/browser-check.mjs` against a dedicated muted Chrome and local Vite;
-`GAME_URL` selects the development server.
+`GAME_URL` selects the development server. Launch Chrome with `--headless=new`
+and `--mute-audio`; hidden macOS GUI windows may defer frames and touch
+acknowledgements. The runner brings its dedicated page to the foreground.
 
 ## Production artifacts
 
-`npm run build:itch` passed. The final production bundle is `index-yCspJGh0.js`.
+`npm run build:itch` passed. The final production bundle is `index-Cg0Tvw76.js`.
 The compiled game at `http://localhost:4173/` passed startup and first-season
 acknowledgement, individual commands, Clear with three actual queued Canvas tree
 clicks, save/notifications, local PT Sans loading, square UI corners and layouts
