@@ -158,3 +158,12 @@ alpha retained and no offline raster editing. Exact prompts are in
 [SEASONAL_WORKSHOP_ART_PROMPTS.md](SEASONAL_WORKSHOP_ART_PROMPTS.md).
 Fence winter snow is native Canvas geometry on post caps, rails, gates and
 footings, so it follows every bend and open gate without a separate atlas.
+
+## Tower projectiles · 2026-11-17
+
+`public/assets/projectiles/arrow.png` is a generated 2172 × 724 transparent sprite,
+pointing right: warm timber shaft, iron leaf-shaped head and pale/brown fletching.
+`ProjectileArt` trims transparent padding only at render time, scales with camera
+zoom and rotates the sprite along a shallow flight arc. The PNG retains original
+alpha and pixels. Missing artwork uses a native arrow silhouette. The built-in
+image generation prompt is recorded in [ARROW_ART_PROMPT.md](ARROW_ART_PROMPT.md).

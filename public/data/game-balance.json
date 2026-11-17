@@ -223,7 +223,7 @@
       "hp": 360,
       "detectionRadius": 8,
       "lightRadius": 4,
-      "description": "Strong winter shelter for 3 archers. Occupants shoot approaching monsters from safety.",
+      "description": "A strong shelter whose occupants shoot monsters. Completing the first tower enables defense and doubles monster health.",
       "towerRange": 7,
       "towerDamage": 18,
       "towerAttackInterval": 1.25
@@ -356,7 +356,9 @@
     "buildingAttackReach": 1.05,
     "villagerAttackReach": 1.2,
     "enemySeparation": 0.45,
-    "buildingAttackInterval": 3
+    "buildingAttackInterval": 3,
+    "enemyHealthAfterTowerMultiplier": 2,
+    "requireTowerForVillagerDamage": true
   },
   "comfort": {
     "baseFoodWeight": 0.25,
@@ -492,7 +494,7 @@
         "unlocks": [
           "watchtower"
         ],
-        "description": "Build a strong timber shelter whose occupants shoot monsters from range.",
+        "description": "Unlock a timber archery shelter. Finishing the first tower enables defense; monsters gain twice the health.",
         "prerequisites": [
           "furWorkshop",
           "palisade",
@@ -678,7 +680,9 @@
       0.72,
       0.9
     ],
-    "towerShotSeconds": 0.35
+    "towerShotSeconds": 0.35,
+    "towerArrowLength": 36,
+    "towerArrowArc": 12
   },
   "tutorial": {
     "lastYear": 1,

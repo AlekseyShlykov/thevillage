@@ -1,6 +1,6 @@
 # Playtest and regression checks
 
-Recorded 2026-11-17. All 122/122 browser checks passed without sound.
+Recorded 2026-11-17. All 130/130 browser checks passed without sound.
 
 ## Environment and scope
 
@@ -11,6 +11,19 @@ deterministic simulation steps. Third-party requests are blocked; no analytics
 or emails are sent. Physical phones, Safari and Firefox were not tested.
 
 ## Current changes
+
+- Residents inflict no monster damage before a completed tower, including after
+  research or placement of an unfinished tower. Completing the first tower
+  enables melee/ranged defense and scales living monsters from 30 to 60 maximum
+  HP, preserving injury fractions; subsequent towers do not scale again.
+- Later waves and winters keep the stronger monsters after tower demolition.
+  Current saves avoid repeat scaling; legacy saves with a tower migrate once
+  without mutating their snapshot. Loading an early save and restarting clear
+  progression correctly.
+- Generated projectile artwork loads with alpha and renders in real tower shots.
+  Flight progresses along its arc, rotates in all tested directions, freezes
+  when paused and expires at the configured flight time. A shape fallback works
+  without the PNG. Launch/middle/arrival screenshots were reviewed in winter.
 
 - The lower status ribbon and every heading/countdown in it are removed on
   mobile and desktop. Queue length is on Clear (for example, Clear (3)); active
@@ -184,6 +197,14 @@ long corridors. Explicit queued trees still override automatic selection.
 | dismissing the leading phone warning reveals the next without restoring dismissed warnings | PASS |
 | phone Tech reward defers ordinary warnings and remains accessible until acknowledged | PASS |
 | desktop keeps routine feedback and switching to touch mode immediately compacts notices | PASS |
+| residents cannot hurt monsters before a completed tower, including after research or an unfinished site | PASS |
+| finishing the first tower doubles live monster health once and preserves injuries | PASS |
+| after the tower milestone ordinary residents can fight back at their configured damage | PASS |
+| later waves and winters retain doubled health even when every tower is demolished | PASS |
+| tower progression saves without repeat scaling and older tower saves migrate without mutating snapshots | PASS |
+| loading a pre-tower save clears progress from a previously developed settlement | PASS |
+| occupied towers shoot painted arrows that visibly travel, rotate and freeze at a fixed simulation age | PASS |
+| arrow directions have a readable shape fallback and expire after the configured flight time | PASS |
 | no unhandled browser exceptions | PASS |
 
 Screenshots and JSON diagnostics are local ignored files under `.qa/`. Run
@@ -194,7 +215,7 @@ acknowledgements. The runner brings its dedicated page to the foreground.
 
 ## Production artifacts
 
-`npm run build:itch` passed. The final production bundle is `index-Cg0Tvw76.js`.
+`npm run build:itch` passed. The final production bundle is `index-D7pKm57w.js`.
 The compiled game at `http://localhost:4173/` passed startup and first-season
 acknowledgement, individual commands, Clear with three actual queued Canvas tree
 clicks, save/notifications, local PT Sans loading, square UI corners and layouts

@@ -1,4 +1,4 @@
-import { EnemyData, TileType } from '../types';
+import { BuildingInstance, EnemyData, TileType } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 import { TileMap } from '../world/TileMap';
 import { ProtectionSystem } from './ProtectionSystem';
@@ -13,6 +13,7 @@ export class HordeSystem {
   public visibilityMultiplier = 1;
   public openGateIds = new Set<string>();
   public unbuiltPalisadeIds = new Set<string>();
+  public towerDefenseUnlocked = false;
   private waveTimer = 0;
   private currentWave = 0;
   private wavesThisWinter = 0;
@@ -41,6 +42,27 @@ export class HordeSystem {
     return counts[Math.min(Math.max(0, this.winterYear - 1), counts.length - 1)];
   }
   endWinter(): void { this.isActive = false; this.enemies = []; }
+
+  /** The first completed tower permanently enables defense and toughens living/current and future enemies. */
+  observeTowerConstruction(buildings: BuildingInstance[]): void {
+    if (this.towerDefenseUnlocked || !buildings.some(b => b.built && b.configId === 'watchtower')) return;
+    this.towerDefenseUnlocked = true;
+    const multiplier = getConfig().horde.enemyHealthAfterTowerMultiplier as number;
+    for (const enemy of this.getActiveEnemies()) {
+      enemy.hp *= multiplier; enemy.maxHp *= multiplier;
+    }
+  }
+
+  canVillagersDamage(): boolean {
+    return this.towerDefenseUnlocked || getConfig().horde.requireTowerForVillagerDamage === false;
+  }
+
+  reset(): void {
+    this.endWinter(); this.towerDefenseUnlocked = false;
+    this.waveTimer=0; this.currentWave=0; this.wavesThisWinter=0; this.waveSpawned=false;
+    this.winterYear=1; this.winterLevel=1; this.enemiesSpawnedThisWinter=0;
+    this.worldKey=''; this.retreating=false;
+  }
   update(dt: number, cx: number, cy: number,
     detection: { x: number; y: number; radius: number }[], _housing: { x: number; y: number }[],
     outside: { id: string; x: number; y: number }[], tiles: AttackTile[], _isHouse: (id: string) => boolean,
@@ -129,6 +151,7 @@ export class HordeSystem {
 
   private spawnWave(villageCenterX: number, villageCenterY: number): void {
     const cfg = getConfig().horde;
+    const hp = (cfg.enemyHP as number) * (this.towerDefenseUnlocked ? cfg.enemyHealthAfterTowerMultiplier as number : 1);
     const remaining = Math.max(0, this.winterEnemyLimit() - this.enemiesSpawnedThisWinter);
     const count = Math.ceil(remaining / (this.wavesThisWinter - this.currentWave));
     const edgeTiles = this.tileMap.getForestEdgeTiles().filter(p => !this.protection.blocksTile(p.x, p.y));
@@ -140,8 +163,8 @@ export class HordeSystem {
         id: `e_${nextEnemyId++}`,
         x: spawn.x,
         y: spawn.y,
-        hp: (cfg.enemyHP as number) || 30,
-        maxHp: (cfg.enemyHP as number) || 30,
+        hp,
+        maxHp: hp,
         speed: (cfg.enemySpeed as number) || 0.8,
         damage: (cfg.enemyDamage as number) || 10,
         attackCooldown: 0,
@@ -192,9 +215,10 @@ export class HordeSystem {
   // ---- Public API ----
 
   damageEnemy(enemyId: string, damage: number): void {
+    if (!this.canVillagersDamage()) return;
     const e = this.enemies.find(e => e.id === enemyId);
-    if (!e) return;
-    e.hp -= damage;
+    if (!e || e.state === 'dead') return;
+    e.hp = Math.max(0, e.hp - damage);
     if (e.hp <= 0) {
       e.state = 'dead';
     }
@@ -209,10 +233,12 @@ export class HordeSystem {
       isActive: this.isActive, waveTimer: this.waveTimer, currentWave: this.currentWave,
       wavesThisWinter: this.wavesThisWinter, waveSpawned: this.waveSpawned,
       winterYear: this.winterYear, winterLevel: this.winterLevel,
+      towerDefenseUnlocked: this.towerDefenseUnlocked,
       enemiesSpawnedThisWinter: this.enemiesSpawnedThisWinter };
   }
 
   deserialize(data: EnemyData[] | ReturnType<HordeSystem['serialize']>, winter = false, year = 1, level = 1): void {
+    this.towerDefenseUnlocked = !Array.isArray(data) && data.towerDefenseUnlocked === true;
     if (Array.isArray(data)) {
       if (winter) this.startWinter(year, level); else this.endWinter();
       this.enemies = data; this.waveSpawned = data.length > 0;
@@ -229,6 +255,8 @@ export class HordeSystem {
       const legacyCount = Math.floor(limit / waves) * accountedWaves + Math.min(accountedWaves, limit % waves);
       this.enemiesSpawnedThisWinter = Math.max(this.enemies.length, data.enemiesSpawnedThisWinter ?? legacyCount);
     }
+    // Migration may scale health next. Never mutate the caller's saved snapshot.
+    this.enemies = this.enemies.map(e => ({...e, path: e.path.map(p => ({...p}))}));
     nextEnemyId = Math.max(0, ...this.enemies.map(e => Number(e.id.replace('e_', '')) || 0)) + 1;
   }
 }

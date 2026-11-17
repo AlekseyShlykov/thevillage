@@ -66,7 +66,7 @@ two hinged leaves, bracing and a latch; opening swings both leaves away from the
 passage. Their simulation tile opens/closes with the same gate state.
 
 `Camera`, `Renderer`, `GroundArt`, `VillagerArt`, `IsometricArt`, `CropArt`,
-`FenceArt`, `WardFireArt`, `BuildingEffects`, `AssetLoader` and `InputManager` own these
+`FenceArt`, `WardFireArt`, `ProjectileArt`, `BuildingEffects`, `AssetLoader` and `InputManager` own these
 responsibilities independently of the simulation systems.
 
 ## Gameplay loop
@@ -289,6 +289,25 @@ Its existing wood production and nearby clearing-yield bonus remain. It is now
 required for advanced tower research. Planks and additional processing chains
 are proposals only; see `DEVELOPMENT_OPTIONS.md`.
 
+### Combat progression
+
+Before the first completed Timber Guard Tower, residents cannot damage monsters,
+including through automatic close combat. Researching a tower or placing an
+unfinished construction site does not enable attacks. The first completed tower
+permanently unlocks resident defense and doubles both current and maximum HP of
+all living monsters, preserving their injury fraction. Dead enemies stay dead.
+Future waves spawn at doubled health (default 30 → 60 HP). Additional towers and
+rebuilding do not multiply health again. Demolishing or losing the last tower
+does not undo this settlement milestone.
+
+`HordeSystem` owns `towerDefenseUnlocked`, blocks damage centrally, and stores
+the milestone in its saved state through seasonal changes. The construction tick
+observes completion before horde spawning, attacks and tower shooting. New games
+reset progression. Older saves with a completed tower acquire it once on load;
+new saves retain it even after every tower is gone. Loading does not mutate the
+provided snapshot or apply the multiplier repeatedly. Rules are configured by
+`horde.requireTowerForVillagerDamage` and `horde.enemyHealthAfterTowerMultiplier`.
+
 ### TowerCombatSystem and moats
 
 Timber Guard Tower replaces the old passive watchtower using the same ID and
@@ -297,7 +316,11 @@ Timber Guard Tower replaces the old passive watchtower using the same ID and
 inside on each click, reserves incoming places, and works during global shelter.
 Only living residents inside can fire: each contributes 18 damage every 1.25
 seconds against the nearest monster within seven tiles. An empty tower does not
-shoot. Brief animated arrows show attacks; tower occupants are hidden and counted
+shoot. Generated wooden arrows with iron tips and ivory/brown fletching show attacks.
+`ProjectileArt` rotates each arrow along a shallow flight arc from the firing
+slit to the target; zoom preserves its proportions, pausing freezes its position,
+and missing images use a Canvas arrow. Length, arc and flight time are configured
+in `rendering`. Tower occupants are hidden and counted
 as sheltered, so they warm up when supplied with firewood. Old towers receive the new
 maximum HP while retaining their health fraction. All combat values live in JSON.
 

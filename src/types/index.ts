@@ -226,7 +226,7 @@ export interface GameBalanceConfig {
     viewportTilesY: number;
     startClearingSize: number;
   };
-  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[]; towerShotSeconds: number };
+  rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[]; towerShotSeconds: number; towerArrowLength: number; towerArrowArc: number };
   tutorial: { lastYear:number; minimumFoodReserve: number; winterReserveMultiplier: number };
   gameplay: { automaticGardenWorkers:number; demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number; shelterMinimumHomeResidents: number; shelterHomeReserveFraction: number };
   resources: Record<string, number>;

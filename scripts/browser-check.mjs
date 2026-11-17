@@ -308,6 +308,7 @@ try {
   await (await import('./presentation-checks.mjs')).runPresentationChecks({check,ev,shot,call,clickSelector});
   await (await import('./workforce-tech-checks.mjs')).runWorkforceTechChecks({check,ev,shot,call,clickSelector,button});
   await (await import('./notification-checks.mjs')).runNotificationChecks({check,ev,shot,call,clickSelector,tile});
+  await (await import('./tower-progression-checks.mjs')).runTowerProgressionChecks({check,ev,shot,call});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

@@ -283,6 +283,7 @@ export class Game {
 
     this.buildingSystem.updateConstruction(effectiveDt, (buildingId) => this.getBuildersOnSite(buildingId));
     this.releaseBuildersFromCompletedBuildings();
+    this.hordeSystem.observeTowerConstruction(this.buildingSystem.buildings);
 
     const isWinter = this.seasonSystem.isWinter();
     const housingTiles = this.buildingSystem.getHousingTiles();
@@ -1003,7 +1004,8 @@ export class Game {
   }
 
   private updateCombat(dt: number): void {
-    if (!this.hordeSystem.isActive) return;
+    this.hordeSystem.observeTowerConstruction(this.buildingSystem.buildings);
+    if (!this.hordeSystem.isActive || !this.hordeSystem.canVillagersDamage()) return;
 
     const cfg = getConfig().horde;
     const toolDmg = (cfg.villagerToolDamage as number) * (this.techSystem.getEffect('toolDefenseBonus') ?? 1);
@@ -1597,7 +1599,7 @@ export class Game {
     this.resourceSystem.reset();
     this.seasonSystem.reset();
     this.techSystem.reset();
-    this.hordeSystem.endWinter();
+    this.hordeSystem.reset();
     this.weatherSystem.reset();
 
     this.mode = 'normal';
@@ -1805,6 +1807,7 @@ export class Game {
   }
 
   private serializeState(): Record<string, unknown> {
+    this.hordeSystem.observeTowerConstruction(this.buildingSystem.buildings);
     return {
       economyVersion: 2,
       researchRewardTiming:'winter-start',
@@ -1833,6 +1836,7 @@ export class Game {
 
   private deserializeState(data: Record<string, unknown>): void {
     this.towerCombatSystem.reset();
+    this.hordeSystem.reset();
     this.ui.resetNotifications();
     data = migrateRetiredBuildings(data);
     if (typeof data.level === 'number') this.level = data.level;
@@ -1867,6 +1871,7 @@ export class Game {
     if (data.enemies) {
       this.hordeSystem.deserialize(data.enemies as any, this.seasonSystem.isWinter(), this.seasonSystem.year, this.level);
     }
+    this.hordeSystem.observeTowerConstruction(this.buildingSystem.buildings);
     if ('weather' in data) {
       this.weatherSystem.deserialize(data.weather as any);
     }

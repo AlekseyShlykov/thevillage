@@ -9,6 +9,7 @@ import { GroundArt } from './GroundArt';
 import { VillagerArt, actionPhase, isWorking } from './VillagerArt';
 import { villagerActivity } from '../game/VillagerOrders';
 import { cropStageName } from './CropArt';
+import { ProjectileArt } from './ProjectileArt';
 import { TowerShot } from '../systems/TowerCombatSystem';
 import { protectionZones } from '../systems/ProtectionSystem';
 
@@ -19,6 +20,7 @@ export class Renderer {
   private art: IsometricArt;
   private groundArt: GroundArt;
   private villagerArt: VillagerArt;
+  private projectileArt: ProjectileArt;
   private hiddenVillagers = new Set<string>();
   private lastFrameTime = performance.now();
   private dpr = 1;
@@ -27,7 +29,7 @@ export class Renderer {
   private time = 0;
   constructor(private canvas: HTMLCanvasElement, private camera: Camera, private assets: AssetLoader) {
     this.ctx = canvas.getContext('2d')!; this.art = new IsometricArt(camera, assets);
-    this.groundArt = new GroundArt(camera); this.villagerArt = new VillagerArt(camera, assets);
+    this.groundArt = new GroundArt(camera); this.villagerArt = new VillagerArt(camera, assets); this.projectileArt=new ProjectileArt(camera,assets);
   }
   resize(): void {
     const center = this.camera.screenToWorld(this.camera.viewportWidth / 2, this.camera.viewportHeight / 2);
@@ -120,14 +122,7 @@ export class Renderer {
       scene.push({ depth: p.y, draw: () => this.enemy(e) });
     }
     scene.sort((a, b) => a.depth - b.depth).forEach(item => item.draw());
-    for(const shot of shots) {
-      const t=shot.age/getConfig().rendering.towerShotSeconds;
-      const a=this.point(shot.x+.5,shot.y+.5),b=this.point(shot.targetX+.5,shot.targetY+.5);
-      a.y-=95*this.camera.zoom;b.y-=16*this.camera.zoom;
-      const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
-      const length=Math.hypot(b.x-a.x,b.y-a.y)||1;
-      ctx.strokeStyle='#e7d3a0';ctx.lineWidth=2*this.camera.zoom;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-(b.x-a.x)/length*14*this.camera.zoom,y-(b.y-a.y)/length*14*this.camera.zoom);ctx.stroke();
-    }
+    for(const shot of shots)this.projectileArt.draw(ctx,shot);
     if (season === Season.Winter) this.winterLight(buildings, configs);
     this.renderWeather(weather);
     const vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .25, w / 2, h / 2, Math.max(w, h) * .72);

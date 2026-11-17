@@ -69,3 +69,10 @@ other technologies cost two. Stars arrive at winter start. Fur Workshop now uses
 distinct summer and winter workshop sprites. Automatic allocation covers one
 farmer per empty garden before repair and construction; generic orders protect
 existing farmers. Personal farming orders prefer less staffed plots.
+
+The first completed Timber Guard Tower is now a permanent combat milestone.
+Residents cannot harm monsters before it is completed. On completion, living and
+future monsters gain double health (30 → 60 by default); existing injuries keep
+their percentage. More towers do not compound the bonus, and losing a tower does
+not reverse progression. Occupied towers retain their configured 18 damage per
+archer and now shoot a generated arrow sprite along an animated flight arc.

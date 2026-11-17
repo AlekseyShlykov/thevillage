@@ -9,6 +9,7 @@ export interface TowerShot { x: number; y: number; targetX: number; targetY: num
 export class TowerCombatSystem {
   public shots: TowerShot[]=[];
   update(dt: number,buildings: BuildingSystem,villagers: VillagerSystem,horde: HordeSystem): void {
+    horde.observeTowerConstruction(buildings.buildings);
     for(const shot of this.shots)shot.age+=dt;
     this.shots=this.shots.filter(s=>s.age<getConfig().rendering.towerShotSeconds);
     if(!horde.isActive)return;
