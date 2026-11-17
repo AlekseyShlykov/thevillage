@@ -1,4 +1,4 @@
-import { TechConfig } from '../types';
+import { BuildingInstance, TechConfig } from '../types';
 import { getConfig } from '../data/ConfigLoader';
 
 export class TechnologySystem {
@@ -13,35 +13,20 @@ export class TechnologySystem {
     return getConfig().technology.techs;
   }
 
-  getAvailableTechs(currentLevel: number): TechConfig[] {
-    const allTechs = this.getAllTechs();
-    const levels = getConfig().levels;
-    const levelData = levels[String(currentLevel)];
-    if (!levelData) return [];
-
-    const availableTiers = new Set(levelData.availableTiers);
-    const result: TechConfig[] = [];
-
-    for (const tech of Object.values(allTechs)) {
-      if (this.unlockedTechs.has(tech.id)) continue;
-      if (!availableTiers.has(tech.tier)) continue;
-      result.push(tech);
-    }
-
-    return result;
+  getAvailableTechs(_currentLevel: number,buildings:BuildingInstance[]=[]): TechConfig[] {
+    return Object.values(this.getAllTechs()).filter(t=>!this.unlockedTechs.has(t.id)&&this.requirementsMet(t,buildings));
   }
 
-  canUnlock(techId: string, techPoints: number, currentLevel: number): boolean {
+  private requirementsMet(tech:TechConfig,buildings:BuildingInstance[]):boolean {
+    return (tech.prerequisites??[]).every(id=>this.unlockedTechs.has(id))&&
+      (tech.requiresBuildings??[]).every(id=>buildings.some(b=>b.built&&b.configId===id));
+  }
+  canUnlock(techId: string, techPoints: number, _currentLevel: number,buildings:BuildingInstance[]=[]): boolean {
     const tech = this.getAllTechs()[techId];
     if (!tech) return false;
     if (this.unlockedTechs.has(techId)) return false;
 
-    const levels = getConfig().levels;
-    const levelData = levels[String(currentLevel)];
-    if (!levelData) return false;
-    if (!levelData.availableTiers.includes(tech.tier)) return false;
-
-    return techPoints >= tech.cost;
+    return this.requirementsMet(tech,buildings)&&techPoints>=tech.cost;
   }
 
   unlockTech(techId: string): string[] {

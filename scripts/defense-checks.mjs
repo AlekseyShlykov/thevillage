@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 export async function runDefenseChecks({check,ev,shot,button,until,call}) {
   await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
   await ev('g.renderer.resize()');
-  await check('global Hunt and Herbs interrupt employed workers immediately',async()=>{
+  await check('global Hunt and Herbs preserve farmers while redirecting other workers',async()=>{
     const r=await ev(`(()=>{econReset();const garden=g.buildingSystem.placeStartingBuilding('garden',42,27),fur=g.buildingSystem.placeStartingBuilding('furWorkshop',35,32);const [a,b]=g.villagerSystem.villagers;g.villagerSystem.assignVillagerToBuilding(a.id,garden.id,g.buildingSystem.buildings);g.villagerSystem.assignVillagerToBuilding(b.id,fur.id,g.buildingSystem.buildings);g.selectedVillagerId=null;g.goHunting();g.gatherHerbs();return{tasks:[a.currentTask,b.currentTask],rosters:[garden.assignedWorkers.length,fur.assignedWorkers.length],paths:[a.path.length,b.path.length]};})()`);
-    assert.deepEqual(new Set(r.tasks),new Set(['hunting','gatheringHerbs']));assert.deepEqual(r.rosters,[0,0]);assert(r.paths.every(n=>n>0));return r;
+    assert.deepEqual(r.tasks,['farming','gatheringHerbs']);assert.deepEqual(r.rosters,[1,0]);assert(r.paths.every(n=>n>0));return r;
   });
   await check('Clear immediately starts expanding the settlement and continues chopping',async()=>{
     const r=await ev(`(()=>{econReset();g.toggleClearMode();const v=g.villagerSystem.getAliveVillagers().find(v=>v.currentTask==='clearing');const first={x:v.targetX,y:v.targetY};const d=Math.hypot(v.x-first.x,v.y-first.y);const minimum=Math.min(...g.tileMap.tiles.flatMap((row,y)=>row.flatMap((t,x)=>t.type==='forest'?[Math.hypot(v.x-x,v.y-y)]:[])));Object.assign(v,{x:first.x,y:first.y,path:[],state:'working'});g.updateForestClearing(balance.villagers.clearForestTime+.1);g.updateForestClearing(balance.villagers.clearingDispatchInterval+.1);return{d,minimum,mode:g.mode,next:v.currentTask,firstCleared:g.tileMap.getTile(first.x,first.y).type==='clear',repeat:v.repeatClearing};})()`);

@@ -140,6 +140,21 @@ straight, north–east elbow, north–east–west T, and cross. Painted earth, r
 mossy stone and dark teal water match the village palette. The original is
 unmodified; Canvas rotates and projects the cells, normalizes connection mouths,
 and caches padded tiles for smooth joins. All sixteen orthogonal neighbour
-patterns are supported, with winter/construction tints and shape fallbacks.
+patterns are supported, with construction tints and shape fallbacks. Winter now uses the separate
+`moat-tiles-atlas-winter.png` with snow banks and icy water, with the same mouth
+normalization and connection topology.
 Generation used the built-in `image_gen` tool with transparency, without CLI or
 offline image editing. See [the exact prompt](MOAT_ART_PROMPT.md).
+
+## Fur Workshop and winter defenses · 2026-11-17
+
+`public/assets/isometric/fur-workshop.png` and `fur-workshop-winter.png` are
+1280 × 1280 transparent illustrations. The low shingle roof, open sewing bay,
+hanging pelts and hide-stretching frame distinguish this production building
+from huts. Seasonal selection is local; missing sprites use a timber work-bay
+fallback. `moat-tiles-atlas-winter.png` preserves six modular cells in 1536 × 1024.
+All three were generated using the built-in image generation tool with original
+alpha retained and no offline raster editing. Exact prompts are in
+[SEASONAL_WORKSHOP_ART_PROMPTS.md](SEASONAL_WORKSHOP_ART_PROMPTS.md).
+Fence winter snow is native Canvas geometry on post caps, rails, gates and
+footings, so it follows every bend and open gate without a separate atlas.

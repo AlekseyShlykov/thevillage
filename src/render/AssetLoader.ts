@@ -50,7 +50,7 @@ export class AssetLoader {
 
   async loadAll(): Promise<void> {
     const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png',
-      'isometric/moat-tiles-atlas.png', 'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png','cargo/herbs.png','cargo/hunt.png','isometric/guard-tower.png'];
+      'isometric/moat-tiles-atlas.png', 'isometric/moat-tiles-atlas-winter.png', 'isometric/fur-workshop.png', 'isometric/fur-workshop-winter.png', 'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png','cargo/herbs.png','cargo/hunt.png','isometric/guard-tower.png'];
 
     for (const p of Object.values(BUILDING_SPRITE_MAP)) allPaths.push(p);
     for (const arr of Object.values(TILE_SPRITE_MAP)) allPaths.push(...arr);
@@ -82,7 +82,8 @@ export class AssetLoader {
   getCargo(kind: 'herbs'|'hunt'): HTMLImageElement | null {return this.images.get(`cargo/${kind}.png`)??null;}
   getTower(): HTMLImageElement | null {return this.images.get('isometric/guard-tower.png')??null;}
 
-  getMoatAtlas(): HTMLImageElement | null {return this.images.get('isometric/moat-tiles-atlas.png')??null;}
+  getMoatAtlas(season?:string): HTMLImageElement | null {return (season==='winter'?this.images.get('isometric/moat-tiles-atlas-winter.png'):null)??this.images.get('isometric/moat-tiles-atlas.png')??null;}
+  getFurWorkshop(season?:string):HTMLImageElement|null {return (season==='winter'?this.images.get('isometric/fur-workshop-winter.png'):null)??this.images.get('isometric/fur-workshop.png')??null;}
 
   getGardenAtlas(): HTMLImageElement | null { return this.images.get('isometric/garden-growth-atlas.png') ?? null; }
   getWardAtlas(): HTMLImageElement | null { return this.images.get('isometric/herbal-fire-atlas.png') ?? null; }

@@ -10,12 +10,11 @@ export async function runUXChecks({check,ev,shot,clickSelector,button,tile,until
     assert.equal(await ev('g.selectedVillagerId'),null);assert.equal(await ev('g.villagerSystem.villagers[0].currentTask'),'clearing');
     await button('Build');await mouse(600,700);assert.equal(await ev('g.ui.isBuildPanelOpen()'),false);
     await button('Tech');await mouse(600,700);assert.equal(await ev('g.ui.isTechPanelOpen()'),false);
-    await clickSelector('#game-forecast summary');await mouse(600,700);assert.equal(await ev('document.getElementById("game-forecast").open'),false);
-    return 'jobs continue; selection, build, technology and forecast panels close';
+    return 'jobs continue; selection, build, technology panels close';
   });
   await check('herbs unlock only after a completed ward; tools never clutter resources',async()=>{
-    const r=await ev(`(()=>{econReset();g.updateUI();const hidden=document.querySelector('[data-stat=herbs]').hidden,planBefore=document.querySelector('#game-forecast').textContent,heading=!!document.querySelector('.game-heading');g.resourceSystem.resources.clothing=2;g.equipmentSystem.issue(g.villagerSystem.getAliveVillagers(),g.resourceSystem);g.resourceSystem.resources.herbs=4;g.buildingSystem.placeStartingBuilding('herbalFire',42,27);g.updateUI();const coats=document.querySelector('[data-stat=clothing] [data-value]').textContent,herbs=document.querySelector('[data-stat=herbs] [data-value]').textContent;return{hidden,planBefore,heading,coats,herbs,unlocked:!document.querySelector('[data-stat=herbs]').hidden,tools:!!document.querySelector('[data-stat=tools]')};})()`);
-    assert(r.hidden&&!r.heading&&r.unlocked&&!r.tools);assert(!r.planBefore.toLowerCase().includes('herb'));assert.equal(r.coats,'2');assert.equal(r.herbs,'4');await shot('resources-coats-herbs');return r;
+    const r=await ev(`(()=>{econReset();g.updateUI();const hidden=document.querySelector('[data-stat=herbs]').hidden,planAbsent=!document.querySelector('#game-forecast'),heading=!!document.querySelector('.game-heading');g.resourceSystem.resources.clothing=2;g.equipmentSystem.issue(g.villagerSystem.getAliveVillagers(),g.resourceSystem);g.resourceSystem.resources.herbs=4;g.buildingSystem.placeStartingBuilding('herbalFire',42,27);g.updateUI();const coats=document.querySelector('[data-stat=clothing] [data-value]').textContent,herbs=document.querySelector('[data-stat=herbs] [data-value]').textContent;return{hidden,planAbsent,heading,coats,herbs,unlocked:!document.querySelector('[data-stat=herbs]').hidden,tools:!!document.querySelector('[data-stat=tools]')};})()`);
+    assert(r.hidden&&!r.heading&&r.unlocked&&!r.tools);assert(r.planAbsent);assert.equal(r.coats,'2');assert.equal(r.herbs,'4');await shot('resources-coats-herbs');return r;
   });
   await check('construction offers one cancel action and a distinct close control',async()=>{
     await ev('econReset();g.buildingSystem.placeBuilding("hut",42,27);g.updateUI();g.render()');await tile(43,28);
@@ -42,7 +41,7 @@ export async function runUXChecks({check,ev,shot,clickSelector,button,tile,until
   await check('food and lethal cold warnings remain visible until the danger is resolved',async()=>{
     await ev('econReset();g.updateUI()');assert(await ev('!!document.querySelector("[data-warning=food]")'));
     await ev('g.seasonSystem.season="winter";g.resourceSystem.resources.food=50;g.villagerSystem.villagers[0].coldExposure=16;g.updateUI();g.render()');
-    const text=await ev('document.querySelector("#cold-warning").textContent');assert(text.includes('Shelter')&&text.includes('14s'));const style=await ev('(()=>{const el=document.getElementById("cold-warning"),r=el.getBoundingClientRect();return{color:getComputedStyle(el).color,cx:r.x+r.width/2,cy:r.y+r.height/2,w:innerWidth,h:innerHeight}})()');assert.equal(style.color,'rgb(255, 102, 92)');assert(Math.abs(style.cx-style.w/2)<1&&Math.abs(style.cy-style.h/2)<1);await shot('cold-danger-warning');
+    const text=await ev('document.querySelector("#cold-warning").textContent');assert(text.includes('Shelter')&&text.includes('14s'));const style=await ev('(()=>{const el=document.getElementById("cold-warning"),r=el.getBoundingClientRect();return{font:parseFloat(getComputedStyle(el).fontSize),color:getComputedStyle(el).color,cx:r.x+r.width/2,cy:r.y+r.height/2,w:innerWidth,h:innerHeight}})()');assert.equal(style.color,'rgb(255, 102, 92)');assert(Math.abs(style.cx-style.w/2)<1&&style.cy<style.h*.4&&style.font<=14);await shot('cold-danger-warning');
     await button('Shelter');await until('g.villagerSystem.getAliveVillagers().every(v=>g.isVillagerInShelter(v.id))',15);
     assert.equal(await ev('!document.querySelector("#cold-warning").hidden'),false);return{text};
   });
@@ -73,7 +72,7 @@ export async function runUXChecks({check,ev,shot,clickSelector,button,tile,until
     for(const width of [390,768,900,1024,1280]) {
       await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:width===390?2:1,mobile:width===390});
       await ev('g.renderer.resize();econReset();g.buildingSystem.placeStartingBuilding("herbalFire",42,27);g.updateUI();g.render()');
-      const r=await ev(`(()=>{const bar=document.getElementById('game-top-bar'),forecast=document.getElementById('game-forecast');return{width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth||bar.scrollWidth>bar.clientWidth+2,below:getComputedStyle(forecast).display==='none'||forecast.getBoundingClientRect().top>=bar.getBoundingClientRect().bottom,buttons:[...document.querySelectorAll('#game-bottom-bar button')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})};})()`);
+      const r=await ev(`(()=>{const bar=document.getElementById('game-top-bar');return{width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth||bar.scrollWidth>bar.clientWidth+2,below:!document.getElementById('game-forecast'),buttons:[...document.querySelectorAll('#game-bottom-bar button')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})};})()`);
       assert(!r.overflow&&r.below&&r.buttons,JSON.stringify(r));layouts.push(r);
       if(width===390||width===1280) { await ev('g.selectedVillagerId=g.villagerSystem.villagers[0].id;g.updateUI()');await shot('ux-jobs-'+width); }
     }

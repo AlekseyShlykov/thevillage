@@ -19,7 +19,7 @@ export function migrateRetiredBuildings(saved: Record<string, unknown>): Record<
     research += rule.refundResearch;
     if (rule.replacement && !techs.has(rule.replacement)) {
       techs.add(rule.replacement); unlocked.add(rule.replacement);
-      research -= cfg.technology.techs[rule.replacement].cost;
+      research -= rule.replacementResearchCost??cfg.technology.techs[rule.replacement].cost;
     }
   }
 

@@ -5,8 +5,8 @@ export async function runForestClearingChecks({check,ev,shot,call,clickSelector,
   await call('Emulation.setTouchEmulationEnabled',{enabled:false});
   await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
   await ev(`(async()=>{g.renderer.resize();window.clearingQueue=await import('/src/world/ForestClearingQueue.ts');})()`);
-  await check('Clear starts busy residents immediately and accepts many tree clicks without duplicates',async()=>{
-    await ev(`econReset();g.resourceSystem.resources.food=100;const garden=g.buildingSystem.placeStartingBuilding('garden',42,27);for(const v of g.villagerSystem.villagers)g.villagerSystem.assignVillagerToBuilding(v.id,garden.id,g.buildingSystem.buildings);g.updateUI();g.render()`);
+  await check('Clear redirects a busy non-farmer and accepts many tree clicks without duplicates',async()=>{
+    await ev(`econReset();g.resourceSystem.resources.food=100;const garden=g.buildingSystem.placeStartingBuilding('garden',42,27);g.villagerSystem.assignVillagerToBuilding(g.villagerSystem.villagers[0].id,garden.id,g.buildingSystem.buildings);const workshop=g.buildingSystem.placeStartingBuilding('furWorkshop',35,32);g.villagerSystem.assignVillagerToBuilding(g.villagerSystem.villagers[1].id,workshop.id,g.buildingSystem.buildings);g.updateUI();g.render()`);
     await clickSelector('[data-global-clear]');
     const started=await ev(`(()=>{const v=g.villagerSystem.villagers.find(v=>v.currentTask==='clearing');window.queueChopper=v.id;window.queueStart={x:v.targetX,y:v.targetY};window.treeClicks=Array.from({length:8},(_,i)=>({x:34,y:26+i})).filter(p=>p.x!==v.targetX||p.y!==v.targetY).sort((a,b)=>Math.hypot(b.x-v.x,b.y-v.y)-Math.hypot(a.x-v.x,a.y-v.y)).slice(0,6);return{task:v.currentTask,path:v.path.length,mode:g.mode,other:g.villagerSystem.villagers.filter(v=>v.currentTask==='farming').length};})()`);
     assert.equal(started.task,'clearing');assert(started.path>0);assert.equal(started.mode,'clear');assert.equal(started.other,1);

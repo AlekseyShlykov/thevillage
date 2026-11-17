@@ -175,6 +175,8 @@ export interface EnemyData {
 }
 
 export interface TechConfig {
+  prerequisites?:string[];
+  requiresBuildings?:string[];
   id: string;
   name: string;
   tier: number;
@@ -226,11 +228,11 @@ export interface GameBalanceConfig {
   };
   rendering: { tileWidth: number; tileHeight: number; zoom: number; minZoom: number; maxZoom: number; cropStageThresholds: number[]; towerShotSeconds: number };
   tutorial: { lastYear:number; minimumFoodReserve: number; winterReserveMultiplier: number };
-  gameplay: { demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number; shelterMinimumHomeResidents: number; shelterHomeReserveFraction: number };
+  gameplay: { automaticGardenWorkers:number; demoWinters: number; foodWarningSeconds: number; foodComfortPerVillager: number; defenseComfortHP: number; refundFraction: number; shelterMinimumHomeResidents: number; shelterHomeReserveFraction: number };
   resources: Record<string, number>;
   villagers: Record<string, number>;
   buildings: Record<string, BuildingConfig>;
-  retiredBuildings: Record<string, { refundWood: number; refundTools: number; refundResearch: number; replacement?: string }>;
+  retiredBuildings: Record<string, { refundWood: number; refundTools: number; refundResearch: number; replacement?: string; replacementResearchCost?:number }>;
   herbs: { capacity: number; perWinter: number; gatherSeconds: number; searchRadius: number; minimumForestDepth: number; maximumForestDepth: number; deathChance: number };
   equipment: { clothingLifetimeWinters: number };
   heating: { woodPerShelterPerWinter: number; unheatedExposureMultiplier: number; buildingIds: string[] };
@@ -261,6 +263,7 @@ export interface GameBalanceConfig {
     building?: number;
     dead?: number;
     hunt?: number;
+    herbs?:number;
     shelter?: number;
     leave?: number;
     hungry?: number;

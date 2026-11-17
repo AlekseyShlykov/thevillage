@@ -37,7 +37,9 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
       villagers.huntingGrounds.candidates(v,undefined,{minimum:cfg.herbs.minimumForestDepth,maximum:cfg.herbs.maximumForestDepth,searchRadius:cfg.herbs.searchRadius}).some(reach))
       jobs.push({key:'herbs',kind:'herbs',label:'Gather herbs',icon:'herbs'});
     const offered = new Set<string>();
-    const sorted = [...buildings.buildings].sort((a,b) => distance({x:a.tileX,y:a.tileY})-distance({x:b.tileX,y:b.tileY}));
+    const nearby = [...buildings.buildings].sort((a,b)=>distance({x:a.tileX,y:a.tileY})-distance({x:b.tileX,y:b.tileY}));
+    const gardens = nearby.filter(b=>b.configId==='garden').sort((a,b)=>a.assignedWorkers.length-b.assignedWorkers.length);
+    const sorted = [...gardens,...nearby.filter(b=>b.configId!=='garden')];
     for (const b of sorted) {
       const spec = buildings.getBuildingConfig(b.configId);
       if (!spec || !buildings.getArrivalTiles(b).some(reach)) continue;
@@ -53,7 +55,7 @@ export function availableJobs(v: VillagerData, map: TileMap, buildings: Building
       if (b.assignedWorkers.length>=spec.maxWorkers && !b.assignedWorkers.includes(v.id)) continue;
       const garden = b.configId==='garden';
       if (garden && season===Season.Winter) continue;
-      if (!garden && v.assignedBuildingId===b.id) continue;
+      if (v.assignedBuildingId===b.id) continue;
       if (b.configId==='furWorkshop' && resources.resources.fur<cfg.resources.furPerClothing) continue;
       const label = garden ? b.cropState==='ripe'?'Harvest food':'Tend garden' : b.configId==='furWorkshop'?'Make fur coats':'Gather wood';
       jobs.push({key:`${garden?'farm':'work'}:${b.configId}`,kind:garden?'farm':'work',label,icon:garden?'wheat':b.configId==='furWorkshop'?'clothing':'axe',buildingId:b.id});

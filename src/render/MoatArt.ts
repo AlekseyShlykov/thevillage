@@ -13,7 +13,7 @@ export class MoatArt {
   constructor(private camera:Camera,private assets:AssetLoader) {}
 
   draw(ctx:CanvasRenderingContext2D,b:BuildingInstance,all:BuildingInstance[],season:Season):void {
-    const atlas=this.assets.getMoatAtlas();
+    const atlas=this.assets.getMoatAtlas(season);
     if(this.atlas!==atlas) {this.atlas=atlas;this.tiles.clear();}
     const mask=moatConnectionMask(b,all),key=`${mask}:${season}:${b.built}`;
     let tile=this.tiles.get(key);
@@ -31,7 +31,7 @@ export class MoatArt {
     const cold=season===Season.Winter;
     if(atlas) {
       const cw=atlas.width/3,ch=atlas.height/2,inset=.045;
-      ctx.filter=!built?'sepia(1) saturate(.65)':cold?'saturate(.48) brightness(1.25)':'none';
+      ctx.filter=!built?'sepia(1) saturate(.65)':'none';
       ctx.save();ctx.translate(tilePixels/2,tilePixels/2);ctx.rotate(turns*Math.PI/2);
       ctx.drawImage(atlas,(frame%3+inset)*cw,(Math.floor(frame/3)+inset)*ch,cw*(1-inset*2),ch*(1-inset*2),
         -tilePixels/2,-tilePixels/2,tilePixels,tilePixels);ctx.restore();

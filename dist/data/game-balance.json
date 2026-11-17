@@ -94,7 +94,7 @@
     },
     "lumberCamp": {
       "id": "lumberCamp",
-      "name": "Lumber Camp",
+      "name": "Sawmill",
       "width": 2,
       "height": 2,
       "costWood": 20,
@@ -106,7 +106,7 @@
       "maxWorkers": 3,
       "hp": 80,
       "boostRadius": 5,
-      "description": "Assign lumberjacks near forest for steady wood and 50% better nearby tree yields."
+      "description": "Workers gather timber; nearby tree clearing yields 50% more wood. Build one to unlock guard tower research."
     },
     "storage": {
       "id": "storage",
@@ -395,7 +395,7 @@
         "id": "garden",
         "name": "Garden",
         "tier": 1,
-        "cost": 1,
+        "cost": 2,
         "unlocks": [
           "garden"
         ],
@@ -404,22 +404,28 @@
       "storage": {
         "id": "storage",
         "name": "Storage",
-        "tier": 2,
+        "tier": 1,
         "cost": 1,
         "unlocks": [
           "storage"
         ],
-        "description": "Store up to 50 more of each resource"
+        "description": "Store up to 50 more of each resource",
+        "prerequisites": []
       },
       "lumberCamp": {
         "id": "lumberCamp",
-        "name": "Lumber Camp",
+        "name": "Sawmill",
         "tier": 1,
-        "cost": 1,
+        "cost": 2,
         "unlocks": [
           "lumberCamp"
         ],
-        "description": "Workers gather wood and improve nearby tree yields"
+        "description": "Gather timber efficiently. A completed sawmill is required before guard tower research.",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "palisade": {
         "id": "palisade",
@@ -430,57 +436,87 @@
           "palisadeWall",
           "palisadeGate"
         ],
-        "description": "Defensive walls and gates"
+        "description": "Defensive walls and gates",
+        "prerequisites": [
+          "storage"
+        ]
       },
       "campFire": {
         "id": "campFire",
         "name": "Forest Camp Fire",
         "tier": 2,
-        "cost": 1,
+        "cost": 2,
         "unlocks": [
           "campFire"
         ],
-        "description": "A forest outpost with early warning, warmth and shelter for one resident."
+        "description": "A forest outpost with early warning, warmth and shelter for one resident.",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "furWorkshop": {
         "id": "furWorkshop",
         "name": "Fur Workshop",
-        "tier": 1,
-        "cost": 1,
+        "tier": 2,
+        "cost": 2,
         "unlocks": [
           "furWorkshop"
         ],
-        "description": "Turns fur into winter clothing"
+        "description": "Turns fur into winter clothing",
+        "prerequisites": [
+          "storage"
+        ]
       },
       "smokehouse": {
         "id": "smokehouse",
         "name": "Smokehouse",
         "tier": 3,
-        "cost": 1,
+        "cost": 2,
         "unlocks": [
           "smokehouse"
         ],
-        "description": "Improves food efficiency"
+        "description": "Improves food efficiency",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "watchtower": {
         "id": "watchtower",
         "name": "Timber Guard Tower",
         "tier": 2,
-        "cost": 2,
+        "cost": 3,
         "unlocks": [
           "watchtower"
         ],
-        "description": "Build a strong timber shelter whose occupants shoot monsters from range."
+        "description": "Build a strong timber shelter whose occupants shoot monsters from range.",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire",
+          "lumberCamp"
+        ],
+        "requiresBuildings": [
+          "lumberCamp"
+        ]
       },
       "house": {
         "id": "house",
         "name": "House",
         "tier": 4,
-        "cost": 1,
+        "cost": 2,
         "unlocks": [
           "house"
         ],
-        "description": "Better villager housing"
+        "description": "Better villager housing",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "largeHouse": {
         "id": "largeHouse",
@@ -490,7 +526,12 @@
         "unlocks": [
           "largeHouse"
         ],
-        "description": "Spacious housing"
+        "description": "Spacious housing",
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "reinforcedPalisade": {
         "id": "reinforcedPalisade",
@@ -501,7 +542,12 @@
         "description": "Stronger defensive walls",
         "effect": {
           "palisadeHPMultiplier": 2.0
-        }
+        },
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "hearth": {
         "id": "hearth",
@@ -512,7 +558,12 @@
         "description": "Improved building warmth",
         "effect": {
           "comfortBonus": 8
-        }
+        },
+        "prerequisites": [
+          "furWorkshop",
+          "palisade",
+          "herbalFire"
+        ]
       },
       "herbalFire": {
         "id": "herbalFire",
@@ -522,7 +573,10 @@
         "unlocks": [
           "herbalFire"
         ],
-        "description": "Unlock a ritual fire that repels monsters from a protective square."
+        "description": "Unlock a ritual fire that repels monsters from a protective square.",
+        "prerequisites": [
+          "storage"
+        ]
       }
     },
     "firstWinterRewardCount": 5,
@@ -601,7 +655,8 @@
     "hunt": 0.5,
     "shelter": 0.6,
     "leave": 0.4,
-    "hungry": 0.6
+    "hungry": 0.6,
+    "herbs": 0.5
   },
   "demoEnd": {
     "emailSubmitUrl": "https://script.google.com/macros/s/AKfycbwGh9FzAcQih9zf7_i_K-UudvreiCZF5AdHCfI71t-kCD8pDZ6NPWe__RcBFFJSxOF9eQ/exec"
@@ -637,7 +692,8 @@
     "defenseComfortHP": 200,
     "refundFraction": 0.5,
     "shelterMinimumHomeResidents": 1,
-    "shelterHomeReserveFraction": 0.25
+    "shelterHomeReserveFraction": 0.25,
+    "automaticGardenWorkers": 1
   },
   "retiredBuildings": {
     "hunterHut": {
@@ -649,13 +705,15 @@
       "refundWood": 5,
       "refundTools": 0,
       "refundResearch": 0,
-      "replacement": "campFire"
+      "replacement": "campFire",
+      "replacementResearchCost": 1
     },
     "scoutFire": {
       "refundWood": 8,
       "refundTools": 0,
       "refundResearch": 5,
-      "replacement": "campFire"
+      "replacement": "campFire",
+      "replacementResearchCost": 1
     },
     "workshop": {
       "refundWood": 30,

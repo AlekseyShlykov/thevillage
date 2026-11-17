@@ -16,8 +16,11 @@ zoom. Touch and mouse input use the same inverse projection as rendering.
 
 Terrain is cached until the map revision, camera or season changes. Visible
 trees, buildings, residents and enemies are sorted together by depth. Illustrated
-summer/winter atlases supply trees, huts, storage and lumber camps. Other existing
-buildings share the cottage silhouette with labels and worker counts. Generated
+summer/winter atlases supply trees, huts, storage and sawmills. Fur Workshop has
+its own summer/winter illustrations with an open work bay, pelts and a hide frame.
+Other existing housing shares the cottage silhouette with labels and worker counts.
+Gardens sort below nearby residents so farmers remain visible even along the rear
+edge; occlusion for taller buildings is unchanged. Generated
 transparent atlases supply garden stages and the animated herbal ward hearth. Separate
 transparent illustrations supply the timber guard tower and carried herb/hunting
 baskets. `MoatArt` draws connected earth banks and dark water; fences and the
@@ -81,8 +84,8 @@ until acknowledged or skipped. The first guided hunter remains protected from de
 ### SeasonSystem
 
 Spring 30 s → summer 90 s → autumn 30 s → winter 120 s at normal speed. Spring
-increments the year, ends the horde, awards surviving-winter research and
-autosaves. The configured demo ends after eighteen winters. Pause, 1×, 2× and 4×
+increments the year, ends the horde and autosaves. Research is awarded on entering
+winter, before winter construction and work. The configured demo ends after eighteen winters. Pause, 1×, 2× and 4×
 control simulation time. Frame input and UI continue while paused.
 
 ### ResourceSystem and ProductionSystem
@@ -96,7 +99,7 @@ Starvation uses a configurable grace period and death interval.
 
 Production requires living assigned workers who have reached a building's
 perimeter. Injuries, comfort, weather and winter affect work. Building production
-progress is saved. Lumber camps require nearby forest; fur workshops process
+progress is saved. Sawmills require nearby forest; fur workshops process
 pelts from direct hunting into clothing. Smokehouses reduce consumption passively.
 The tool Workshop and Better Tools research are removed: every resident has
 permanent tools and no construction recipe requires spare tools.
@@ -145,14 +148,16 @@ Clicking a visible resident opens their individual command card with only
 currently available jobs. `VillagerJobs` resolves reachable forest, construction,
 repair and production destinations, free worker slots and recipe ingredients.
 Clicking a job immediately replaces that resident's previous task; there is no
-second destination click. The nearest suitable site is used. A ripe garden says
+second destination click. A reachable suitable site is used; farming prefers a
+garden with fewer assigned farmers, then the nearer plot. A full garden is
+skipped. With two available plots, two residents work separate plots. A ripe garden says
 Harvest food; a fur workshop says Make fur coats when pelts exist. Reassignment
 releases the resident's old worker slot. Other residents retain their jobs.
 Stop releases the job and waits for further orders. The saved `holdPosition`
 flag prevents automatic dispatch from replacing Stop.
 
 Clicking unoccupied world space deselects the resident and closes construction,
-technology, forecast and context panels. Work continues after deselection. A
+technology and context panels. Work continues after deselection. A
 click outside an open build/research menu dismisses it. Choosing a building in
 the build catalogue still enables map placement. Construction context menus
 have one Cancel construction action and a separate Close control.
@@ -166,13 +171,14 @@ are configured in the villagers data. Successful expeditions bring 15 food and
 two fur. Older saves with a shallow hunting destination receive a new deep
 destination when loaded. Later
 hunts retain their configured risk. Global Hunt, Herbs and Clear commands choose
-an idle resident, or interrupt another job when nobody is idle. Existing
-expeditions are interrupted only when no other worker is available; a selected
-resident has priority. Former work rosters are released immediately. Carried
+an idle resident, then an automatic woodcutter, then another non-farming worker.
+A farmer stays on their plot unless the player explicitly selects that resident
+and issues a new job. Global Shelter still recalls everyone. Existing expeditions
+are interrupted only when no other worker is available; a selected resident has priority. Former work rosters are released immediately. Carried
 supplies are delivered first, then the accepted order starts without another click.
 
 Clear immediately dispatches a worker to a reachable unreserved tree, interrupting
-another job if necessary, and enters tree-selection mode. Click forest tiles to
+a non-farming job if necessary, and enters tree-selection mode. Click forest tiles to
 queue any number of specific trees in click order; duplicates are ignored. Queued
 tiles show numbered markers and the status ribbon shows the queue size. A worker
 finishes its current tree, then chooses queued trees before automatic expansion.
@@ -240,8 +246,8 @@ shared equally between shelters, and absent in other seasons. Unfinished buildin
 use no fuel. No extra charge occurs on entering a season or loading a save.
 When wood runs out, shelter still conceals residents from monsters but stops
 warming them; gathering wood immediately restores heat. Fuel demand, shelter IDs
-and indoor cold exposure are configured in `game-balance.json`. Winter plan and
-the Wood tooltip explain the reserve, with warnings for a deficit or no heating.
+and indoor cold exposure are configured in `game-balance.json`. The Wood tooltip
+explains the reserve, with actionable warnings for a deficit or no heating.
 
 ### BuildingSystem
 
@@ -260,15 +266,28 @@ maximum HP from palisade research.
 
 ### TechnologySystem
 
-Research comes only from survived winters: one star for each of winters 1–5,
+Research arrives at the beginning of winter: one star for each of winters 1–5,
 then two per winter. Construction and population milestones give no stars.
-The last rewarded winter is saved to prevent repeat awards. A new village has
-zero stars and already knows gardens. Research prices are one or two stars;
-fur clothing research is available at tier 1 after the first winter without
-requiring tools. Existing technologies use configured tiers and costs. Every
-researched building appears in the build menu, including tiers 3–5. Hearth
-comfort and reinforced palisades apply their effects. Timber Guard Tower is tier
-2 and costs two stars; Moat is known from the beginning.
+The last rewarded winter and `researchRewardTiming: winter-start` are saved to
+prevent repeat awards. An older save loaded during winter receives that winter's
+new early reward once; a spring save retains its existing balance until the next
+winter. Previously unlocked technologies remain owned.
+
+A new village has zero stars and already knows gardens and moats. Only Storage
+is initially researchable. Storage unlocks the Fur Workshop, Palisade and
+Protective Herbs branch. All three branch technologies must be researched before
+other technologies become available. Timber Guard Tower additionally requires
+Sawmill research and a completed Sawmill in the settlement. These dependencies
+are data-driven `prerequisites` and `requiresBuildings`; population levels no
+longer gate research. Costs: Storage and Palisade one star; Timber Guard Tower
+three stars; every other technology two stars. Every researched building appears
+in Build. Successfully purchasing a technology immediately closes the Tech panel.
+Hearth comfort and reinforced palisades retain their effects.
+
+The former Lumber Camp is displayed as Sawmill (saved ID `lumberCamp` is retained).
+Its existing wood production and nearby clearing-yield bonus remain. It is now
+required for advanced tower research. Planks and additional processing chains
+are proposals only; see `DEVELOPMENT_OPTIONS.md`.
 
 ### TowerCombatSystem and moats
 
@@ -296,7 +315,10 @@ straights, elbows, T junctions and crosses. Four-neighbour masks select and rota
 these pieces before isometric projection, including unfinished adjacent sections.
 Shared painted mouth samples and extruded edge pixels keep joins continuous at
 fractional zoom. Connections recalculate after digging, demolition and loading.
-Winter uses a muted frost tint; missing art uses connected Canvas shapes.
+Winter uses a separate painted atlas with snow-covered banks and icy channel
+edges. It preserves the same sixteen connection masks and shared mouth samples.
+Fence posts, rails, gates and their footings also accumulate visible snow. Missing
+art uses connected Canvas shapes.
 
 ### HordeSystem
 
@@ -328,7 +350,7 @@ repair. Enemies retreat before spring. Fog reduces detection distance.
 
 ### ProtectionSystem
 
-Protective Herbs is a tier-2 research (available with four residents), costing
+Protective Herbs follows Storage research and costs
 two research stars. It unlocks Herbal Ward Fire: 18 wood, 20 construction units,
 70 HP. These values and the protection radius are JSON data. A completed fire
 automatically burns gathered herbs during winter and blocks a square extending five
@@ -389,8 +411,8 @@ pending messages and skipping persist across loading; older completed/skipped
 tutorials remain skipped. SeasonTutorial manages focus, touch-sized buttons and
 compact portrait/landscape layouts. Relevant toolbar controls remain visible and
 highlighted but cannot issue orders until the message closes. The summer lesson
-temporarily previews a locked Herbs button; its counter and Winter plan details
-remain hidden until a ward is complete. The HUD shows resources,
+temporarily previews a locked Herbs button; the herb counter remains hidden
+until a ward is complete. The HUD shows resources,
 population, comfort, season time, idle residents and food reserve in seconds.
 Mobile main controls are at least 44 px high; saving, loading and repair remain
 available. A previous notification timer cannot hide a newer message.
@@ -422,25 +444,21 @@ update. Tooltips are kept inside the viewport and close on pointer exit/Escape.
 
 ### ForecastSystem
 
-The collapsible Winter plan panel estimates consumption until winter and during
-winter, a 20% safety reserve, harvest readiness, spring food balance and remaining
-winter heating wood. It warns
-when crops cannot ripen before frost and requires harvest labor before counting
-a yield. It shows worn/spare coats, residents at risk from cold, and the next
-winter's star reward. Stored/carried herbs and remaining fuel coverage appear
-only once the ward fire is built; before that even the collapsed summary omits
-herbs. The fire itself always displays stored herbs out of the configured four
-needed per winter, including when unlit.
-The estimate uses current population and assigned crops; future hunts, arrivals,
-weather and storage interruptions can change the result. It is an estimate, not
-a guarantee. Winter plan is hidden on viewports at most 900 px wide and on devices
-with a coarse primary pointer, including landscape phones and touch tablets.
-Desktop keeps the panel below its HUD. Resource tooltips and actionable warnings
-remain available on mobile, with no reserved space for the hidden plan.
+Winter Plan has been removed from both mobile and desktop interfaces, including
+its DOM and styles. `ForecastSystem` remains an internal estimate used for food
+targets and actionable warnings: consumption, crop readiness, remaining firewood,
+coats and ward coverage. It requires harvest labor before counting a crop yield.
+Future hunts, arrivals, weather and storage interruptions can change the result.
+Resource tooltips and warnings remain available on every screen size. The ward
+fire itself always displays stored herbs out of the configured four needed per
+winter, including when unlit.
 
 ### SoundManager and AnalyticsSystem
 
-Existing seasonal music and action sounds are retained. Loading and restarting
+Existing seasonal music and action sounds are retained. Accepted Herbs orders
+play a short foliage-rustle cue (`assets/sounds/herbs.wav`) at the configured
+`sounds.herbs` volume. Sound-off suppresses it. The deterministic sound source
+is `scripts/generate-herbs-sound.mjs`. Loading and restarting
 restore the appropriate music. Optional analytics/email endpoints are independent
 of gameplay; regression checks block third-party requests and never send email.
 
@@ -450,13 +468,14 @@ Persistent actionable warnings show a food deficit until spring, crops that
 cannot mature before frost, missing coats before winter, inadequate ward fuel
 and residents freezing outdoors. Cold warnings take priority, show estimated
 remaining exposure time, and recommend Shelter. They appear in red at the
-centre of the screen in a persistent alert. Notice text does not intercept
+upper part of the screen in a compact 14 px persistent alert, horizontally
+centred and kept below the measured HUD. Notice text does not intercept
 world input; accessible 44 px close controls remain interactive. Warm clothing, shelter, food
 or herbs resolve their respective warnings; ordinary counter updates do not
 cause repeated notification toasts. Warnings adapt to the measured HUD height
 and remain available on narrow screens.
 
-`Notifications` owns transient messages, settlement warnings and the central cold
+`Notifications` owns transient messages, settlement warnings and the compact cold
 alert. Each has a close button usable with touch and keyboard. Dismissing a warning
 hides it for that continuous danger episode, even as counters and countdowns
 change. Resolving the condition permits a later new warning; an ordinary warning
@@ -497,3 +516,18 @@ send a resident into it. Moat allows repeated single-cell placement.
 also verifies an itch.io package using relative paths. No backend is required for
 gameplay. See [PLAYTEST.md](PLAYTEST.md) for browser checks and
 [ART_ASSETS.md](ART_ASSETS.md) for generated artwork and prompts.
+
+## Automatic work priority
+
+`WorkforcePolicy` preserves farmers for generic commands and ranks available
+residents consistently. Automatic allocation uses idle residents or workers
+performing repeating forest clearing, excluding stopped, sheltered and cargo-
+carrying residents. Outside winter it staffs one farmer per completed empty
+garden, then supplies builders for unbuilt gardens. Next it assigns one worker
+per damaged building when repair wood and a path are available, then workers for
+other construction. Repair costs are charged only after dispatch succeeds.
+`gameplay.automaticGardenWorkers` configures the default one-farmer coverage;
+manual assignments can still use the configured garden capacity of two.
+Generic Hunt, Herbs, Clear, repair, construction and production assignments do
+not remove farmers. Explicit individual orders can replace their job. Food and
+repair orders reclaim automatic woodcutters before interrupting other jobs.

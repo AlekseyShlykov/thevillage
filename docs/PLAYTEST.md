@@ -1,14 +1,54 @@
 # Playtest and regression checks
 
-Recorded 2026-11-16. All 104 browser checks passed, without sound.
+Recorded 2026-11-17. All 115 distinct browser checks passed without sound: the full 114/114 run plus
+a final 11/11 workforce/technology run, including the added stale-repair case.
 
-## Browser coverage
+## Environment and scope
 
-Dedicated headless Chrome on macOS, 1280 × 900 desktop and 390 × 844 mobile
-emulation at DPR 2. Additional layout checks: 390, 768, 900, 1024 and 1280 pixels.
-The runner uses Canvas clicks, actual buttons and touch events, with simulation
-time advanced between actions. Physical phones, Safari and Firefox were not tested.
-Third-party requests are blocked; no production analytics or emails are sent.
+Dedicated Chrome on macOS, 1280 × 900 desktop and 390 × 844 mobile emulation at
+DPR 2. Additional widths: 768, 900, 1024; landscape phone and touch tablet layouts
+are included. The runner uses real Canvas clicks, buttons and touch events with
+deterministic simulation steps. Third-party requests are blocked; no analytics
+or emails are sent. Physical phones, Safari and Firefox were not tested.
+
+## Current changes
+
+- Winter Plan is absent from the DOM on every tested screen size; warnings still
+  use the internal economy estimate. Cold alerts are 14 px, horizontally centred
+  above the play area centre and dismissible on touch screens.
+- Generic Hunt, Herbs, Clear, repair and construction preserve farmers. Explicit
+  selection allows changing their job. Two individual farming commands choose
+  two different reachable plots when available; assignments survive loading.
+- Idle/automatic woodcutting labour goes first to gardens, then repairs, then
+  other construction. One farmer per available garden is the automatic default.
+- Research begins with Storage, exposes the three essential technologies next,
+  and gates advanced research until all three are owned. A tower needs a completed
+  Sawmill plus its research and three stars. Storage and Palisade cost one; all
+  others cost two. Purchasing closes Tech.
+- Stars arrive on entering winter. Reloading, spring transitions and older winter
+  save migration cannot duplicate awards. All existing migration checks pass.
+- Fur Workshop summer/winter images load with real alpha; missing-image fallback
+  draws a distinct work bay. Only garden depth changes; taller buildings still
+  occlude residents along their rear edge.
+- Winter moat uses its snow atlas across all sixteen adjacency masks and 32 open
+  mouths. Fence/gate winter rendering adds snow to caps, rails and bases; sample
+  comparison found more than 900 snowy pixels versus zero in the warm version.
+- Herbs sound decodes to a valid 0.55-second rustle (RMS 0.0456), plays on an
+  accepted order at configured volume and is suppressed by Sound Off. The test
+  uses a muted playback spy; speakers remain silent.
+
+## Existing coverage retained
+
+The first-year survival playthrough, cargo delivery, crop growth/harvest, coats,
+heating, shelter allocation, forest depth/risk, circular clearing and its manual
+queue, winter enemy schedule, defense priorities, indestructible moats, towers,
+seasonal briefings, touch menu rows, tooltips, fonts, save migration and rendering
+with 50+ residents continue to pass.
+
+Circular clearing follows A* paths, expands around the village, and skips old
+long corridors. Explicit queued trees still override automatic selection.
+
+## Browser scenario results
 
 | Check | Result |
 | --- | --- |
@@ -55,7 +95,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | crops ripen after 1.125 calendar seasons, 25% faster | PASS |
 | winter destroys every unharvested crop and sowing resumes only in spring | PASS |
 | ripe crops wait for storage and partial harvests cannot duplicate food | PASS |
-| science comes only from survived winters: five single stars then doubles | PASS |
+| science arrives at winter start: five single stars then doubles | PASS |
 | hunting cargo persists without aliasing or early deposits and death loses it | PASS |
 | a stranded carrier retries delivery after a house is rebuilt | PASS |
 | winter forecasts distinguish clothes, cargo and crops that cannot mature | PASS |
@@ -70,7 +110,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | a monster takes much longer to destroy a building | PASS |
 | generated rake, axe and hammer load with distinct animated work poses | PASS |
 | expanded resources and job cards fit phone, tablet and desktop screens | PASS |
-| global Hunt and Herbs interrupt employed workers immediately | PASS |
+| global Hunt and Herbs preserve farmers while redirecting other workers | PASS |
 | Clear immediately starts expanding the settlement and continues chopping | PASS |
 | one resident leaves shelter and receives a job while everyone else stays inside | PASS |
 | a carrier completes delivery before a queued manual hunting order | PASS |
@@ -102,7 +142,7 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | unheated shelters slow hypothermia while fuel restores warming | PASS |
 | winter forecast and warnings include remaining firewood and indoor hypothermia | PASS |
 | midwinter save loading charges only the remaining winter fuel | PASS |
-| Clear starts busy residents immediately and accepts many tree clicks without duplicates | PASS |
+| Clear redirects a busy non-farmer and accepts many tree clicks without duplicates | PASS |
 | queued trees are chopped in click order before automatic nearby trees | PASS |
 | clearing queue survives loading and spring recall; workers reserve distinct targets | PASS |
 | unreachable queued trees do not block reachable work and older marks still work | PASS |
@@ -113,269 +153,35 @@ Third-party requests are blocked; no production analytics or emails are sent.
 | multiple woodcutters reserve distinct trees and keep a broad clearing after 120 cuts | PASS |
 | season changes avoid calendar toasts and preserve the new Tech star announcement | PASS |
 | later winter rewards announce two stars and loading cannot announce or award them twice | PASS |
-| Winter plan is hidden on touch phones and tablets and remains available on desktop | PASS |
+| Winter plan is absent on phones, tablets and desktop | PASS |
 | mobile Tech star notice opens Tech or closes with a touch-sized dismiss button | PASS |
+| research starts with Storage, closes after purchase and gates the advanced branch | PASS |
+| research is awarded before winter work and legacy winter saves receive it only once | PASS |
+| generic commands never take farmers; explicit selection can redirect one | PASS |
+| automatic food and repairs reclaim woodcutters before other construction | PASS |
+| manual farming chooses separate reachable gardens before adding a second farmer | PASS |
+| only gardens render below a resident working along their rear edge | PASS |
+| winter moat and fur workshop sprites load distinctly; fence and gate carry snow | PASS |
+| generated winter moat keeps every open junction continuous in all sixteen masks | PASS |
+| Herbs plays a valid rustle sound and respects the sound-off setting | PASS |
+| new fur workshop has seasonal artwork and renders a distinct missing-image fallback | PASS |
 | no unhandled browser exceptions | PASS |
+| a stale repair order for a dead resident cannot spend wood | PASS |
 
-## Gameplay and UX observations
+Screenshots and JSON diagnostics are local ignored files under `.qa/`. Run
+`scripts/browser-check.mjs` against a dedicated muted Chrome and local Vite;
+`GAME_URL` selects the development server.
 
-The first year was completed through visible controls: acknowledge Spring, press Clear, hunt, build a
-garden, and wait for its builder to sow and harvest. Crops mature over 1.125 calendar
-seasons. Shelter protected unclothed residents; spring automatically restored work,
-awarded one star and autosaved. Food remained after winter. Winter plan budgets
-consumption before winter as well as during it, plus heating wood.
+## Production artifacts
 
-Available jobs start with one click and replace only the selected resident's
-previous task. Unavailable farm, craft, repair and construction jobs are absent.
-Background clicks clear selection and dismiss construction, research and forecast
-panels while residents continue working. Construction offers Cancel construction
-and a distinct Close control. Tools have no resource counter or unlock. Herbs
-appear only after a ward is built; finished coats include coats already worn.
-The redundant heading and oval cottage shadow are gone.
-
-A newly built garden retains its builder as a farmer. A ripe crop delivered 45
-food to storage; full storage preserved partial remaining yield through saving.
-A newly built fur workshop retained its builder, consumed pelts, made coats and
-issued them to residents; the visible coat counter and worn equipment survived
-loading. Production waits for ingredients rather than pre-completing recipes.
-
-Persistent warnings cover food deficits and lethal cold. A resident with 16 cold
-exposure-seconds received a warning with approximately 14 seconds remaining.
-The warning is red, centred on both screen axes and does not capture clicks.
-Shelter resolved that warning. Desktop and mobile captures were inspected:
-`ux-jobs-390.png`, `ux-jobs-1280.png`, `cold-danger-warning.png`,
-`ripe-harvest-ready.png`, `fur-workshop-coat-produced.png`, `resources-coats-herbs.png`.
-
-Herb expeditions reserve a slot before leaving, travel 10–30 tiles inside forest,
-and can die with no loot delivered. Stored herbs plus expeditions never exceed
-five. Four herbs fuel a 120-second winter; a fifth remains spare. One ward fire
-is enforced even during construction. Fuel timers survive loading.
-
-Spring restored farmer, fur-worker and hunter jobs from a loaded shelter save;
-the restored hunter retained the deep forest destination. Construction, repairs,
-clearing and herb jobs are also recorded. Dead residents and destroyed workplaces
-are skipped. Existing older building-only job saves remain readable.
-
-## Enemies, artwork and performance
-
-Winter counts follow `1,2,3,4,6,7,8,10,11,12,14,15,16,17,20,21,22,25`, then remain
-at 25. Years 1–18 and 20 were checked at village levels 1, 3 and 5, including new,
-legacy and between-wave reloads. With earlier waves alive, 9, 8 and 8 monsters
-arrived at seconds 8, 38 and 68 in winter 18. A monster dealt eight building HP
-across twelve seconds, reflecting the slower two-HP strike every three seconds.
-Monsters still breach available palisades before attacking houses and crops.
-
-All 37 SVG interface illustrations loaded. Generated transparent rake, axe and
-hammer sprites loaded from `public/assets/tools/` and were inspected in animated
-poses (`work-poses.png`). Seven crop stages, animated herbal fire, inhabited-only
-chimney smoke, connected fences/gates, smooth walking and missing-image fallbacks
-remain covered. UI text contains no emoji.
-
-55 visible residents: mean combined update/render 5.8 ms,
-95th percentile 7.7 ms over 40 frames. Winter with 55 residents,
-36 fence segments and 14 monsters: mean 10.5 ms, 95th percentile
-24.6 ms over 50 frames. Results vary by device and browser.
-
-## Reproduce
-
-Requires Node 22 or newer, Vite and a separate test Chrome profile.
-
-```sh
-npm run dev -- --host 127.0.0.1 --port 4174 --strictPort
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  --headless=new --disable-gpu --mute-audio --no-first-run \
-  --user-data-dir=/tmp/winter-village-qa --remote-debugging-port=9461 about:blank
-GAME_URL=http://127.0.0.1:4174/ node scripts/browser-check.mjs
-```
-
-`CHROME_URL` overrides the debugging endpoint. Ordinary checks also mute page
-playback and disable game sound before starting. Only when explicitly checking
-sound, omit the Chrome mute flag and use `CHECK_AUDIO=1`.
-The runner modifies only its dedicated profile and writes ignored `.qa/results.json`
-and screenshots. Economy and UX scenarios live in `scripts/economy-checks.mjs` and
-`scripts/ux-checks.mjs`; direct orders, annual work and defenses are checked in
-`scripts/defense-checks.mjs`; immediate clearing, ordered tree selection, saved queues
-and touch input are covered by `scripts/forest-clearing-checks.mjs`. Close test Chrome and temporary servers after checking;
-leave the user's localhost preview running.
-
-## Release builds
-
-```sh
-npm run build:itch
-```
-
-Creates the relative-path GitHub Pages build in `dist/` and verified itch.io
-files in `itch-build/`. The compiled bundle is also checked at
-`http://localhost:4173/`: immediate orders, background dismissal, resource unlocks,
-shelter toggle, tooltips and interface art. Build output is not published by
-these commands.
-
-## PT Sans verification
-
-The compiled localhost build loaded all four bundled PT Sans faces. Cyrillic
-loading succeeded, and all interface buttons/counters used PT Sans. Widths
-390, 768, 900, 1024 and 1280 had no horizontal overflow. The compiled startup,
-immediate orders, dismissal, shelter and tooltips checks also passed without
-sound or browser exceptions after the font change.
-
-## Timber tower, moat and direct orders
-
-Occupied towers fired only with residents inside, shelter prevented cold, and
-legacy towers kept their HP fraction while upgrading to 360 maximum HP. Garrison
-commands reserved different residents and worked while the rest of the settlement
-was sheltered. Finished moats slowed monsters exactly sixfold; unfinished moats
-did not. Full house surrounds remained walkable and trenches were not targets.
-
-Hunt and Herbs reassigned employed workers and released their old rosters. A
-carrier delivered supplies before starting an accepted queued order. Clear found
-the nearest tree immediately and continued to the next one. Farming, clearing
-and unfinished construction resumed in spring; hunts did not. An overdue spring
-carrier returned to last year's farming after delivery. Injured residents healed
-past the halfway health threshold all the way to full HP.
-
-Generated herb and hunting baskets and the timber tower loaded locally. The ward
-label displayed Herbs 3/4 for winter. Garden construction uses one quarter of
-its previous time and biological crop growth is another 25% shorter. Workshop
-removal refunded wood and obsolete research exactly once on repeated loading.
-
-The final compiled build `index-z6rDqMN6.js` passed silent checks on
-`http://localhost:4173/`: startup, immediate jobs, hidden herbs before a ward,
-removed tool counter, background dismissal, shelter toggle, square controls,
-tooltips and loaded interface art. All four local PT Sans faces loaded, and
-390/768/900/1024/1280 px layouts had no horizontal overflow. The itch archive
-contains all three new generated sprites, fonts and the current balance JSON.
-Temporary test Chrome and the development server were closed; localhost:4173
-remains running with the latest compiled build.
-
-## Mobile notices and tower-priority recall
-
-All 79 silent browser checks passed after the mobile changes. Touch taps closed
-ordinary toasts, persistent settlement warnings and the central cold alert without
-deselecting a resident underneath. Dismissals survived changing countdowns and
-resource totals; a resolved/new danger or an escalation showed warnings again.
-Hidden warning cards immediately released their layout height.
-
-Toolbar checks covered 320, 360, 390, 430, 600, 768, 900 and 1280 px with initial,
-Herbs and Shelter/Release one states. Mobile rows had identical left/right edges,
-no clipped labels and at least 44 px button height. Screenshots:
-`mobile-toolbar-aligned.png`, `mobile-notices-before.png`,
-`mobile-notices-dismissed.png`.
-
-Recall reserved 25% of residents (at least one) for ordinary homes, filled towers
-up to three residents each, and sent the rest home. Eight residents with two
-towers physically reached six tower places and two home places. An inaccessible
-tower fell back to homes; a settlement with only a tower used its free places.
-Moats rejected repeated damage even while unfinished and remained outside enemy
-target lists; manual demolition still cleared the ground.
-
-The final production localhost build also passed touch dismissal and aligned
-mobile-row checks after compilation. Eighteen additional mobile layout variants
-confirmed consistent icon placement and hidden unavailable buttons. All tests
-ran muted; temporary browser/server processes were closed after verification.
-
-
-## Connected moat art, seasonal lessons and winter heating
-
-All 90 browser scenarios passed silently. Six generated terrain sprites covered
-all sixteen orthogonal connection masks. Painted mouths had matching opaque water
-at each join. Corners and branches refreshed after adding/removing a section and
-loading a save; unfinished neighbours also connected. The 34-section village scene
-was reviewed in spring and winter. Shape fallbacks rendered every mask. Captures:
-`moat-connected-spring.png`, `moat-connected-winter.png`.
-
-First-year spring, summer, autumn and winter each required Got it before time
-or residents advanced. The actual Hunt/Build, Clear/Herbs, Tech and Shelter controls received
-highlights. Summer previewed the locked herb order without revealing herb stocks.
-Acknowledgements, a pending briefing and Skip tutorial survived save/load; year two continued without a lesson. Escape and Space did not bypass the lesson.
-Touch acknowledgement worked at 390 × 844 and 844 × 390; both action buttons were
-at least 44 px tall, and landscape text retained a readable scrolling area.
-Captures: `season-briefing-spring.png`, `season-briefing-summer.png`,
-`season-briefing-mobile.png`, `season-briefing-landscape.png`.
-
-Two completed shelters consumed exactly eight wood over a winter; unfinished
-homes and non-winter seasons used none. Fuel exhaustion disabled warming, and
-adding wood restored it. Unheated indoor cold could kill an unclothed resident
-while coats slowed exposure. The half-winter forecast requested two wood for one
-shelter. Warnings distinguished indoor fuel shortages from outdoor recall.
-A midwinter save charged only the remaining fuel after loading.
-
-The compiled localhost build passed startup acknowledgement plus the existing
-jobs, mobile dismissal, toolbar alignment, typography and layout checks with no
-browser exceptions. The local preview uses `index-z6rDqMN6.js`; both distribution
-folders contain the moat atlas and heating configuration. Tests remained muted.
-
-
-## Immediate clearing and selectable tree queue
-
-All 96 scenarios passed without sound. Clicking Clear immediately interrupted a
-busy farmer, started a valid chopping path and enabled persistent selection. Six
-canvas tree clicks queued six tiles in click order; clicking one again added no
-duplicate. The current automatic tree finished first, then all six explicit trees
-were cut in the selected order before automatic village expansion resumed. Each
-tree awarded wood once and removed its queue metadata.
-
-A 25-tree queue retained order after saving/loading and spring recall. Two workers
-reserved separate trees. An unreachable first request stayed queued while reachable
-work proceeded, and older saved tiles with only a marked flag remained usable.
-Clear, Escape, right-click and clicking empty ground exited selection without
-cancelling current work or deleting the queue. The first-year playthrough also
-verified that a resident could still be selected after pressing Clear.
-
-On a 390 × 844 touch viewport, Clear started chopping, three taps added three
-trees, and dragging the camera added none. A queued tree was then reached and
-cut in the actual simulation. Desktop/mobile numbered markers were reviewed in
-`forest-clearing-queue.png` and `forest-clearing-queue-mobile.png`.
-The production build on localhost:4173 also accepted three actual canvas tree
-clicks and toggled selection off while keeping its queue. It passed the existing
-font, menu, touch-dismissal and layout checks without browser exceptions.
-`npm run build:itch` passed and the local itch archive was refreshed.
-
-
-## First-year learning, mobile space and Tech rewards
-
-All 101 silent browser scenarios passed. Lessons appeared for all four seasons of
-year one. On entering year two, simulation continued without acknowledgement;
-older saves carrying a pending second-year lesson loaded without a modal. Skip,
-first-year pending lessons and acknowledgements still survived loading.
-
-Winter plan was invisible and occupied zero height on 390 × 844 portrait phones,
-844 × 390 landscape phones and 1024 × 768 touch tablets. Desktop retained it.
-Mobile settlement warnings began eight pixels below the HUD, reclaiming the
-forecast's former space. Screenshot: `mobile-without-winter-plan.png`.
-
-A full calendar transition emitted no generic season/year or spring-autosave
-toast, while the actual research award displayed +1 new Tech star and explained
-choosing a building in Tech. An older toast timer and subsequent action feedback
-could not hide or replace it. Open Tech opened the research panel and acknowledged
-the notice; both that button and dismiss worked by touch with 44 px targets.
-Later winters displayed +2 stars, and loading/repeating an already-rewarded
-transition neither duplicated the stars nor announced a second award. Screenshots:
-`tech-star-announcement.png`, `tech-star-announcement-mobile.png`.
-
-The production localhost build passed its existing startup, clearing queue,
-typography, menu and touch-dismissal checks, plus hidden Winter plan on mobile,
-with no browser exceptions. `npm run build:itch` passed; the current production
-bundle is `index-z6rDqMN6.js`.
-
-
-## Circular automatic forest clearing
-
-All 104 browser checks passed silently. A single resident followed actual A*
-paths while cutting 120 automatic targets in 597.4 simulated seconds. The cuts
-covered all eight angular sectors (13–20 trees per sector), remained adjacent
-to existing cleared ground and never exceeded 8.87 tiles from the village centre.
-The resulting broad clearing was visually reviewed in `village-clearing-expanded.png`.
-Four workers also cut 120 distinct trees, distributed 27–33 per quadrant, without
-reserving duplicate targets or extending narrow corridors.
-
-A loaded save with an old corridor reaching x=77 sent its worker back to the
-village edge at (45,28), radius 5.71. The individual Chop wood job selected the
-same village-edge target. Explicitly queueing (78,29) still overrode automatic
-expansion, preserving the player's ability to choose distant trees.
-The existing many-tree queue, priority, save/load, unreachable-tree and mobile
-interaction scenarios all continued to pass. Ring width is configurable under
-`villagers.clearingRingWidth`, defaulting to one tile.
-
-The production localhost build passed startup, Clear, three actual canvas queue
-clicks, typography, mobile visibility and dismissal checks without browser errors.
-`npm run build:itch` passed; distribution uses `index-z6rDqMN6.js`.
+`npm run build:itch` passed. The final production bundle is `index-yCspJGh0.js`.
+The compiled game at `http://localhost:4173/` passed startup and first-season
+acknowledgement, individual commands, Clear with three actual queued Canvas tree
+clicks, save/notifications, local PT Sans loading, square UI corners and layouts
+at 390, 768, 900, 1024 and 1280 px. Mobile notice dismissal and equal menu row
+bounds passed (both rows span x=16…374 at 390 px). Winter Plan is absent. No
+unhandled browser errors occurred, and all tests remained muted.
+The itch.io ZIP was refreshed from the verified `itch-build/` directory; it and
+screenshots remain local ignored artifacts. The existing preview on port 4173
+is retained; the dedicated test browser and development server are closed after
+verification.

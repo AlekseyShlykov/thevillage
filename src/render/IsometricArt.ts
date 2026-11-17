@@ -81,6 +81,17 @@ export class IsometricArt {
         ctx.fillStyle='#302f24';ctx.fillRect(x-size*.12,y-h*.7,size*.24,h*.12);
       }
     }
+    else if (b.configId==='furWorkshop') {
+      const workshop=this.assets.getFurWorkshop?.(season);
+      if(workshop) {ctx.imageSmoothingEnabled=true;ctx.drawImage(workshop,x-size/2,y-size*.9,size,size);}
+      else {
+        // A recognisable open work bay remains available when the painted asset is missing.
+        polygon(ctx,[pts[0],pts[1],pts[2],pts[3]],'#826345');
+        for(const p of [pts[1],pts[2],pts[3]]) {ctx.fillStyle='#735037';ctx.fillRect(p.x-3*z,p.y-38*z,6*z,38*z);}
+        polygon(ctx,pts.map(p=>({x:p.x,y:p.y-40*z})),season===Season.Winter?'#e5ebdf':'#987549','#523d2d');
+        ctx.fillStyle='#ccad7a';ctx.fillRect(x-12*z,y-21*z,24*z,8*z);
+      }
+    }
     else if (cfg.category === 'defense') this.fences.draw(ctx, b, buildings, season);
     else if (b.configId === 'campFire' || b.configId === 'herbalFire') {
       const py = (pts[0].y + pts[2].y) / 2;

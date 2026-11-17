@@ -5,7 +5,6 @@ import { TargetedVillagerOrder, VillagerOrder, villagerActivity, villagerOrders 
 import { IconName, iconMarkup, setButtonContent } from './icons';
 import { TooltipController } from './TooltipController';
 import { getConfig } from '../data/ConfigLoader';
-import { EconomyForecast } from '../systems/ForecastSystem';
 import { hasCoat } from '../systems/EquipmentSystem';
 import { VillagerJob } from '../game/VillagerJobs';
 import { Notifications } from './Notifications';
@@ -230,7 +229,7 @@ export class UIManager {
       background: 'transparent',
     });
     backdrop.setAttribute('data-ui', 'true');
-    backdrop.addEventListener('click', () => { this.callbacks.onVillagerDeselect();this.closePanels();this.closeForecast();this.hideActionMenu(); });
+    backdrop.addEventListener('click', () => { this.callbacks.onVillagerDeselect();this.closePanels();this.hideActionMenu(); });
     this.overlay.appendChild(backdrop);
     this.actionMenuBackdrop = backdrop;
 
@@ -325,7 +324,7 @@ export class UIManager {
       el.querySelector('[data-value]')!.textContent = value;
       el.dataset.tooltipTitle = title; el.dataset.tooltip = detail; el.setAttribute('aria-label', `${title}: ${value}`);
     };
-    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', `Gathered by chopping trees and working at lumber camps. Used for construction, repairs and winter heating. Each home or guard tower needs ${getConfig().heating.woodPerShelterPerWinter} wood per full winter. Keep enough firewood before spending your reserve.`);
+    stat('wood', String(Math.floor(data.resources.wood)), 'Wood', `Gathered by chopping trees and working at sawmills. Used for construction, repairs and winter heating. Each home or guard tower needs ${getConfig().heating.woodPerShelterPerWinter} wood per full winter. Keep enough firewood before spending your reserve.`);
     stat('food', String(Math.floor(data.resources.food)), 'Food', `Feeds every resident. Current use: ${data.foodConsumption.toFixed(2)} per second; supplies last ${data.foodSeconds} seconds. Consumption rises in winter. Hunting and gardens replenish food.`);
     stat('fur', String(Math.floor(data.resources.fur)), 'Fur', 'Hunters deliver raw pelts after returning home. Pelts must be crafted into individual fur coats; raw pelts do not protect from cold.');
     stat('clothing',String(data.coatsWorn+data.resources.clothing),'Warm clothing',`${data.coatsWorn} residents wearing a fur coat; ${data.resources.clothing} spare coats. A fur workshop turns pelts into coats. Only worn coats protect from cold.`);
@@ -335,8 +334,7 @@ export class UIManager {
     this.overlay.querySelector<HTMLElement>('[data-gather-herbs]')!.hidden=!data.hasWard&&!this.seasonTutorial.isHerbPreview();
     this.layoutBottomBar();
     stat('comfort', `${Math.round(data.comfort*100)}%`, 'Comfort', 'Food, warmth, shelter, health and defenses raise comfort. Comfortable villagers work faster and the village attracts newcomers.');
-    const nextLevel = Object.entries(getConfig().levels).find(([level]) => Number(level) > data.level);
-    stat('research', String(Math.floor(data.resources.techPoints)), `Research · village level ${data.level}`, `Research points unlock technologies in Tech. Earn them only by surviving winter: 1 star in winters 1–5, then 2 per winter.${nextLevel ? ` Next level: ${nextLevel[1].populationThreshold} residents.` : ' All technology tiers are available.'}`);
+    stat('research', String(Math.floor(data.resources.techPoints)), `Research · village level ${data.level}`, `Research unlocks technologies in Tech. Stars arrive at the beginning of winter: ${getConfig().technology.earlyWinterStars} in winters 1–${getConfig().technology.firstWinterRewardCount}, then ${getConfig().technology.laterWinterStars} per winter. Research follows building prerequisites.`);
     this.topBarStatsDiv.querySelector('[data-level]')!.textContent = `LEVEL ${data.level}`;
     this.topBarStatsDiv.querySelector('[data-stat="food"]')!.classList.toggle('resource-low', !!data.foodLow);
     const season = this.topBarStatsDiv.querySelector<HTMLElement>('[data-stat="season"]')!;
@@ -452,7 +450,7 @@ export class UIManager {
 
     if (available.length === 0) {
       const msg = this.el('div', { fontSize: '12px', opacity: '0.5', padding: '8px 0' });
-      msg.textContent = 'No new tech available. Grow population to unlock higher tiers.';
+      msg.textContent = 'Research Storage first, then Fur Workshop, Palisade and Protective Herbs. Build a Sawmill before researching the tower.';
       this.techPanel.appendChild(msg);
       return;
     }
@@ -602,33 +600,7 @@ export class UIManager {
     return false;
   }
 
-  updateForecast(data: EconomyForecast): void {
-    let panel = this.overlay.querySelector<HTMLDetailsElement>('#game-forecast');
-    if (!panel) {
-      panel = document.createElement('details'); panel.id = 'game-forecast'; panel.dataset.ui = 'true';
-      panel.innerHTML = '<summary data-forecast-summary></summary><div data-forecast-body></div>';
-      this.overlay.appendChild(panel);
-    }
-    panel.style.top = `${Math.ceil(this.topBar.getBoundingClientRect().bottom + 8)}px`;
-    this.overlay.style.setProperty('--hud-bottom',panel.style.top);
-    panel.querySelector('summary')!.innerHTML = `${iconMarkup('home')} Winter plan${data.hasWard?` · ${data.herbs}/${data.herbCapacity} herbs`:''} · ${data.coats}/${data.population} coats`;
-    const seconds = data.nextHarvestSeconds === null ? 'No growing crops' : Number.isFinite(data.nextHarvestSeconds) ? `${Math.ceil(data.nextHarvestSeconds)}s to ripen` : 'Too late: crops will die in winter';
-    panel.querySelector('[data-forecast-body]')!.innerHTML = `
-      <div><b>Food for winter</b><span>${Math.ceil(data.winterFood - 1e-8)} · reserve goal ${Math.ceil(data.reserve - 1e-8)}</span></div>
-      <div><b>Winter firewood</b><span>${Math.ceil(data.heatingWoodNeeded-1e-8)} wood for ${data.heatedShelters} shelter(s) · ${getConfig().heating.woodPerShelterPerWinter} each per full winter</span></div>
-      <div><b>Firewood balance</b><span class="${data.woodBalance<0?'forecast-danger':''}">${data.woodBalance>=0?'+':''}${Math.floor(data.woodBalance+1e-8)} wood${data.unheatedShelters?' · shelters are unheated':''}</span></div>
-      <div><b>Food before winter</b><span>${Math.ceil(data.beforeFood - 1e-8)} consumed</span></div>
-      <div><b>Standing harvests</b><span>+${Math.round(data.expectedHarvest)} expected · ${seconds}</span></div>
-      <div><b>Balance by spring</b><span class="${data.springBalance < 0 ? 'forecast-danger' : ''}">${data.springBalance >= 0 ? '+' : ''}${Math.floor(data.springBalance + 1e-8)} food</span></div>
-      ${data.hasWard?`<div><b>Protective herbs</b><span>${data.herbs}/${data.herbCapacity} stored · ${data.herbsInTransit} carried · ${data.herbsNeeded} needed</span></div>
-      <div><b>Ward fuel</b><span>${Math.floor(data.wardSeconds)}s of winter protection</span></div>`:''}
-      <div><b>Fur clothing</b><span>${data.coats}/${data.population} wearing · ${data.coatsStored} spare</span></div>
-      <div><b>Cold danger</b><span class="${data.exposed ? 'forecast-danger' : ''}">${data.exposed} residents freezing · uncoated limit ${getConfig().cold.unclothedSurvivalSeconds}s outdoors</span></div>
-      <div><b>Next winter reward</b><span>${data.nextStars} research star(s)</span></div>
-      <p>Current population and assigned crops; future expeditions are excluded. Harvests require farmers and storage space.</p>`;
-  }
-
-  closeForecast(): void { const panel=this.overlay.querySelector<HTMLDetailsElement>('#game-forecast');if(panel)panel.open=false; }
+  updateHudLayout():void {this.overlay.style.setProperty('--hud-bottom',`${Math.ceil(this.topBar.getBoundingClientRect().bottom+8)}px`);}
 
   updateWarnings(warnings: SettlementWarning[]): void { this.notifications.updateWarnings(warnings); }
 

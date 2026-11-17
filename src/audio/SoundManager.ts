@@ -13,7 +13,7 @@ const path = (p: string) => (base.endsWith('/') ? base + p : base + p.replace(/^
 
 const DEFAULT_VOL: Record<string, number> = {
   season: 0.4, horde: 0.6, hordeAttack: 0.65, wood: 0.7, building: 0.6,
-  dead: 0.8, hunt: 0.7, shelter: 0.7, leave: 0.7, hungry: 0.7,
+  dead: 0.8, hunt: 0.7, herbs: 0.5, shelter: 0.7, leave: 0.7, hungry: 0.7,
 };
 function vol(key: string): number {
   const v = getConfig().sounds?.[key as keyof NonNullable<ReturnType<typeof getConfig>['sounds']>];
@@ -32,6 +32,7 @@ const WOOD_FILE = path('assets/sounds/wood.mp3');
 const BUILDING_FILE = path('assets/sounds/building.mp3');
 const DEAD_FILE = path('assets/sounds/dead.mp3');
 const HUNT_FILE = path('assets/sounds/hunt.mp3');
+const HERBS_FILE = path('assets/sounds/herbs.wav');
 const SHELTER_FILE = path('assets/sounds/shelter.mp3');
 const LEAVE_FILE = path('assets/sounds/leave.mp3');
 const HUNGRY_FILE = path('assets/sounds/hungry.mp3');
@@ -209,6 +210,13 @@ export class SoundManager {
     audio.volume = vol('hunt');
     audio.play().catch(() => {});
     audio.addEventListener('error', () => {});
+  }
+
+  playHerbs(): void {
+    if (!this.soundEnabled) return;
+    const audio = new Audio(HERBS_FILE);
+    audio.volume = vol('herbs');
+    audio.play().catch(() => {});
   }
 
   playShelter(): void {

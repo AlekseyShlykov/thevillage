@@ -95,7 +95,8 @@ export class Renderer {
       const cfg = configs[b.configId]; if (!cfg) continue;
       const box = this.art.buildingBounds(b, cfg); if (!this.visible(box.centerX, box.baseline, box.height)) continue;
       const occupied = active.filter(v => map.getTile(Math.floor(v.x), Math.floor(v.y))?.buildingId === b.id).length;
-      scene.push({ depth: box.baseline - this.camera.tileHeight * (b.configId==='moat'?2:.4), draw: () => {
+      const depth=b.configId==='garden'?Math.min(...box.pts.map(p=>p.y))-this.camera.tileHeight*.4:box.baseline-this.camera.tileHeight*(b.configId==='moat'?2:.4);
+      scene.push({ depth, draw: () => {
         if (hovered?.id === b.id) polygon(ctx, box.pts, 'rgba(237,211,151,.16)', '#edcf8e');
         this.art.building(ctx, b, cfg, season, this.time, buildings, occupied);
         if (!b.built) { this.bar(box.centerX, box.baseline + 7, 66, b.buildProgress, '#e8c781'); this.label(box.centerX, box.y - 3, `${cfg.name} · ${Math.round(b.buildProgress * 100)}%`); }

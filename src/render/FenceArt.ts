@@ -30,7 +30,7 @@ export class FenceArt {
     const centre = this.point(x, y);
     for (const [dx,dy] of dirs.slice().sort((a,c) => a[0]+a[1]-c[0]-c[1])) {
       const end = this.point(x + dx * .5, y + dy * .5);
-      this.rail(ctx, centre, end, 11); this.rail(ctx, centre, end, 23);
+      this.rail(ctx, centre, end, 11, season); this.rail(ctx, centre, end, 23, season);
       for (let i = 1; i <= 3; i++) {
         const t = i / 3, p = { x: centre.x + (end.x - centre.x) * t, y: centre.y + (end.y - centre.y) * t };
         this.log(ctx, p, 25 + hash(b.tileX * 7 + dx * i, b.tileY * 7 + dy * i) % 5, 5.4, hash(b.tileX * 13 + i, b.tileY + dx + dy), season);
@@ -47,19 +47,27 @@ export class FenceArt {
     ctx.strokeStyle = '#e0c38a77'; ctx.lineWidth = .7 * z; ctx.beginPath(); ctx.moveTo(p.x - w * .2, p.y - h + 5 * z); ctx.lineTo(p.x - w * .15, p.y - 4 * z); ctx.stroke();
     ctx.strokeStyle = '#604e3688'; ctx.beginPath(); ctx.ellipse(p.x + w * .1, p.y - h * .55, w * .17, 2.2 * z, .1, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = season === Season.Winter ? '#dce2ce' : '#bd9d66'; ctx.beginPath(); ctx.ellipse(p.x, p.y - h + 2 * z, w / 2, 1.6 * z, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#59704799'; ctx.fillRect(p.x - w * .4, p.y - 2 * z, w * .8, 2 * z);
+    if(season===Season.Winter) {
+      ctx.fillStyle='#edf3e9';ctx.beginPath();ctx.ellipse(p.x,p.y-h+z,w*.65,2.8*z,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c9d8d3';ctx.beginPath();ctx.ellipse(p.x+z,p.y,w*.85,2.3*z,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle = season===Season.Winter?'#c2d0cc99':'#59704799'; ctx.fillRect(p.x - w * .4, p.y - 2 * z, w * .8, 2 * z);
   }
-  private rail(ctx: CanvasRenderingContext2D, a: Point, b: Point, height: number): void {
+  private rail(ctx: CanvasRenderingContext2D, a: Point, b: Point, height: number, season: Season): void {
     const z = this.camera.zoom;
     ctx.strokeStyle = '#5d4b33'; ctx.lineWidth = 4 * z; ctx.beginPath(); ctx.moveTo(a.x, a.y - height * z); ctx.lineTo(b.x, b.y - height * z); ctx.stroke();
     ctx.strokeStyle = '#c3a372'; ctx.lineWidth = 1.4 * z; ctx.beginPath(); ctx.moveTo(a.x, a.y - (height + 1) * z); ctx.lineTo(b.x, b.y - (height + 1) * z); ctx.stroke();
+    if(season===Season.Winter) {
+      ctx.strokeStyle='#e8f0e6';ctx.lineWidth=2.7*z;ctx.lineCap='round';ctx.beginPath();
+      ctx.moveTo(a.x,a.y-(height+2)*z);ctx.lineTo(b.x,b.y-(height+2)*z);ctx.stroke();ctx.lineCap='butt';
+    }
   }
   private gateLeaf(ctx: CanvasRenderingContext2D, a: Point, b: Point, season: Season): void {
     const z = this.camera.zoom;
     for (let i = 1; i <= 4; i++) {
       const t = i / 4; this.log(ctx, { x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t }, 27 + i % 2, 5.7, i, season);
     }
-    this.rail(ctx, a, b, 8); this.rail(ctx, a, b, 23);
+    this.rail(ctx, a, b, 8, season); this.rail(ctx, a, b, 23, season);
     ctx.strokeStyle = '#6f6f51'; ctx.lineWidth = 2 * z; ctx.beginPath(); ctx.moveTo(a.x, a.y - 8 * z); ctx.lineTo(b.x, b.y - 23 * z); ctx.stroke();
   }
 }

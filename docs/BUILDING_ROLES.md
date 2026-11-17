@@ -1,6 +1,6 @@
 # Building catalogue review
 
-Reviewed against the running simulation on 2026-11-16. Current values are in
+Reviewed against the running simulation on 2026-11-17. Current values are in
 `public/data/game-balance.json`; descriptions in the build menu explain each role.
 
 | Building | Purpose | Worker requirement |
@@ -9,7 +9,7 @@ Reviewed against the running simulation on 2026-11-16. Current values are in
 | House | Six shelter places and additional comfort | None |
 | Large House | Eight shelter places and a larger comfort bonus | None |
 | Garden | Sowing and harvest around a 1.125-season growth cycle; frost kills unharvested crops | Builder stays as farmer; up to two farmers, none needed during growth |
-| Lumber Camp | Steady wood near forest; improved nearby tree-clearing yield | Up to three lumberjacks |
+| Sawmill | Steady wood near forest; improved nearby tree-clearing yield; a completed mill is required for tower research | Up to three lumberjacks |
 | Fur Workshop | Converts raw pelts into personal coats lasting three winters | Builder stays as craftsperson; up to two craftspeople |
 | Smokehouse | Reduces the entire village's food consumption | Passive; removed misleading worker slot |
 | Storage | Raises wood, food, raw fur capacity; herbs remain capped at five | None |
@@ -59,4 +59,13 @@ Each completed hut, house, large house, guard tower and forest camp fire now
 requires four wood per full winter for heating, consumed continuously. Empty
 shelters also use fuel; unfinished shelters do not. Without wood residents remain
 hidden from monsters indoors but accumulate cold at 35% of the outdoor rate.
-Winter plan displays the remaining wood requirement and warns of shortages.
+Actionable warnings and the wood tooltip explain heating shortages. Winter Plan
+has been removed on all devices.
+
+Research now starts with Storage, then Fur Workshop / Palisade / Protective Herbs.
+All three branch technologies unlock the remaining options. Storage and Palisade
+cost one star, the tower costs three (and requires a completed Sawmill), and all
+other technologies cost two. Stars arrive at winter start. Fur Workshop now uses
+distinct summer and winter workshop sprites. Automatic allocation covers one
+farmer per empty garden before repair and construction; generic orders protect
+existing farmers. Personal farming orders prefer less staffed plots.
