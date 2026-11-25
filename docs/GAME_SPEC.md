@@ -520,7 +520,20 @@ winter, including when unlit.
 
 ### SoundManager and AnalyticsSystem
 
-Existing seasonal music and action sounds are retained. Accepted Herbs orders
+Seasonal nature ambience uses loudness-balanced AAC files (`spring.m4a`,
+`summer.m4a`, `autumn.m4a`, `winter.m4a`), each near -24 LUFS before the
+configured `sounds.season` gain, or -30 LUFS at the default gain. Short isolated
+peaks are limited before encoding so quiet autumn/winter recordings can be
+raised without harsh spikes. The original MP3 source recordings are retained.
+Hunting and construction use balanced `hunt.m4a` and `building.m4a` recordings
+to control their isolated peaks.
+Action gains in `game-balance.json` bring cues near -28 LUFS (Herbs near -29),
+keeping actions audible over the background without large volume jumps.
+The offline audit uses K weighting and loudness gating from
+[ITU-R BS.1770](https://www.itu.int/rec/R-REC-BS.1770/en).
+`scripts/audio-checks.mjs` verifies the decoded recordings at their actual
+configured playback volumes, seasonal consistency and mute behavior.
+Accepted Herbs orders
 play a short foliage-rustle cue (`assets/sounds/herbs.wav`) at the configured
 `sounds.herbs` volume. Sound-off suppresses it. The deterministic sound source
 is `scripts/generate-herbs-sound.mjs`. Loading and restarting

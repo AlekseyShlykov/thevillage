@@ -1,4 +1,12 @@
-itch-build/
+# Dependencies and local system files
+/node_modules/
+.DS_Store
 
-.qa/
-node_modules/.vite/
+# Local QA, export packages and promotional materials
+/.qa/
+/itch-build/
+/screenshots/
+/covers/
+/promos/
+/IMAGE_STYLE_GUIDE.md
+*.zip

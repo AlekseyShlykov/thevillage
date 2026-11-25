@@ -311,6 +311,7 @@ try {
   await (await import('./tower-progression-checks.mjs')).runTowerProgressionChecks({check,ev,shot,call});
   await (await import('./building-upgrade-checks.mjs')).runBuildingUpgradeChecks({check,ev,shot,call,clickSelector,button,tile,until,mouse});
   await (await import('./fence-gate-checks.mjs')).runFenceGateChecks({check,ev,shot,call,mouse,button,until});
+  await (await import('./audio-checks.mjs')).runAudioChecks({check,ev});
   await check('no unhandled browser exceptions'   ,()=>{assert.equal(exceptions.length,0,JSON.stringify(exceptions));return 0;});
 } finally {
   await ev('g?.gameLoop.stop()').catch(()=>{});

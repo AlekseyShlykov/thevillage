@@ -591,16 +591,16 @@
     "veryFast": 4
   },
   "sounds": {
-    "season": 0.6,
-    "horde": 0.6,
-    "hordeAttack": 0.55,
-    "wood": 0.4,
-    "building": 0.6,
-    "dead": 0.8,
-    "hunt": 0.5,
-    "shelter": 0.6,
-    "leave": 0.4,
-    "hungry": 0.6,
+    "season": 0.5,
+    "horde": 0.2128,
+    "hordeAttack": 0.1521,
+    "wood": 0.5061,
+    "building": 0.631,
+    "dead": 0.2311,
+    "hunt": 0.631,
+    "shelter": 0.1709,
+    "leave": 0.2578,
+    "hungry": 0.1746,
     "herbs": 0.5
   },
   "demoEnd": {

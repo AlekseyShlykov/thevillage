@@ -1,7 +1,7 @@
 /**
- * Manages season background music and horde alert sound.
- * Seasons: spring.mp3, summer.mp3, autumn.mp3, winter.mp3 — all loop until the season ends.
- * Also: horde.mp3 (loop), horde_attack.mp3 (on attack), wood.mp3, building.mp3 (loop until build done), dead.mp3, hunt.mp3, shelter.mp3 (to shelter), leave.mp3 (leave shelter).
+ * Manages seasonal nature ambience and game sounds.
+ * Seasons use loudness-balanced .m4a recordings and loop until the season ends.
+ * Construction and hunting use balanced .m4a cues; the other effects retain their source formats.
  * Empty or missing files are ignored (decode error caught).
  * Paths use import.meta.env.BASE_URL so they work on GitHub Pages (e.g. /CozyGame/).
  * Volumes are read from game-balance.json (sounds section).
@@ -21,17 +21,17 @@ function vol(key: string): number {
 }
 
 const SEASON_FILES: Record<string, string> = {
-  spring: path('assets/sounds/spring.mp3'),
-  summer: path('assets/sounds/summer.mp3'),
-  autumn: path('assets/sounds/autumn.mp3'),
-  winter: path('assets/sounds/winter.mp3'),
+  spring: path('assets/sounds/spring.m4a'),
+  summer: path('assets/sounds/summer.m4a'),
+  autumn: path('assets/sounds/autumn.m4a'),
+  winter: path('assets/sounds/winter.m4a'),
 };
 const HORDE_FILE = path('assets/sounds/horde.mp3');
 const HORDE_ATTACK_FILE = path('assets/sounds/horde_attack.mp3');
 const WOOD_FILE = path('assets/sounds/wood.mp3');
-const BUILDING_FILE = path('assets/sounds/building.mp3');
+const BUILDING_FILE = path('assets/sounds/building.m4a');
 const DEAD_FILE = path('assets/sounds/dead.mp3');
-const HUNT_FILE = path('assets/sounds/hunt.mp3');
+const HUNT_FILE = path('assets/sounds/hunt.m4a');
 const HERBS_FILE = path('assets/sounds/herbs.wav');
 const SHELTER_FILE = path('assets/sounds/shelter.mp3');
 const LEAVE_FILE = path('assets/sounds/leave.mp3');
