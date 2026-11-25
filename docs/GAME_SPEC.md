@@ -610,6 +610,14 @@ also verifies an itch.io package using relative paths. No backend is required fo
 gameplay. See [PLAYTEST.md](PLAYTEST.md) for browser checks and
 [ART_ASSETS.md](ART_ASSETS.md) for generated artwork and prompts.
 
+Link previews are declared in the static HTML so crawlers do not need JavaScript.
+Twitter/X uses the supplied square artwork with a summary card; Open Graph uses
+the landscape artwork first and includes the square image as an alternative.
+Both are compressed JPEGs in `public/assets/social/`, preserving their original
+dimensions. Metadata uses absolute HTTPS URLs for the published GitHub Pages site
+at `https://buildtounderstand.dev/thevillage/`; game asset paths remain relative
+for GitHub Pages and itch.io.
+
 ## Automatic work priority
 
 `WorkforcePolicy` preserves farmers for generic commands and ranks available

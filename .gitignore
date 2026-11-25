@@ -10,3 +10,7 @@
 /promos/
 /IMAGE_STYLE_GUIDE.md
 *.zip
+
+# Local artwork originals; publish optimized previews from public/assets/social/
+/before winter comes.png
+/before winter comes2.png

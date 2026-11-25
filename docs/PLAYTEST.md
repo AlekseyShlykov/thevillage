@@ -286,3 +286,18 @@ The itch.io ZIP was refreshed from the verified `itch-build/` directory; it and
 screenshots remain local ignored artifacts. The existing preview on port 4173
 is retained; the dedicated test browser and development server are closed after
 verification.
+
+## Social previews and itch.io refresh (2026-11-25)
+
+`npm run build:itch` passed with production bundle `index-CtDS0PNC.js`.
+The static HTML includes Twitter/X metadata for the square artwork and Open
+Graph metadata for the landscape artwork, with the square image as an alternative.
+Both compressed JPEGs preserve their original dimensions and match the files
+copied to `dist/` and `itch-build/`.
+
+The local `.qa/Before-Night-Falls-itch.zip` was rebuilt from `itch-build/`.
+ZIP CRC checks passed for all 132 files, and every archived file matches the
+build byte for byte. `index.html` is at the archive root; module, stylesheet,
+font and intro-image paths resolve inside the package. All current sound assets
+are included. Promotional videos, original artwork, nested ZIPs and macOS
+metadata are absent. The archive and the itch.io build remain ignored by Git.
