@@ -109,7 +109,7 @@
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: #1a1a2e;
+      background: radial-gradient(ellipse at 50% 30%, #435839, #172b23 80%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -117,47 +117,30 @@
       z-index: 1000;
       font-family: 'PT Sans', sans-serif;
       color: #e0d8c8;
-    }
-    #loading-screen h1 { font-size: 2rem; margin-bottom: 1rem; }
-    #loading-screen p { font-size: 1rem; opacity: 0.7; }
-    #intro-screen {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: #1a1a2e;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-      font-family: 'PT Sans', sans-serif;
-      color: #e0d8c8;
       padding: 24px;
       text-align: center;
     }
-    #intro-screen h1 { font-size: 2.2rem; margin-bottom: 2rem; color: #ffe0a0; }
-    #intro-screen .intro-text { font-size: 1rem; line-height: 1.7; max-width: 420px; margin-bottom: 0.6rem; opacity: 0.9; }
-    #intro-screen .intro-text.intro-lead { font-style: italic; margin-bottom: 1.2rem; }
-    #intro-screen .intro-final { margin-top: 1rem; margin-bottom: 2rem; font-size: 1.05rem; }
-    #intro-screen .intro-image-placeholder {
-      width: 280px;
-      height: 160px;
-      margin-bottom: 1.5rem;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      object-fit: cover;
+    #loading-screen h1 {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: normal;
+      letter-spacing: -.5px;
+      color: #e9d7aa;
+      margin-bottom: 28px;
     }
-    #intro-screen .start-btn {
-      padding: 12px 32px;
-      font-size: 1.1rem;
-      background: rgba(74, 120, 80, 0.9);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      color: #e0d8c8;
-      cursor: pointer;
-      font-family: inherit;
+    #loading-progress {
+      appearance: none;
+      width: min(320px, 100%);
+      height: 8px;
+      overflow: hidden;
+      border: 1px solid #d6b87a66;
+      border-radius: 0;
+      background: #172b23;
+      color: #d6b87a;
     }
-    #intro-screen .start-btn:hover { background: rgba(90, 140, 96, 0.95); }
+    #loading-progress::-webkit-progress-bar { background: #172b23; }
+    #loading-progress::-webkit-progress-value { background: #d6b87a; }
+    #loading-progress::-moz-progress-bar { background: #d6b87a; }
+    #loading-error { max-width: 420px; color: #ffaaa0; line-height: 1.5; }
 
     /* Tutorial: reliable blur on canvas (not via backdrop-filter masks) */
     .tutorial-active #game-canvas {
@@ -167,26 +150,17 @@
   </style>
 </head>
 <body>
-  <div id="loading-screen">
-    <h1>Before Night Falls</h1>
-    <p>Loading...</p>
-  </div>
-  <div id="intro-screen" style="display: none;">
-    <img src="./assets/intro.png" alt="" class="intro-image-placeholder" width="280" height="160" />
-    <h1>Before Night Falls</h1>
-    <p class="intro-text intro-lead">Remember that childhood feeling…</p>
-    <p class="intro-text">When you stay outside just a little too long.</p>
-    <p class="intro-text">When the dark forest is already watching.</p>
-    <p class="intro-text">When you run home at the very last moment.</p>
-    <p class="intro-text intro-final">This game is about that feeling.</p>
-    <button type="button" class="start-btn" id="intro-start-btn">Start game</button>
+  <div id="loading-screen" aria-labelledby="loading-title">
+    <h1 id="loading-title">Before Winter Comes</h1>
+    <progress id="loading-progress" max="1" value="0" aria-label="Loading game"></progress>
+    <p id="loading-error" role="alert" hidden></p>
   </div>
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
     <div id="ui-overlay"></div>
   </div>
   <script type="module" src="./src/main.ts"></script>
-  <!-- Meta Pixel Code (noscript at end of body: valid HTML + itch-build img check uses first game img) -->
+  <!-- Meta Pixel Code -->
   <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=4281871595291721&ev=PageView&noscript=1"
   alt="" /></noscript>

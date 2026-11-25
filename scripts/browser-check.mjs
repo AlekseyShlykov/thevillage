@@ -15,6 +15,7 @@ assert(target, 'Open a dedicated test Chrome first.');
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r, j) => { ws.addEventListener('open', r, { once: true }); ws.addEventListener('error', j, { once: true }); });
 let id = 0; const pending = new Map(), exceptions = [], checks = [];
+let startupRequestId = null;
 function call(method, params = {}) {
   return new Promise((resolve, reject) => {
     const key = ++id, timer = setTimeout(() => { pending.delete(key); reject(new Error('Timed out: ' + method)); }, 45000);
@@ -26,6 +27,11 @@ ws.addEventListener('message', event => {
   if (m.id && pending.has(m.id)) { const p = pending.get(m.id); clearTimeout(p.timer); pending.delete(m.id); m.error ? p.reject(Error(JSON.stringify(m.error))) : p.resolve(m.result); }
   else if (m.method === 'Fetch.requestPaused') {
     const local = m.params.request.url.startsWith(base) || m.params.request.url.startsWith('data:');
+    // Hold config loading while installing the test hook, before automatic start.
+    if (!startupRequestId && m.params.request.url === new URL('data/game-balance.json', base).href) {
+      startupRequestId = m.params.requestId;
+      return;
+    }
     call(local ? 'Fetch.continueRequest' : 'Fetch.failRequest', { requestId: m.params.requestId, ...(local ? {} : { errorReason: 'BlockedByClient' }) }).catch(() => {});
   } else if (m.method === 'Runtime.exceptionThrown') exceptions.push(m.params.exceptionDetails);
 });
@@ -46,17 +52,34 @@ async function until(expression, seconds = 90) {
 }
 async function check(name, fn) { try { const detail = await fn(); checks.push({ name, pass: true, detail }); console.log('PASS', name, JSON.stringify(detail ?? '')); } catch (e) { checks.push({ name, pass: false, error: e.message }); console.log('FAIL', name, e.message); await shot('failure-' + checks.length).catch(() => {}); await fs.writeFile(`${output}/failure-state-${checks.length}.json`,JSON.stringify(await ev('g.serializeState()'),null,2)).catch(()=>{}); } }
 try {
-  await call('Page.enable'); await call('Page.bringToFront'); await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
+  await call('Page.enable'); await call('Page.bringToFront');
+  // Reusing a dedicated browser must not replay exceptions from an earlier run.
+  await call('Runtime.discardConsoleEntries');
+  await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
   if (!checkAudio) {
     // Also mute media in the page, even if Chrome was launched without --mute-audio.
     await call('Page.addScriptToEvaluateOnNewDocument', { source: `(()=>{const originalPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(...args){this.muted=true;return originalPlay.apply(this,args);};})();` });
   }
   await call('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-  await call('Page.navigate', { url: base }); await wait('document.getElementById("intro-screen")?.style.display === "flex"');
-  await ev(`(async()=>{const gameUrl=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/game/Game.ts')).at(-1)?.name ?? '/src/game/Game.ts';const {Game}=await import(gameUrl);const original=Game.prototype.start;Game.prototype.start=function(){window.g=this;if(!${checkAudio}&&this.soundManager.isSoundEnabled())this.soundManager.toggleSound();original.call(this);};document.getElementById('intro-start-btn').click();})()`);
+  await call('Page.navigate', { url: base });
+  for (let i = 0; i < 150 && !startupRequestId; i++) await delay(100);
+  assert(startupRequestId, 'Configuration request did not arrive.');
+  await check('launch shows the current title and loading bar without a Start button', async()=>{
+    const r=await ev(`({title:document.querySelector('#loading-screen h1')?.textContent,visible:getComputedStyle(document.getElementById('loading-screen')).display!=='none',progress:document.getElementById('loading-progress')?.value,intro:!!document.querySelector('#intro-screen,#intro-start-btn')})`);
+    assert.equal(r.title,'Before Winter Comes');assert(r.visible);assert.equal(r.progress,0);assert(!r.intro);
+    const image=await call('Page.captureScreenshot',{format:'png'});await fs.writeFile(output+'/loading-desktop.png',Buffer.from(image.data,'base64'));return r;
+  });
+  await ev(`(async()=>{const gameUrl=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/game/Game.ts')).at(-1)?.name ?? new URL('src/game/Game.ts',location.href).href;const {Game}=await import(gameUrl);const original=Game.prototype.start;Game.prototype.start=function(){window.g=this;if(!${checkAudio}&&this.soundManager.isSoundEnabled())this.soundManager.toggleSound();original.call(this);};})()`);
+  await ev(`window.loadingSamples=[];window.loadingObserver=new MutationObserver(()=>{const p=document.getElementById('loading-progress');window.loadingSamples.push(p.value/p.max);});window.loadingObserver.observe(document.getElementById('loading-progress'),{attributes:true});`);
+  await call('Fetch.continueRequest', { requestId: startupRequestId });
+  await wait('!!window.g && document.getElementById("loading-screen").style.display === "none"');
+  await check('loading completes and the game starts without user input', async()=>{
+    const r=await ev(`(()=>{window.loadingObserver.disconnect();return{complete:document.getElementById('loading-progress').value===document.getElementById('loading-progress').max,villagers:g.villagerSystem.getAliveCount(),briefing:g.tutorialSystem.isAwaitingAcknowledgement(),samples:window.loadingSamples};})()`);
+    assert(r.complete);assert(r.villagers>0);assert(r.briefing);assert(r.samples.some(p=>p>0&&p<1));assert(r.samples.every((p,i,a)=>p>=0&&p<=1&&(!i||p>=a[i-1])));return r;
+  });
   await wait('!!window.g'); await ev('g.gameLoop.stop();window.restartWithBriefings=g.restart.bind(g);g.restart=function(){window.restartWithBriefings();this.tutorialSystem.skip();this.updateUI();};g.tutorialSystem.skip();g.updateUI();g.render()'); await shot('spring-desktop');
   await check('custom interface artwork loads and buttons keep accessible labels', async()=>{
-    const result=await ev(`(async()=>{const url=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/ui/icons.ts')).at(-1).name;const {iconNames,iconMarkup}=await import(url);const loaded=await Promise.all(iconNames.map(name=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve({name,ok:img.naturalWidth===48});img.onerror=()=>resolve({name,ok:false});img.src='./assets/ui/icons/'+name+'.svg';})));const icons=[...document.querySelectorAll('[data-ui-icon]')];const emoji=[...document.querySelector('#ui-overlay').textContent].filter(c=>{const n=c.codePointAt(0);return n>=0x1f000&&n<=0x1faff||n>=0x2600&&n<=0x27ff});const unlabeled=[...document.querySelectorAll('button')].filter(b=>!b.getAttribute('aria-label')&&!b.textContent.trim()).length;const preview=document.createElement('div');preview.id='qa-icon-sheet';preview.dataset.ui='true';preview.style.cssText='position:fixed;inset:0;z-index:2000;background:#21382d;padding:40px;color:#ecdfbf;font:14px Trebuchet MS';preview.innerHTML='<div style="font:32px Georgia;margin-bottom:10px">Before Night Falls</div><div style="color:#b5bd9b;margin-bottom:25px">Timber · parchment · aged iron</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:22px">'+iconNames.map(name=>'<div style="height:112px;border:1px solid #d3b57626;border-radius:10px;background:#50614326;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">'+iconMarkup(name)+'<span>'+name+'</span></div>').join('')+'</div>';preview.querySelectorAll('img').forEach(img=>{img.style.width='56px';img.style.height='56px'});document.body.appendChild(preview);await new Promise(requestAnimationFrame);return{loaded,visibleIcons:icons.length,emoji:emoji.length,unlabeled}})()`);
+    const result=await ev(`(async()=>{const url=performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/ui/icons.ts')).at(-1).name;const {iconNames,iconMarkup}=await import(url);const loaded=await Promise.all(iconNames.map(name=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve({name,ok:img.naturalWidth===48});img.onerror=()=>resolve({name,ok:false});img.src='./assets/ui/icons/'+name+'.svg';})));const icons=[...document.querySelectorAll('[data-ui-icon]')];const emoji=[...document.querySelector('#ui-overlay').textContent].filter(c=>{const n=c.codePointAt(0);return n>=0x1f000&&n<=0x1faff||n>=0x2600&&n<=0x27ff});const unlabeled=[...document.querySelectorAll('button')].filter(b=>!b.getAttribute('aria-label')&&!b.textContent.trim()).length;const preview=document.createElement('div');preview.id='qa-icon-sheet';preview.dataset.ui='true';preview.style.cssText='position:fixed;inset:0;z-index:2000;background:#21382d;padding:40px;color:#ecdfbf;font:14px Trebuchet MS';preview.innerHTML='<div style="font:32px Georgia;margin-bottom:10px">Before Winter Comes</div><div style="color:#b5bd9b;margin-bottom:25px">Timber · parchment · aged iron</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:22px">'+iconNames.map(name=>'<div style="height:112px;border:1px solid #d3b57626;border-radius:10px;background:#50614326;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">'+iconMarkup(name)+'<span>'+name+'</span></div>').join('')+'</div>';preview.querySelectorAll('img').forEach(img=>{img.style.width='56px';img.style.height='56px'});document.body.appendChild(preview);await new Promise(requestAnimationFrame);return{loaded,visibleIcons:icons.length,emoji:emoji.length,unlabeled}})()`);
     const preview=await call('Page.captureScreenshot',{format:'png'});await fs.writeFile(output+'/interface-icon-sheet.png',Buffer.from(preview.data,'base64'));await ev('document.getElementById("qa-icon-sheet").remove()');
     assert(result.loaded.every(i=>i.ok));assert(result.visibleIcons>=20);assert.equal(result.emoji,0);assert.equal(result.unlabeled,0);return{assets:result.loaded.length,visibleIcons:result.visibleIcons};
   });
@@ -242,7 +265,7 @@ try {
     assert(await ev('window.woodAnchor===document.querySelector("[data-stat=wood]")&&!document.getElementById("topbar-tooltip").hidden'));await shot('topbar-wood-tooltip');
     await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:640,y:400});assert(await ev('document.getElementById("topbar-tooltip").hidden'));
     await ev('document.querySelector("[data-stat=food]").focus()');assert(await ev('document.getElementById("topbar-tooltip").textContent.includes("per second")'));await shot('topbar-food-tooltip');
-    await button('Build');const bad=await ev('[...document.querySelectorAll("#ui-overlay button,[data-build-panel],[data-info-panel],#intro-screen img,#intro-screen button")].filter(el=>parseFloat(getComputedStyle(el).borderTopLeftRadius)!==0).map(el=>el.tagName)');assert.deepEqual(bad,[]);await ev('g.ui.closePanels()');return 'hover, focus, live updates; no rounded corners';
+    await button('Build');const bad=await ev('[...document.querySelectorAll("#ui-overlay button,[data-build-panel],[data-info-panel],#loading-progress")].filter(el=>parseFloat(getComputedStyle(el).borderTopLeftRadius)!==0).map(el=>el.tagName)');assert.deepEqual(bad,[]);await ev('g.ui.closePanels()');return 'hover, focus, live updates; no rounded corners';
   });
   await check('50 visible villagers render within a playable frame budget',async()=>{
     await ev(`g.restart();g.gameLoop.stop();g.tutorialSystem.skip();g.villagerSystem.villagers=[];for(let y=26;y<34;y++)for(let x=36;x<44;x++)if(!g.tileMap.getTile(x,y).buildingId&&g.villagerSystem.getAliveCount()<55)g.villagerSystem.spawnVillager(x,y);g.updateUI();g.render()`);

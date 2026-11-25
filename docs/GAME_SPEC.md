@@ -1,10 +1,17 @@
-# Before Night Falls / Winter Village
+# Before Winter Comes
 
 The playable prototype is a browser-only village management and winter survival
 game, built with TypeScript, Vite and Canvas 2D. Buildings have distinct housing,
 production, storage, warning or defense roles; redundant hunting/fire structures
 have been removed. All gameplay balance loads dynamically from
 `public/data/game-balance.json`.
+
+On launch, a minimal loading screen shows “Before Winter Comes” and a progress
+bar driven by configuration, image and font loading, followed by world initialization.
+Missing images count as loaded and use the existing shape fallbacks. Once ready,
+the game opens automatically without an intro or Start button. Failed configuration
+loading keeps the title visible and shows a reload message. Browser-blocked seasonal
+audio resumes on the first interaction inside the game.
 
 ## World and graphics
 
@@ -499,8 +506,8 @@ italic faces are shipped with their OFL license; regular and bold faces load
 before the game begins. Fonts use relative asset paths for GitHub Pages and
 itch.io and need no third-party requests.
 
-All interface panels, buttons, dialogs, input fields, progress tracks and intro
-art have square corners. Canvas information labels use rectangles as well.
+All interface panels, buttons, dialogs, input fields and progress tracks have
+square corners. Canvas information labels use rectangles as well.
 `TooltipController` explains every top-bar resource/stat and the Tech, sound,
 save and load controls on hover or keyboard focus. Tapping a stat also opens its
 tooltip. Food shows current consumption/reserve duration; research explains the

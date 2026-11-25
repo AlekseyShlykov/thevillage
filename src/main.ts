@@ -4,19 +4,34 @@ import { AssetLoader } from './render/AssetLoader';
 import { Game } from './game/Game';
 
 async function main(): Promise<void> {
+  const loadingScreen = document.getElementById('loading-screen');
+  const progress = document.getElementById('loading-progress') as HTMLProgressElement | null;
   try {
     await loadConfig();
 
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-      loadingScreen.querySelector('p')!.textContent = 'Loading assets...';
-    }
-
     const assets = new AssetLoader();
+    let loadedAssets = 0;
+    let totalAssets = 0;
+    let loadedFonts = 0;
+    const updateProgress = (): void => {
+      if (!progress) return;
+      // One configuration, all images, two fonts, and game initialization.
+      progress.max = totalAssets + 4;
+      progress.value = 1 + loadedAssets + loadedFonts;
+    };
+    const loadFont = async (weight: number): Promise<void> => {
+      await document.fonts.load(`${weight} 12px "PT Sans"`).catch(() => []);
+      loadedFonts++;
+      updateProgress();
+    };
     await Promise.all([
-      assets.loadAll(),
-      document.fonts.load('400 12px "PT Sans"').catch(() => []),
-      document.fonts.load('700 12px "PT Sans"').catch(() => []),
+      assets.loadAll((completed, total) => {
+        loadedAssets = completed;
+        totalAssets = total;
+        updateProgress();
+      }),
+      loadFont(400),
+      loadFont(700),
     ]);
 
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -24,33 +39,19 @@ async function main(): Promise<void> {
 
     const game = new Game(canvas, assets);
     game.trackSiteOpen();
-
-    if (loadingScreen) {
-      loadingScreen.style.display = 'none';
-    }
-
-    const introScreen = document.getElementById('intro-screen');
-    const startBtn = document.getElementById('intro-start-btn');
-    if (introScreen && startBtn) {
-      introScreen.style.display = 'flex';
-      await new Promise<void>((resolve) => {
-        startBtn.addEventListener('click', () => {
-          introScreen.style.display = 'none';
-          resolve();
-        });
-      });
-    }
-
     game.start();
+    if (progress) progress.value = progress.max;
+    // Let the game draw its first frame before revealing the canvas.
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (loadingScreen) loadingScreen.style.display = 'none';
   } catch (err) {
-    console.error('Failed to start Winter Village:', err);
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-      loadingScreen.innerHTML = `
-        <h1>Winter Village</h1>
-        <p style="color:#ff6666">Failed to load game. Check console for details.</p>
-        <p style="font-size:0.8rem;opacity:0.5">${err}</p>
-      `;
+    console.error('Failed to start Before Winter Comes:', err);
+    if (loadingScreen) loadingScreen.style.display = 'flex';
+    if (progress) progress.hidden = true;
+    const errorMessage = document.getElementById('loading-error');
+    if (errorMessage) {
+      errorMessage.textContent = 'Failed to load game. Please reload the page to try again.';
+      errorMessage.hidden = false;
     }
   }
 }

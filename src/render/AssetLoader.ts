@@ -46,7 +46,7 @@ export class AssetLoader {
   private images: Map<string, HTMLImageElement> = new Map();
   private loaded = false;
 
-  async loadAll(): Promise<void> {
+  async loadAll(onProgress?: (completed: number, total: number) => void): Promise<void> {
     const allPaths: string[] = ['isometric/village-atlas.png', 'isometric/village-winter-atlas.png',
       'isometric/moat-tiles-atlas.png', 'isometric/moat-tiles-atlas-winter.png', 'isometric/fur-workshop.png', 'isometric/fur-workshop-winter.png', 'isometric/warm-house.png', 'isometric/warm-house-winter.png', 'isometric/garden-growth-atlas.png', 'isometric/herbal-fire-atlas.png', 'tools/rake.png','tools/axe.png','tools/hammer.png','cargo/herbs.png','cargo/hunt.png','isometric/guard-tower.png','projectiles/arrow.png'];
     allPaths.push('isometric/reinforced-palisade.png','isometric/reinforced-palisade-winter.png',
@@ -58,7 +58,13 @@ export class AssetLoader {
     for (const p of Object.values(ENEMY_SPRITE_MAP)) allPaths.push(p);
 
     const unique = [...new Set(allPaths)];
-    const promises = unique.map(p => this.loadImage(p));
+    let completed = 0;
+    onProgress?.(completed, unique.length);
+    const promises = unique.map(async p => {
+      await this.loadImage(p);
+      // Missing images count as ready: the renderer uses placeholder shapes.
+      onProgress?.(++completed, unique.length);
+    });
     await Promise.allSettled(promises);
     this.loaded = true;
   }

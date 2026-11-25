@@ -40,6 +40,40 @@ function measureAudio(buffer) {
 }
 
 export async function runAudioChecks({check, ev}) {
+  await check('blocked seasonal autoplay resumes once on interaction and respects mute', async () => {
+    const result = await ev(`(async () => {
+      const sound = new g.soundManager.constructor(), original = HTMLMediaElement.prototype.play;
+      let calls = 0, blocked = true;
+      HTMLMediaElement.prototype.play = function() {
+        this.muted = true;
+        calls++;
+        return blocked ? Promise.reject(new DOMException('User interaction required', 'NotAllowedError')) : Promise.resolve();
+      };
+      try {
+        sound.playSeason('spring'); await Promise.resolve();
+        blocked = false;
+        window.dispatchEvent(new Event('pointerup'));
+        document.body.dispatchEvent(new KeyboardEvent('keydown', {bubbles:true}));
+        const pointerCalls = calls;
+        blocked = true;
+        sound.playSeason('summer'); await Promise.resolve();
+        blocked = false;
+        document.body.dispatchEvent(new KeyboardEvent('keydown', {bubbles:true}));
+        window.dispatchEvent(new Event('pointerup'));
+        const keyboardCalls = calls;
+        blocked = true;
+        sound.playSeason('autumn'); await Promise.resolve();
+        sound.toggleSound();
+        window.dispatchEvent(new Event('pointerup'));
+        return {pointerCalls, keyboardCalls, mutedCalls:calls};
+      } finally {
+        if (sound.isSoundEnabled()) sound.toggleSound();
+        HTMLMediaElement.prototype.play = original;
+      }
+    })()`);
+    assert.deepEqual(result, {pointerCalls:2, keyboardCalls:4, mutedCalls:5});
+    return result;
+  });
   let clips;
   await check('all seasonal ambience and action cues use configured gains and respect mute', async () => {
     clips = await ev(`(() => {

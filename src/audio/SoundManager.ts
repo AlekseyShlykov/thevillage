@@ -52,6 +52,13 @@ export class SoundManager {
   private lastBuildingTime = 0;
   private woodPlaying: HTMLAudioElement[] = [];
   private lastHordeAttackTime = 0;
+  private readonly resumeSeasonOnInteraction = (): void => {
+    window.removeEventListener('pointerup', this.resumeSeasonOnInteraction);
+    window.removeEventListener('keydown', this.resumeSeasonOnInteraction);
+    if (this.soundEnabled && this.seasonAudio?.paused) {
+      this.seasonAudio.play().catch(() => {});
+    }
+  };
 
   isSoundEnabled(): boolean {
     return this.soundEnabled;
@@ -86,7 +93,12 @@ export class SoundManager {
     const audio = new Audio(src);
     audio.loop = true;
     audio.volume = vol('season');
-    audio.play().catch(() => {});
+    audio.play().catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        window.addEventListener('pointerup', this.resumeSeasonOnInteraction, { once: true });
+        window.addEventListener('keydown', this.resumeSeasonOnInteraction, { once: true });
+      }
+    });
     audio.addEventListener('error', () => {});
     this.seasonAudio = audio;
   }

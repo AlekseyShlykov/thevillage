@@ -157,7 +157,7 @@ export class Game {
     });
     this.setupSeasonCallbacks();
     this.initWorld();
-    // Season music is started in start() after user click (required for autoplay policy).
+    // Seasonal audio resumes on the first interaction if browser autoplay is blocked.
 
     this.renderer.resize();
     window.addEventListener('resize', () => this.renderer.resize());

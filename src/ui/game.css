@@ -74,10 +74,6 @@ html, body { background: #314b39 !important; }
 .camera-controls button { width: 38px; background: var(--panel) !important; font-size: 18px !important; }
 .action-menu { background: var(--panel) !important; border-color: var(--edge) !important; max-height: calc(100dvh - 170px); overflow-y: auto; }
 .action-menu button { min-height: 44px !important; }
-#intro-screen { background: radial-gradient(ellipse at 50% 30%, #435839, #172b23 80%) !important; overflow-y: auto; }
-#intro-screen h1 { font-family: 'PT Sans', sans-serif; font-weight: normal; letter-spacing: -.5px; color: #e9d7aa !important; }
-#intro-screen .intro-image-placeholder { width: 320px !important; height: 180px !important; border-radius: 0!important; border-color: #d6b87a44 !important; box-shadow: 0 12px 44px #0005; }
-#intro-screen .start-btn { background: #536849 !important; border-color: #c6b17a66 !important; min-height: 48px; }
 @media (max-width: 1100px) {
   #game-top-bar { gap: 8px !important; padding: 10px 12px !important; }
   [data-topbar-stats] { gap: 12px !important; }
@@ -117,15 +113,11 @@ html, body { background: #314b39 !important; }
   #ui-overlay [data-info-panel][data-villager][data-target-order]:not([data-target-order='']) progress { display: none; }
   #ui-overlay:has([data-info-panel][data-villager]) [data-notification-el] { top: 144px; }
   [data-notification-el] { bottom: 165px !important; }
-  #intro-screen { justify-content: safe center !important; padding: 20px !important; }
-  #intro-screen h1 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
-  #intro-screen .intro-text { font-size: .9rem !important; line-height: 1.5 !important; }
-  #intro-screen .intro-image-placeholder { width: 240px !important; height: 135px !important; margin-bottom: 1rem !important; }
 }
 @media (max-height: 560px) { .game-heading { display: none; } }
 
-/* Angular panel treatment applies to menus, dialogs, input fields and intro. */
-#ui-overlay *, #intro-screen *, #loading-screen * { border-radius: 0 !important; }
+/* Angular panel treatment applies to menus, dialogs, input fields and loading. */
+#ui-overlay *, #loading-screen * { border-radius: 0 !important; }
 #topbar-tooltip { position: fixed; z-index: 80; width: 280px; max-width: calc(100vw - 16px); padding: 12px 14px; border: 1px solid #c6b08077; background: #1b2d23f7; color: var(--ink); box-shadow: 4px 5px 0 #0b1c1666; pointer-events: none !important; }
 #topbar-tooltip[hidden] { display: none; }
 #topbar-tooltip strong { display: block; font: 15px 'PT Sans',sans-serif; color: #ecd5a3; margin-bottom: 6px; }

@@ -1,4 +1,4 @@
-# Before Night Falls · Winter Village
+# Before Winter Comes
 
 A cozy browser village-survival game built with TypeScript, Vite and HTML5 Canvas.
 Prepare a small northern settlement for winter in an illustrated isometric world.
@@ -10,6 +10,9 @@ npm run dev
 
 `npm run build` creates the GitHub Pages-compatible `dist/` build.
 `npm run build:itch` also produces a verified `itch-build/` directory for itch.io.
+
+The title and resource loading bar appear on launch; the game opens automatically
+when ready. Sound begins on the first interaction if browser autoplay is blocked.
 
 Mouse/touch drag pans the camera. Scroll, pinch or + / − zooms. Space pauses;
 commands remain available while paused. Escape or right-click cancels placement.

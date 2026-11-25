@@ -46,7 +46,8 @@ function verifyItchBuild() {
     }
   }
 
-  const imgMatch = html.match(/<img[^>]+src="([^"]+)"/);
+  // Tracking pixels inside noscript are not game assets.
+  const imgMatch = html.replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '').match(/<img[^>]+src="([^"]+)"/);
   if (imgMatch) {
     const rel = imgMatch[1];
     if (rel.startsWith('http') || rel.startsWith('/')) {

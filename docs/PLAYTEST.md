@@ -301,3 +301,30 @@ build byte for byte. `index.html` is at the archive root; module, stylesheet,
 font and intro-image paths resolve inside the package. All current sound assets
 are included. Promotional videos, original artwork, nested ZIPs and macOS
 metadata are absent. The archive and the itch.io build remain ignored by Git.
+
+## Automatic startup and itch.io package (2026-11-25)
+
+The launch screen now shows only **Before Winter Comes** and an actual loading
+bar. The bar advances as configuration, images and fonts become ready; world
+initialization completes it. The game opens without pressing Start. The existing
+first-season tutorial remains available inside the game.
+
+All **153/153** browser regression checks passed without sound or unhandled
+exceptions. New checks cover the title, monotonic loading progress, automatic
+startup and resuming browser-blocked audio on pointer or keyboard interaction
+while respecting mute. The runner clears prior Chrome exception history before
+each run and installs its test hook while the configuration request is paused.
+
+Production bundle `index-C9VA5u2P.js` passed four silent Chrome startup scenarios:
+GitHub Pages build under a subpath at 1280 × 900, itch.io build at 390 × 844,
+itch.io with every PNG unavailable, and a failed configuration request. Holding
+one image request confirmed that the bar remains partially filled until assets
+finish. Missing images allow startup with shape fallbacks; a configuration error
+keeps the current title visible and displays a reload message. No unhandled
+exceptions occurred in these production checks.
+
+`Before-Winter-Comes-itch.zip` at the repository root contains 132 files (51.3 MiB),
+with `index.html` directly at its root. Every archived file matches `itch-build/`
+byte for byte, and ZIP CRC checks pass. The package contains no nested archives
+or macOS metadata. SHA-256:
+`a4a76a028f940c1c81e0404e04a9d67d577c2239e96df2dd083913dccc4b4534`.
